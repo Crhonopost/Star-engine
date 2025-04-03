@@ -2,6 +2,11 @@
 cmake_minimum_required (VERSION 3.0)
 project (GameEngine)
 
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall")
+set(CMAKE_C_FLAGS_DEBUG "-g -O0 -Wall")
+set(CMAKE_BUILD_TYPE Debug)
+
+
 find_package(OpenGL REQUIRED)
 
 
@@ -53,32 +58,41 @@ add_definitions(
 	-D_CRT_SECURE_NO_WARNINGS
 )
 
-# TP1
 add_executable(main
-	TP1/src/main.cpp
-	TP1/src/texture.cpp
-	TP1/include/texture.hpp
-	TP1/include/scene.hpp
+	engine/src/main.cpp
+	
+	engine/include/spatial.hpp
+	engine/include/program.hpp
+	engine/include/scene.hpp
+	engine/include/input.hpp
+    engine/include/camera.hpp
+    engine/include/ecs/implementations/components.hpp
+    engine/include/ecs/implementations/systems.hpp
+	
+	engine/src/spatial.cpp
+	engine/src/program.cpp
+	engine/src/scene.cpp
+	engine/src/input.cpp
+    engine/src/camera.cpp
+    engine/src/components.cpp
+    engine/src/systems.cpp
+	
 	common/shader.cpp
 	common/shader.hpp
-	common/controls.cpp
-	common/controls.hpp
-	common/texture.cpp
-	common/texture.hpp
 	common/objloader.cpp
 	common/objloader.hpp
 	common/vboindexer.cpp
 	common/vboindexer.hpp
 	
-	TP1/shaders/vertex_shader.glsl
-	TP1/shaders/fragment_shader.glsl
+	engine/shaders/vertex_shader.glsl
+	engine/shaders/fragment_shader.glsl
 )
 target_link_libraries(main
 	${ALL_LIBS}
 )
 # Xcode and Visual working directories
-set_target_properties(main PROPERTIES XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TP1/")
-create_target_launcher(main WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/TP1/")
+set_target_properties(main PROPERTIES XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/engine/")
+create_target_launcher(main WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/engine/")
 
 
 
@@ -90,7 +104,7 @@ SOURCE_GROUP(shaders REGULAR_EXPRESSION ".*/.*shader$" )
 if (NOT ${CMAKE_GENERATOR} MATCHES "Xcode" )
 add_custom_command(
    TARGET main POST_BUILD
-   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/main${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_SOURCE_DIR}/TP1/"
+   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}/main${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_SOURCE_DIR}/engine/"
 )
 elseif (${CMAKE_GENERATOR} MATCHES "Xcode" )
 
