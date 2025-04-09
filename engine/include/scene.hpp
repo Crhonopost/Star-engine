@@ -4,6 +4,8 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
 
+#include <iostream>
+
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
     Program::generateTextures(4);
@@ -51,9 +53,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunDraw.programIdx = 0;
     sunDraw.textures.push_back(sunTexture);
     Transform sunTransform;
-    sunTransform.translate(glm::vec3(5,10,0));
+    sunTransform.translate(glm::vec3(5,0,0));
     RigidBody sunBody;
-    sunBody.velocity = glm::vec3(1,1,0) * 10.f;
+    // sunBody.velocity = glm::vec3(1,1,0) * 2.f;
     sunBody.restitutionCoef = 1.0f;
     sunBody.weight = 1.f;
     CollisionShape sunShape;
@@ -64,8 +66,10 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunBehavior.update = [sunEntity, &ecs](float deltaTime) {
         auto actions = InputManager::getInstance().getActions();
 
-        const glm::vec3 left = glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target);
-        const glm::vec3 forward = glm::cross(left, glm::vec3(0,1,0));
+        const glm::vec3 left = glm::normalize(glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target));
+        const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
+
+        std::cout << "forward x: " << forward.x << ", y: " << forward.y << ", z: " << forward.z << "\n";
         
         const float speed = 10.0f;
         const float jumpStrength = 20.0f;
@@ -80,10 +84,10 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
             inputVelocity -= left;
         
-        inputVelocity = glm::normalize(inputVelocity) * speed;
+        if(inputVelocity.x + inputVelocity.z != 0.f){
+            sunBody.velocity = glm::normalize(inputVelocity) * speed;
+        }
 
-        sunBody.velocity = glm::mix(sunBody.velocity, inputVelocity, deltaTime);
-        
         if (actions[InputManager::ActionEnum::ACTION_JUMP].pressed)
             sunBody.velocity.y = jumpStrength;
         

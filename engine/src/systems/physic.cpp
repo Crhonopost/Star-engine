@@ -43,8 +43,8 @@ void PhysicSystem::narrowPhase(){
 
 
                 float e = std::min(rbA.restitutionCoef, rbB.restitutionCoef);
-                float invMassA = 1.0f / rbA.weight;
-                float invMassB = 1.0f / rbB.weight;
+                float invMassA = 1.0f / (rbA.weight * 5.f);
+                float invMassB = 1.0f / (rbB.weight * 5.f);
 
                 
                 float j = -(1 + e) * velAlongNormal / (invMassA + invMassB);
@@ -69,8 +69,8 @@ void PhysicSystem::narrowPhase(){
 
                 glm::vec3 frictionImpulse = jt * tangent;
 
-                rbA.velocity -= frictionImpulse * invMassA;
-                rbB.velocity += frictionImpulse * invMassB;
+                rbA.velocity += frictionImpulse * invMassA;
+                rbB.velocity -= frictionImpulse * invMassB;
             }
         }
     }

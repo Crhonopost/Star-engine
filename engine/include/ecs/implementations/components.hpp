@@ -170,7 +170,7 @@ struct CustomBehavior: Component {
 
 struct RigidBody: Component {
     bool isStatic = false;
-    glm::vec3 velocity;
+    glm::vec3 velocity=glm::vec3(0);
     float weight=1.f;
     float restitutionCoef=0.5f;
     float frictionCoef=0.5f;
