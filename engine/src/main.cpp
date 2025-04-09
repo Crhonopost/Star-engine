@@ -30,6 +30,7 @@ using namespace glm;
 #include <engine/include/camera.hpp>
 #include <engine/include/spatial.hpp>
 #include <engine/include/stbi.h>
+#include <engine/include/scene.hpp>
 
 
 
@@ -50,36 +51,6 @@ float zoom = 1.;
 
 // SceneGraph scene;
 ecsManager ecs;
-
-int textureWidth, textureHeight, textureChannels;
-unsigned char *textureData = stbi_load("../assets/images/HeightMap.png", &textureWidth, &textureHeight, &textureChannels, 0);
-float getHeightValue(glm::vec3 position, glm::vec3 meshPosition, glm::vec2 meshDimmensions) {
-    if (!textureData) {
-        std::cerr << "Failed to load heightmap texture!" << std::endl;
-        return 0.0f;
-    }
-    
-    glm::vec2 localPos = glm::vec2(position.x, position.z) - glm::vec2(meshPosition.x - meshDimmensions.x/2.0f, meshPosition.z - meshDimmensions.y/2.0f);
-    
-    glm::vec2 uv = localPos / meshDimmensions;
-    
-    // Vérifier si la position est dans les bornes de la heightmap
-    if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f) {
-        std::cout << "hors limite\n";
-        return 0.0f; // En dehors des limites
-    }
-    
-    // Convertir les UV en coordonnées de texture
-    int texX = textureWidth - static_cast<int>(uv.x * (textureWidth - 1));
-    int texY = static_cast<int>(uv.y * (textureHeight - 1));
-    
-    // Accéder à la hauteur dans l'image (supposons une texture en niveaux de gris)
-    int pixelIndex = (texY * textureWidth + texX) * textureChannels;
-    unsigned char heightValue = textureData[pixelIndex];
-    
-    // Normaliser la hauteur entre 0 et 1
-    return heightValue / 255.0f;
-}
 
 
 int main( void )
@@ -144,9 +115,12 @@ int main( void )
         ecs.RegisterComponent<Transform>();
         ecs.RegisterComponent<Drawable>();
         ecs.RegisterComponent<CustomBehavior>();
+        ecs.RegisterComponent<RigidBody>();
+        ecs.RegisterComponent<CollisionShape>();
     
         auto renderSystem = ecs.RegisterSystem<Render>();
         auto customSystem = ecs.RegisterSystem<CustomSystem>();
+        auto physicSystem = ecs.RegisterSystem<PhysicSystem>();
         
         Signature renderSignature;
         renderSignature.set(ecs.GetComponentType<Transform>());
@@ -156,117 +130,17 @@ int main( void )
         Signature customSignature;
         customSignature.set(ecs.GetComponentType<CustomBehavior>());
         ecs.SetSystemSignature<CustomSystem>(customSignature);
-    
-    
-        ///////////////////////////// programs
-        Program baseProg("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl");
-        Texture sunTexture = baseProg.loadTexture("../assets/images/planets/tex_sun.jpg", "tex");
-    
-    
-        Program mountainProg("shaders/vertex_shader_mountain.glsl", "shaders/fragment_shader.glsl");
-        Texture grassTex = mountainProg.loadTexture("../assets/images/HeightMap.png", "tex");
-        // Texture rockTex = mountainProg.loadTexture("../assets/images/rock.png", "texRock");
-        Texture heightMap = mountainProg.loadTexture("../assets/images/HeightMap.png", "heightMap");
-    
-        Program::programs.push_back(baseProg);
-        Program::programs.push_back(mountainProg);
+
+        Signature physicSignature;
+        physicSignature.set(ecs.GetComponentType<RigidBody>());
+        physicSignature.set(ecs.GetComponentType<Transform>());        
+        physicSignature.set(ecs.GetComponentType<CollisionShape>());        
+        ecs.SetSystemSignature<PhysicSystem>(physicSignature);
 
 
 
-
-        ////////////////////////////// mountain
-        auto mountainEntity = ecs.CreateEntity();
-        const int sideLength = 100;
-        auto mountainDraw = Render::generatePlane(sideLength,256);
-        mountainDraw.programIdx = 1;
-        mountainDraw.textures.push_back(heightMap);
-        mountainDraw.textures.push_back(grassTex);
-        // mountainDraw.textures.push_back(rockTex);
-        Transform mountainTransform;
-        ecs.AddComponent(mountainEntity, mountainDraw);
-        ecs.AddComponent(mountainEntity, mountainTransform);
-
-
-
-        
-    
-        ///////////////////////////// sun
-        auto sunEntity = ecs.CreateEntity();
-        auto sunDraw = Render::generateSphere(0.5f);
-        sunDraw.programIdx = 0;
-        sunDraw.textures.push_back(sunTexture);
-        Transform sunTransform;
-        
-        CustomBehavior sunBehavior;
-        sunBehavior.update = [&sunEntity, &actions, &mountainEntity, &sideLength](float deltaTime) {
-
-            const glm::vec3 left = glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target);
-            const glm::vec3 forward = glm::cross(left, glm::vec3(0,1,0));
-            
-            const float speed = 10.0f;
-            auto &sunTransform = ecs.GetComponent<Transform>(sunEntity);
-            if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
-                sunTransform.translate(forward * speed * deltaTime);
-            if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
-                sunTransform.translate(-forward * speed * deltaTime);
-            if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
-                sunTransform.translate(left * speed * deltaTime);
-            if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
-                sunTransform.translate(-left * speed * deltaTime);
-
-            glm::vec3 mountainPos = ecs.GetComponent<Transform>(mountainEntity).getLocalPosition();
-            float heightValue = getHeightValue(sunTransform.getLocalPosition(), mountainPos, glm::vec2(sideLength, sideLength));
-            const float scale = 20.0f;
-            sunTransform.translate(glm::vec3(0,heightValue * scale - sunTransform.getLocalPosition().y + 0.5,0));
-        };
-
-        Drawable lowerRes = Render::generatePlane(1, 2);
-        sunDraw.lodLower = &lowerRes;
-        sunDraw.switchDistance = 15;
-
-        ecs.AddComponent(sunEntity, sunDraw);
-        ecs.AddComponent(sunEntity, sunTransform);
-        ecs.AddComponent(sunEntity, sunBehavior);
-
-
-        
-
-        
-
-        
-        ///////////////////////////// camera
-        auto cameraEntity = ecs.CreateEntity();
-        CustomBehavior cameraUpdate;
-        cameraUpdate.update = [&sunEntity,  &actions](float deltaTime){
-            glm::vec3 sunPos = ecs.GetComponent<Transform>(sunEntity).getLocalPosition();
-            glm::vec3 newTarget = glm::normalize(sunPos - Camera::getInstance().camera_position);
-
-            Camera::getInstance().camera_target = newTarget;
-
-            if (actions[InputManager::ActionEnum::ACTION_LOCK_POSITION].clicked)
-                Camera::getInstance().locked = !Camera::getInstance().locked;
-
-            if(!Camera::getInstance().locked){
-                glm::vec3 newPos = sunPos - newTarget * 10.f;
-                newPos.y = sunPos.y + 5.0f;
-                Camera::getInstance().camera_position = glm::mix(Camera::getInstance().camera_position, newPos, deltaTime);
-            }
-            // Camera::getInstance().updateInput(deltaTime);
-        };
-        ecs.AddComponent(cameraEntity, cameraUpdate);
-
-
-        auto root = spatial::SpatialNode();
-        Transform rootTransform;
-        root.transform = &rootTransform;
-        
-        auto sunNode = spatial::SpatialNode();
-        sunNode.transform = &ecs.GetComponent<Transform>(sunEntity);
-        auto mountainNode = spatial::SpatialNode();        
-        mountainNode.transform = &ecs.GetComponent<Transform>(mountainEntity);
-        
-        root.AddChild(&sunNode);
-        root.AddChild(&mountainNode);
+        SpatialNode root;
+        initScene(root, ecs);
         
         
         do{
@@ -274,29 +148,24 @@ int main( void )
             // error = glGetError();
             // if(error != GL_NO_ERROR){
             //     std::cerr << "OpenGL error: " << error << std::endl;
-            // } 
+            // // } 
             
             float currentFrame = glfwGetTime();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
-            
+
             // input
             InputManager::getInstance().processInput(window);
             userInteractions(window);
             actions = InputManager::getInstance().getActions();
             
-    
-            // scene.update(deltaTime);
-            
             // Clear the screen
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            
-            
-            // scene.render();
-
             root.updateSelfAndChildTransform();
+
     
             customSystem->update(deltaTime);
+            physicSystem->update(deltaTime);
             renderSystem->update();
     
             

@@ -3,11 +3,9 @@
 
 
 void Drawable::draw(float renderDistance){
-    if (lodLower && switchDistance > 0) {
-        if (renderDistance > switchDistance) {
-            lodLower->draw(renderDistance);
-            return;
-        }
+    if (switchDistance > 0 && renderDistance > switchDistance) {
+        lodLower->draw(renderDistance);
+        return;
     }
 
 
@@ -19,6 +17,8 @@ void Drawable::draw(float renderDistance){
                 GL_UNSIGNED_SHORT,   // type
                 (void*)0           // element array buffer offset
                 );
+
+    glBindVertexArray(0);
 }
 
 void Drawable::init(std::vector<float> &vertex_buffer_data, std::vector<short unsigned int> &indices){
@@ -72,8 +72,8 @@ glm::mat4 Transform::getLocalModelMatrix(){
     
     // translation * rotation * scale (also know as TRS matrix)
     return glm::translate(glm::mat4(1.0f), pos) *
-    rotationMatrix *
-    glm::scale(glm::mat4(1.0f), scale);
+           rotationMatrix *
+           glm::scale(glm::mat4(1.0f), scale);
 }
     
 void Transform::computeModelMatrix(){
@@ -115,4 +115,45 @@ glm::mat4 Transform::getModelMatrix(){
 void Transform::translate(glm::vec3 translation){
     pos += translation;
     dirty = true;
+}
+
+
+
+IntersectionInfo spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
+    IntersectionInfo res;
+    glm::vec3 planeToSphere = transformA.getLocalPosition() - transformB.getLocalPosition();
+    
+    float distToPlane = glm::dot(planeToSphere, planeB.normal);
+
+    if(distToPlane < sphereA.radius){
+        res.exist = true;
+        res.correctionDepth = abs(distToPlane - sphereA.radius);
+        res.normal = planeB.normal;
+        res.position = transformA.getLocalPosition() - sphereA.radius * res.normal;
+    }
+
+    return res;
+}
+
+IntersectionInfo CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
+    IntersectionInfo res;
+
+    if(shapeA.shapeType == SPHERE && shapeB.shapeType == SPHERE){
+        float radiusSum = shapeA.sphere.radius + shapeB.sphere.radius;
+        float distance = glm::length(transformA.getLocalPosition() - transformB.getLocalPosition());
+        
+        float dist = distance - radiusSum;
+        if(dist < 0){
+            res.exist = true;
+            res.correctionDepth = -dist;
+            res.normal = glm::normalize(transformA.getLocalPosition() - transformB.getLocalPosition());
+            res.position = transformA.getLocalPosition() - shapeA.sphere.radius * res.normal;
+        }
+    } else if(shapeA.shapeType == PLANE && shapeB.shapeType == SPHERE){
+        return spherePlaneIntersection(shapeB.sphere, transformB, shapeA.plane, transformA);
+    } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == PLANE){
+        return spherePlaneIntersection(shapeA.sphere, transformA, shapeB.plane, transformB);
+    }
+
+    return res;
 }

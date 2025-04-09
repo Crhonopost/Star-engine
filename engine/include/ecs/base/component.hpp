@@ -44,7 +44,7 @@ public:
 		size_t newIndex = mSize;
 		mEntityToIndexMap[entity] = newIndex;
 		mIndexToEntityMap[newIndex] = entity;
-		mComponentArray[newIndex] = component;
+		mComponentArray[newIndex] = std::move(component);
 		++mSize;
 	}
 
@@ -55,7 +55,7 @@ public:
 		// Copy element at end into deleted element's place to maintain density
 		size_t indexOfRemovedEntity = mEntityToIndexMap[entity];
 		size_t indexOfLastElement = mSize - 1;
-		mComponentArray[indexOfRemovedEntity] = mComponentArray[indexOfLastElement];
+		mComponentArray[indexOfRemovedEntity] = std::move(mComponentArray[indexOfLastElement]);
 
 		// Update map to point to moved spot
 		Entity entityOfLastElement = mIndexToEntityMap[indexOfLastElement];

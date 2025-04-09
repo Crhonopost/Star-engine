@@ -8,7 +8,7 @@ layout(location = 1) in vec2 texCoord;
 // Values that stay constant for the whole mesh.
 uniform mat4 vp;
 uniform mat4 model;
-uniform float time;
+// uniform float time;
 
 uniform sampler2D heightMap;
 

@@ -6,46 +6,39 @@
 #include <iostream>
 
 
-void Render::update(){
+void Render::update() {
     glm::mat4 VP = Camera::getInstance().getVP();
     int activationInt = 0;
-    for (auto const& entity: mEntities){
+
+    for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
 
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
-        
+
         auto& program = Program::programs[drawable.programIdx];
-        
-        auto model = transform.getModelMatrix();
-        
+
+        glm::mat4 model = transform.getModelMatrix();
+
         glUseProgram(program.programID);
+        for (auto& texture : drawable.textures) {
+            if (texture.id == 0) {
+                std::cerr << "ID de texture invalide\n";
+                continue;
+            }
+
+            glBindTextureUnit(activationInt, texture.id);
+            glUniform1i(texture.uniformLocation, activationInt);
+
+            activationInt++;
+        }
         program.updateModelMatrix(model);
         program.updateViewProjectionMatrix(VP);
 
-        for(auto &texture : drawable.textures){
-            std::cerr << "\nActivation Texture: " << activationInt << "\n";
-            if (texture.id == 0) {
-                std::cerr << "invalid texture ID\n";
-            }
-
-            glActiveTexture(GL_TEXTURE0 + activationInt);
-            glBindTexture(GL_TEXTURE_2D, texture.id);
-            glUniform1i(texture.uniformLocation, activationInt);
-
-            GLint currentTexture;
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &currentTexture);
-            std::cerr << "Texture active : " << currentTexture << " (attendue : " << texture.id << ")\n";
-            GLint texSlot;
-            glGetIntegerv(GL_ACTIVE_TEXTURE, &texSlot);
-            std::cerr << "TexSlot actuellement actif: " << texSlot - GL_TEXTURE0 << "\n";
-
-            activationInt ++;
-        }
-    
         drawable.draw(distanceToCam);
     }
 }
+
 
 
 Drawable Render::generateSphere(float radius){
@@ -144,9 +137,6 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
             tex_coords.push_back(v_coords);
         }
     }
-
-    std::cout << "min: " << min.x << ", " << min.y << ", " << min.z << "\n";
-    std::cout << "max: " << max.x << ", " << max.y << ", " << max.z << "\n";
 
     for(size_t i=0; i<nbOfVerticesSide-1; i++){
         for(size_t j=1; j<nbOfVerticesSide; j++){

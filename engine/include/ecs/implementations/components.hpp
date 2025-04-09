@@ -6,6 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <functional>
+#include <iostream>
 
 
 struct Texture {
@@ -13,27 +14,55 @@ struct Texture {
     GLuint id, uniformLocation;
 
     Texture(): id(0){};
-
-    ~Texture() {
-        if (id != 0) {
-            glDeleteTextures(1, &id);
-        }
-    }
 };
 
-struct Drawable {
+struct Component{
+    Component(const Component&) = delete;
+    Component() {}
+};
+
+struct Drawable: Component {
     GLuint VAO, VBO, EBO;
     int indexCount;
 
     std::vector<Texture> textures;
     int programIdx;
 
-    
-    bool isLod = false;
     Drawable* lodLower = nullptr;
     float switchDistance = -1.0f;
 
     Drawable(): VAO(0), VBO(0), EBO(0){};
+
+    Drawable(Drawable&& other) noexcept
+        : VAO(other.VAO), VBO(other.VBO), EBO(other.EBO), 
+          indexCount(other.indexCount), textures(std::move(other.textures)),
+          programIdx(other.programIdx), lodLower(other.lodLower), switchDistance(other.switchDistance) {
+        other.VAO = 0;
+        other.VBO = 0;
+        other.EBO = 0;
+    }
+
+    Drawable& operator=(Drawable&& other) noexcept {
+        if (this != &other) {
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);
+            glDeleteBuffers(1, &EBO);
+
+            VAO = other.VAO;
+            VBO = other.VBO;
+            EBO = other.EBO;
+            indexCount = other.indexCount;
+            textures = std::move(other.textures);
+            programIdx = other.programIdx;
+            lodLower = other.lodLower;
+            switchDistance = other.switchDistance;
+
+            other.VAO = 0;
+            other.VBO = 0;
+            other.EBO = 0;
+        }
+        return *this;
+    }
 
     ~Drawable() {
         if (VAO != 0) {
@@ -57,7 +86,7 @@ enum RotationOrderEnum {
     YXZ,
     ZYX
 };
-class Transform {
+class Transform: Component {
     private:
     glm::vec3 pos = { 0.0f, 0.0f, 0.0f };
     glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
@@ -86,8 +115,194 @@ class Transform {
     void translate(glm::vec3);
 
     glm::mat4 getModelMatrix();
+
+
+    Transform()
+    : modelMatrix(1.f), pos(0.0f), scale(1.0f), eulerRot(0.0f), rotationOrder(XYZ), dirty(true){}
+
+    Transform(Transform&& other) noexcept
+        : pos(std::move(other.pos)), 
+          eulerRot(std::move(other.eulerRot)),
+          scale(std::move(other.scale)),
+          modelMatrix(std::move(other.modelMatrix)),
+          dirty(other.dirty),
+          rotationOrder(other.rotationOrder)
+    {
+        other.dirty = true;
+    }
+
+    Transform& operator=(Transform&& other) noexcept {
+        if (this != &other) {
+            pos = std::move(other.pos);
+            eulerRot = std::move(other.eulerRot);
+            scale = std::move(other.scale);
+            modelMatrix = std::move(other.modelMatrix);
+            dirty = other.dirty;
+            rotationOrder = other.rotationOrder;
+
+            other.dirty = true;
+        }
+        return *this;
+    }
 };
 
-struct CustomBehavior {
+
+struct CustomBehavior: Component {
     std::function<void(float)> update;
+
+    CustomBehavior() = default;
+
+    CustomBehavior(CustomBehavior&& other) noexcept
+        : update(std::move(other.update)) {
+    }
+
+    CustomBehavior& operator=(CustomBehavior&& other) noexcept {
+        if (this != &other) {
+            update = std::move(other.update);
+        }
+        return *this;
+    }
+};
+
+
+
+////////////  Physic
+
+struct RigidBody: Component {
+    bool isStatic = false;
+    glm::vec3 velocity;
+    float weight=1.f;
+    float restitutionCoef=0.5f;
+    float frictionCoef=0.5f;
+
+    RigidBody() = default;
+
+    RigidBody(RigidBody&& other) noexcept
+        : isStatic(other.isStatic),
+          velocity(std::move(other.velocity)),
+          weight(other.weight),
+          restitutionCoef(other.restitutionCoef),
+          frictionCoef(other.frictionCoef)
+    {
+        other.weight = 1.f; // Ou autre valeur par défaut
+        other.restitutionCoef = 0.5f;
+        other.frictionCoef = 0.5f;
+        other.isStatic = false;
+    }
+
+    RigidBody& operator=(RigidBody&& other) noexcept {
+        if (this != &other) {
+            isStatic = other.isStatic;
+            velocity = std::move(other.velocity);
+            weight = other.weight;
+            restitutionCoef = other.restitutionCoef;
+            frictionCoef = other.frictionCoef;
+
+            other.weight = 1.f;
+            other.restitutionCoef = 0.5f;
+            other.frictionCoef = 0.5f;
+            other.isStatic = false;
+        }
+        return *this;
+    }
+};
+
+
+
+struct IntersectionInfo {
+    bool exist = false;
+    glm::vec3 position, normal;
+    float correctionDepth;
+    RigidBody *rbA, *rbB;
+    Transform *tA, *tB;
+};
+
+enum CollisionShapeTypeEnum {
+    RAY,
+    SPHERE,
+    PLANE
+};
+
+struct Ray {
+    Ray() = default;
+    glm::vec3 ray_direction;
+    float length;
+};
+
+struct Sphere {
+    Sphere() = default;
+    float radius;
+};
+
+struct Plane {
+    Plane() = default;
+    glm::vec3 normal;
+};
+
+struct CollisionShape: Component{
+    CollisionShapeTypeEnum shapeType;
+    union {
+        Ray ray;
+        Sphere sphere;
+        Plane plane;
+    };
+
+    bool isColliding=false;
+
+    CollisionShape() : shapeType(PLANE), isColliding(false) {
+        new(&plane) Plane();
+    }
+
+    CollisionShape(CollisionShape&& other) noexcept 
+        : shapeType(other.shapeType), isColliding(other.isColliding) {
+        switch (other.shapeType) {
+            case RAY:
+                new(&ray) Ray(std::move(other.ray));
+                break;
+            case SPHERE:
+                new(&sphere) Sphere(std::move(other.sphere));
+                break;
+            case PLANE:
+                new(&plane) Plane(std::move(other.plane));
+                break;
+        }
+        other.isColliding = false;
+    }
+
+    CollisionShape& operator=(CollisionShape&& other) noexcept {
+        if (this != &other) {
+            shapeType = other.shapeType;
+            isColliding = other.isColliding;
+
+            switch (other.shapeType) {
+                case RAY:
+                    new(&ray) Ray(std::move(other.ray));
+                    break;
+                case SPHERE:
+                    new(&sphere) Sphere(std::move(other.sphere));
+                    break;
+                case PLANE:
+                    new(&plane) Plane(std::move(other.plane));
+                    break;
+            }
+            other.isColliding = false;
+        }
+        return *this;
+    }
+
+    ~CollisionShape() {
+        switch (shapeType) {
+            case RAY:
+                ray.~Ray();
+                break;
+            case SPHERE:
+                sphere.~Sphere();
+                break;
+            case PLANE:
+                plane.~Plane();
+                break;
+        }
+    }
+
+    static IntersectionInfo intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB);
 };

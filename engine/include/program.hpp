@@ -20,4 +20,5 @@ class Program {
     void renderTextures();
     void updateViewProjectionMatrix(glm::mat4 &vp);
     void updateModelMatrix(glm::mat4 model);
+    static void generateTextures(int count);
 };

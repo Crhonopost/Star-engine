@@ -15,45 +15,37 @@
 using namespace std;
 
 
-namespace spatial {
-    class SpatialNode{
-        protected:
-        SpatialNode *parent_ = nullptr;
-        std::vector<SpatialNode*> children_;
+class SpatialNode {
+protected:
+    SpatialNode* parent_ = nullptr;
+    std::vector<std::unique_ptr<SpatialNode>> children_;  // Changement ici pour unique_ptr
 
-        public:
-        // SceneNode part
-        SpatialNode() = default;
-        SpatialNode(const SpatialNode&) = delete;
-        SpatialNode(SpatialNode&&) = default;
-        virtual ~SpatialNode() = default;
-        void SetParent(SpatialNode *parent) {this->parent_ = parent;}
-        SpatialNode *GetParent() const {return this->parent_;}
-        void AddChild(SpatialNode *child);
-        void RemoveChild(SpatialNode* component);
-        
-        bool IsLeaf() const {return children_.empty();}
+public:
+    // SceneNode part
+    SpatialNode() = default;
+    SpatialNode(const SpatialNode&) = delete;  // Interdit la copie
+    SpatialNode(SpatialNode&&) = default;  // Autorise le déplacement
+    SpatialNode(Transform* transform): transform(transform){};
+    
+    virtual ~SpatialNode() = default;
 
-        // SpatialNodePart
-        Transform* transform;
-        void updateSelfAndChildTransform();
-        void forceUpdateSelfAndChild();
-    };
+    void SetParent(SpatialNode* parent) {
+        this->parent_ = parent;
+    }
 
-    class MeshInstance : public SpatialNode{
-        protected:
-        vector<unsigned short> indices;
-        vector<glm::vec3> indexed_vertices;
-        vector<glm::vec2> tex_coords;
-        void generateBuffer();
-        
-        public:
+    SpatialNode* GetParent() const {
+        return this->parent_;
+    }
 
-        MeshInstance();
-        MeshInstance(vector<unsigned short> &indices, vector<glm::vec3> &indexed_vertices, vector<glm::vec2> &tex_coords);
-        
-        void getBufferData(std::vector<float> &vertex_buffer_data);
-        int getNumberOfIndices();
-        void* getIndiceIdx();
-    };
-}
+    void AddChild(std::unique_ptr<SpatialNode> child);  // Prend un unique_ptr
+    void RemoveChild(SpatialNode* component);
+    
+    bool IsLeaf() const {
+        return children_.empty();
+    }
+
+    // SpatialNodePart
+    Transform* transform;
+    void updateSelfAndChildTransform();
+    void forceUpdateSelfAndChild();
+};

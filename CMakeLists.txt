@@ -2,8 +2,9 @@
 cmake_minimum_required (VERSION 3.0)
 project (GameEngine)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall")
-set(CMAKE_C_FLAGS_DEBUG "-g -O0 -Wall")
+# set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address -fstack-protector -D_FORTIFY_SOURCE=2")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_C_FLAGS_DEBUG "-g -O0")
 set(CMAKE_BUILD_TYPE Debug)
 
 
@@ -63,7 +64,6 @@ add_executable(main
 	
 	engine/include/spatial.hpp
 	engine/include/program.hpp
-	engine/include/scene.hpp
 	engine/include/input.hpp
     engine/include/camera.hpp
     engine/include/ecs/implementations/components.hpp
@@ -71,7 +71,7 @@ add_executable(main
 	
 	engine/src/spatial.cpp
 	engine/src/program.cpp
-	engine/src/scene.cpp
+	engine/src/systems/physic.cpp
 	engine/src/input.cpp
     engine/src/camera.cpp
     engine/src/components.cpp

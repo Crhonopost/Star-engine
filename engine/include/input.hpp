@@ -24,7 +24,8 @@ public:
         ACTION_LOOK_DOWN,
         ACTION_LOOK_LEFT,
         ACTION_LOOK_RIGHT,
-        ACTION_LOCK_POSITION
+        ACTION_LOCK_POSITION,
+        ACTION_JUMP
     };
 
     struct ActionState {

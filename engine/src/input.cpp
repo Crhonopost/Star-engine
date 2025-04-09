@@ -31,6 +31,8 @@ InputManager::InputManager() {
     actions[ACTION_LOOK_RIGHT] = { GLFW_KEY_RIGHT };
 
     actions[ACTION_LOCK_POSITION] = { GLFW_KEY_R};
+
+    actions[ACTION_JUMP] = { GLFW_KEY_SPACE};
 }
 
 // Traitement des inputs
