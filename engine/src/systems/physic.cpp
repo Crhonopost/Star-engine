@@ -1,6 +1,7 @@
 #include <engine/include/ecs/implementations/systems.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <iostream>
+#include <engine/include/camera.hpp>
 
 const float G = 8.1f;
 
@@ -110,4 +111,162 @@ void PhysicSystem::update(float deltaTime){
     narrowPhase();
 
     solver();
+}
+
+
+
+void generateSphere(std::vector<float> &vertex_buffer_data, std::vector<unsigned int> &indices, int latitudeBands, int longitudeBands){
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+
+    for (int lat = 0; lat <= latitudeBands; ++lat) {
+        float theta = lat * glm::pi<float>() / latitudeBands;
+        float sinTheta = sin(theta);
+        float cosTheta = cos(theta);
+    
+        for (int lon = 0; lon <= longitudeBands; ++lon) {
+            float phi = lon * 2 * glm::pi<float>() / longitudeBands;
+            float sinPhi = sin(phi);
+            float cosPhi = cos(phi);
+    
+            glm::vec3 vertex = glm::vec3(cosPhi * sinTheta, cosTheta, sinPhi * sinTheta);
+            indexed_vertices.push_back(vertex);
+        }
+    }
+    
+    
+    for (int lat = 0; lat <= latitudeBands; ++lat) {
+        for (int lon = 0; lon < longitudeBands; ++lon) {
+            int current = lat * (longitudeBands + 1) + lon;
+            indices.push_back(current);
+            indices.push_back(current + 1);
+        }
+    }
+
+    for (int lat = 0; lat < latitudeBands; ++lat) {
+        for (int lon = 0; lon < longitudeBands; ++lon) {
+            int first = (lat * (longitudeBands + 1)) + lon;
+            int second = first + longitudeBands + 1;
+
+            indices.push_back(first);
+            indices.push_back(second);
+        }
+    }
+
+    for(int i=0; i<indexed_vertices.size(); i++){
+        glm::vec3 vertex = indexed_vertices[i];
+
+        vertex_buffer_data.push_back(vertex.x);
+        vertex_buffer_data.push_back(vertex.y);
+        vertex_buffer_data.push_back(vertex.z);
+    
+        // vertex_buffer_data.push_back(tex_coords[i].x);
+        // vertex_buffer_data.push_back(tex_coords[i].y);
+    }
+}
+
+void initBuffer(GLuint &VAO, std::vector<float> &vertex_buffer_data, std::vector<unsigned int> &indices){
+    GLuint VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size() * sizeof(float), vertex_buffer_data.data(), GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+}
+
+void PhysicDebugSystem::init() {
+    program = Program("shaders/debug/vertex.glsl", "shaders/debug/fragment.glsl");
+
+    // Génération de la sphère
+    std::vector<float> sphereVertices;
+    std::vector<unsigned int> sphereIndices;
+    generateSphere(sphereVertices, sphereIndices, 8, 8); // subdivision paramétrable
+    sphereIndexCount = sphereIndices.size();
+    initBuffer(sphereVAO, sphereVertices, sphereIndices);
+
+    // Génération du quad
+    std::vector<float> quadVertices = {
+        -1.0f, 0.0f, -1.0f,
+         1.0f, 0.0f, -1.0f,
+         1.0f, 0.0f,  1.0f,
+        -1.0f, 0.0f,  1.0f
+    };
+    std::vector<unsigned int> quadIndices = { 0, 1, 1, 2, 2, 3, 3, 0, 0, 2 };
+    quadIndexCount = 10;
+    initBuffer(quadVAO, quadVertices, quadIndices);
+
+
+    std::vector<float> rayVertices = {
+        0.f, 0.f, 0.f,
+        0.f, 0.f, -1.0f,
+    };
+    std::vector<unsigned int> rayIndices = { 0, 1 };
+    initBuffer(rayVAO, rayVertices, rayIndices);
+    
+
+    glBindVertexArray(0);
+}
+
+
+void PhysicDebugSystem::update(){
+    glUseProgram(program.programID);
+    
+    GLuint tempVBO;
+    glGenBuffers(1, &tempVBO);
+
+    glm::mat4 VP = Camera::getInstance().getVP();
+    program.updateViewProjectionMatrix(VP);
+    
+    glLineWidth(2.0f);
+
+    for(auto &entity: mEntities){
+        auto& shape = ecs.GetComponent<CollisionShape>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+
+        glm::mat4 model = transform.getModelMatrix();
+        program.updateModelMatrix(model);
+
+        int indexCount = 0;
+        if(shape.shapeType == SPHERE){
+            indexCount = sphereIndexCount;
+            glBindVertexArray(sphereVAO);
+        } else if (shape.shapeType == PLANE){
+           indexCount = quadIndexCount;
+           glBindVertexArray(quadVAO);
+        } else if (shape.shapeType == RAY){
+            glm::vec3 points[2] = { glm::vec3(0), shape.ray.ray_direction * shape.ray.length };
+            
+            glBindVertexArray(rayVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, tempVBO);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glDrawArrays(GL_LINES, 0, 2);
+
+            glBindVertexArray(0);
+            continue;
+        }
+        
+        glDrawElements(
+            GL_LINES,      // mode
+            indexCount,
+            GL_UNSIGNED_INT,   // type
+            (void*)0           // element array buffer offset
+        );
+        
+        glBindVertexArray(0);
+        
+    }
+    glDeleteBuffers(1,&tempVBO);
 }

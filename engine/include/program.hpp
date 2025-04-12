@@ -12,6 +12,7 @@ class Program {
     static std::vector<Program> programs;
     GLuint programID;
 
+    Program() = default;
     Program(char *vertexPath, char *fragmentPath);
     void clear();
 

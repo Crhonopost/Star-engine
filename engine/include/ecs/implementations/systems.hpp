@@ -3,6 +3,8 @@
 #include <engine/include/ecs/base/system.hpp>
 #include <engine/include/ecs/implementations/components.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
+#include <engine/include/program.hpp>
+
 
 extern ecsManager ecs;
 
@@ -21,6 +23,17 @@ class PhysicSystem: public System {
         void solver();
     public:
     void update(float deltaTime);
+};
+
+class PhysicDebugSystem: public System {
+    private:
+    Program program;
+    GLuint sphereVAO, quadVAO, rayVAO;
+    int sphereIndexCount, quadIndexCount;
+
+    public:
+    void init();
+    void update();
 };
 
 class CustomSystem: public System {

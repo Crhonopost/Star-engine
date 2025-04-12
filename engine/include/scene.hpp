@@ -38,7 +38,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     mountainShape.plane.normal = glm::vec3(0,1,0);
     RigidBody mountainBody;
     mountainBody.isStatic = true;
-    ecs.AddComponent(mountainEntity, mountainDraw);
+    // ecs.AddComponent(mountainEntity, mountainDraw);
     ecs.AddComponent(mountainEntity, mountainTransform);
     ecs.AddComponent(mountainEntity, mountainShape);
     ecs.AddComponent(mountainEntity, mountainBody);
@@ -69,8 +69,6 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         const glm::vec3 left = glm::normalize(glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target));
         const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
 
-        std::cout << "forward x: " << forward.x << ", y: " << forward.y << ", z: " << forward.z << "\n";
-        
         const float speed = 10.0f;
         const float jumpStrength = 20.0f;
         auto &sunBody = ecs.GetComponent<RigidBody>(sunEntity);
@@ -104,12 +102,22 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
     sunDraw.switchDistance = 15;
 
-    ecs.AddComponent(sunEntity, sunDraw);
+    // ecs.AddComponent(sunEntity, sunDraw);
     ecs.AddComponent(sunEntity, sunTransform);
     ecs.AddComponent(sunEntity, sunBehavior);
     ecs.AddComponent(sunEntity, sunBody);
     ecs.AddComponent(sunEntity, sunShape);
 
+
+    auto rayTestEntity = ecs.CreateEntity();
+    Transform rayTransform;
+    CollisionShape rayShape;
+    rayShape.shapeType = RAY;
+    rayShape.ray.length = 5;
+    rayShape.ray.ray_direction = glm::vec3(0,1,0);
+    
+    ecs.AddComponent<Transform>(rayTestEntity, rayTransform);
+    ecs.AddComponent<CollisionShape>(rayTestEntity, rayShape);
 
     
 
@@ -151,7 +159,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     
     std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
     std::unique_ptr<SpatialNode> mountainNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(mountainEntity));
+    std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
     
+    sunNode->AddChild(std::move(rayNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(mountainNode));
 }

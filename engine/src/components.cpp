@@ -135,6 +135,29 @@ IntersectionInfo spherePlaneIntersection(Sphere &sphereA, Transform &transformA,
     return res;
 }
 
+IntersectionInfo raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
+    IntersectionInfo res;
+
+    glm::vec3 difference = transformB.getLocalPosition() - transformA.getLocalPosition();
+
+    float rSq = sphereB.radius * sphereB.radius;
+    float eSq = glm::length(difference);
+    eSq *= eSq;
+
+    float a = glm::dot(difference, rayA.ray_direction);
+
+    float bSq = eSq - (a*a);
+    float f = sqrt(rSq - bSq);
+
+    if(rSq - (eSq - (a*a)) < 0.0f) return res;
+
+    res.exist = true;
+    res.correctionDepth = 0;
+    res.normal = glm::normalize(-difference);
+    res.position = transformA.getLocalPosition() + (a-f) * rayA.ray_direction;
+    return res;
+}
+
 IntersectionInfo CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
     IntersectionInfo res;
 
@@ -153,6 +176,10 @@ IntersectionInfo CollisionShape::intersectionExist(CollisionShape &shapeA, Trans
         return spherePlaneIntersection(shapeB.sphere, transformB, shapeA.plane, transformA);
     } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == PLANE){
         return spherePlaneIntersection(shapeA.sphere, transformA, shapeB.plane, transformB);
+    } else if(shapeA.shapeType == RAY && shapeB.shapeType == SPHERE){
+        return raySphereIntersection(shapeA.ray, transformA, shapeB.sphere, transformB);
+    } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == RAY){
+        return raySphereIntersection(shapeB.ray, transformB, shapeA.sphere, transformA);
     }
 
     return res;
