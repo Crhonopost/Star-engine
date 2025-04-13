@@ -120,6 +120,7 @@ int main( void )
     
         auto renderSystem = ecs.RegisterSystem<Render>();
         auto customSystem = ecs.RegisterSystem<CustomSystem>();
+        auto collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
         auto physicSystem = ecs.RegisterSystem<PhysicSystem>();
         auto physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
         physicDebugSystem->init();
@@ -132,6 +133,11 @@ int main( void )
         Signature customSignature;
         customSignature.set(ecs.GetComponentType<CustomBehavior>());
         ecs.SetSystemSignature<CustomSystem>(customSignature);
+
+        Signature collisionDetectionSignature;
+        collisionDetectionSignature.set(ecs.GetComponentType<Transform>());
+        collisionDetectionSignature.set(ecs.GetComponentType<CollisionShape>());
+        ecs.SetSystemSignature<CollisionDetectionSystem>(collisionDetectionSignature);
 
         Signature physicSignature;
         physicSignature.set(ecs.GetComponentType<RigidBody>());
@@ -172,6 +178,7 @@ int main( void )
 
     
             customSystem->update(deltaTime);
+            collisionDetectionSystem->update(deltaTime);
             physicSystem->update(deltaTime);
             physicDebugSystem->update();
             renderSystem->update();

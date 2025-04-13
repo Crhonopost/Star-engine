@@ -16,13 +16,22 @@ class Render: public System {
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
 };
 
+
+
+class CollisionDetectionSystem: public System {
+    private:
+        // void broadPhase();
+        void narrowPhase();
+        
+    public: 
+        void update(float deltaTime);
+};
+
 class PhysicSystem: public System {
     private:
-        void broadPhase();
-        void narrowPhase();
         void solver();
     public:
-    void update(float deltaTime);
+        void update(float deltaTime);
 };
 
 class PhysicDebugSystem: public System {

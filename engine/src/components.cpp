@@ -123,8 +123,8 @@ bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
     return (checker.mask & checked.layer) != 0;
 }
 
-IntersectionInfo spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
-    IntersectionInfo res;
+OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
+    OverlapingShape res;
     glm::vec3 planeToSphere = transformA.getLocalPosition() - transformB.getLocalPosition();
     
     float distToPlane = glm::dot(planeToSphere, planeB.normal);
@@ -139,8 +139,8 @@ IntersectionInfo spherePlaneIntersection(Sphere &sphereA, Transform &transformA,
     return res;
 }
 
-IntersectionInfo raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
-    IntersectionInfo res;
+OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
+    OverlapingShape res;
 
     glm::vec3 difference = transformB.getLocalPosition() - transformA.getLocalPosition();
 
@@ -162,8 +162,8 @@ IntersectionInfo raySphereIntersection(Ray &rayA, Transform &transformA, Sphere 
     return res;
 }
 
-IntersectionInfo CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
-    IntersectionInfo res;
+OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
+    OverlapingShape res;
 
     if(shapeA.shapeType == SPHERE && shapeB.shapeType == SPHERE){
         float radiusSum = shapeA.sphere.radius + shapeB.sphere.radius;

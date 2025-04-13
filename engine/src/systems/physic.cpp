@@ -5,9 +5,13 @@
 
 const float G = 8.1f;
 
-std::vector<IntersectionInfo> detectedCollisions;
+std::vector<OverlapingShape> detectedCollisions;
 
-void PhysicSystem::narrowPhase(){
+void CollisionDetectionSystem::update(float deltaTime){
+    narrowPhase();
+}
+
+void CollisionDetectionSystem::narrowPhase(){
     detectedCollisions.clear();
     for(auto &entity: mEntities){
         ecs.GetComponent<CollisionShape>(entity).isColliding = false;
@@ -30,55 +34,16 @@ void PhysicSystem::narrowPhase(){
 
             if(!aSeeB && !bSeeA) continue;
 
-            IntersectionInfo collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
+            OverlapingShape collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
 
             if(collision.exist){
-                RigidBody &rbA = ecs.GetComponent<RigidBody>(entityA);
-                RigidBody &rbB = ecs.GetComponent<RigidBody>(entityB);
-
-                glm::vec3 relativeVelocity = rbA.velocity - rbB.velocity;
-                float velAlongNormal = glm::dot(relativeVelocity, collision.normal);
-                
                 shapeA.isColliding = true;
                 shapeB.isColliding = true;
-                collision.tA = &transformA;
-                collision.tB = &transformB;
-                collision.rbA = &rbA;
-                collision.rbB = &rbB;
                 collision.aSeeB = aSeeB;
                 collision.bSeeA = bSeeA;
+                collision.entityA = entityA;
+                collision.entityB = entityB;
                 detectedCollisions.push_back(collision);
-
-
-                float e = std::min(rbA.restitutionCoef, rbB.restitutionCoef);
-                float invMassA = 1.0f / (rbA.weight * 5.f);
-                float invMassB = 1.0f / (rbB.weight * 5.f);
-
-                
-                float j = -(1 + e) * velAlongNormal / (invMassA + invMassB);
-                glm::vec3 impulse = j * collision.normal;
-
-                if(aSeeB) rbA.velocity += impulse * invMassA;
-                if(bSeeA) rbB.velocity -= impulse * invMassB;
-
-                // friction
-                glm::vec3 tangent = relativeVelocity - velAlongNormal * collision.normal;
-                if (glm::length(tangent) > 0.0001f)
-                    tangent = glm::normalize(tangent);
-                else
-                    tangent = glm::vec3(0.0f);
-
-
-                float frictionCoef = std::sqrt(rbA.frictionCoef * rbB.frictionCoef);
-
-            
-                float jt = -glm::dot(relativeVelocity, tangent) / (invMassA + invMassB);
-                jt = glm::clamp(jt, -j, j);
-
-                glm::vec3 frictionImpulse = jt * tangent;
-
-                if(aSeeB) rbA.velocity += frictionImpulse * invMassA;
-                if(bSeeA) rbB.velocity -= frictionImpulse * invMassB;
             }
         }
     }
@@ -86,20 +51,66 @@ void PhysicSystem::narrowPhase(){
 
 
 void PhysicSystem::solver(){
-    for(auto collision: detectedCollisions){
-        if(collision.rbA->isStatic && !collision.rbB->isStatic && collision.bSeeA){
-            collision.tB->translate(collision.normal * collision.correctionDepth);
-        } else if(collision.rbB->isStatic && !collision.rbA->isStatic && collision.aSeeB){
-            collision.tA->translate(-collision.normal * collision.correctionDepth);
-        } else if(!collision.rbA->isStatic && !collision.rbB->isStatic){
-            collision.tB->translate(collision.normal * collision.correctionDepth * 0.5f);
-            collision.tA->translate(-collision.normal * collision.correctionDepth * 0.5f);
+    for(auto overlapping: detectedCollisions){
+        // Provisory
+        if(!overlapping.aSeeB || !overlapping.bSeeA || mEntities.find(overlapping.entityA) == mEntities.end() || mEntities.find(overlapping.entityB) == mEntities.end()) continue;
+
+        RigidBody &rbA = ecs.GetComponent<RigidBody>(overlapping.entityA);
+        RigidBody &rbB = ecs.GetComponent<RigidBody>(overlapping.entityB);
+        Transform &tA = ecs.GetComponent<Transform>(overlapping.entityA);
+        Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
+
+        glm::vec3 relativeVelocity = rbA.velocity - rbB.velocity;
+        float velAlongNormal = glm::dot(relativeVelocity, overlapping.normal);
+
+
+        float e = std::min(rbA.restitutionCoef, rbB.restitutionCoef);
+        float invMassA = 1.0f / (rbA.weight * 5.f);
+        float invMassB = 1.0f / (rbB.weight * 5.f);
+
+        
+        float j = -(1 + e) * velAlongNormal / (invMassA + invMassB);
+        glm::vec3 impulse = j * overlapping.normal;
+
+        if(overlapping.aSeeB) rbA.velocity += impulse * invMassA;
+        if(overlapping.bSeeA) rbB.velocity -= impulse * invMassB;
+
+        // friction
+        glm::vec3 tangent = relativeVelocity - velAlongNormal * overlapping.normal;
+        if (glm::length(tangent) > 0.0001f)
+            tangent = glm::normalize(tangent);
+        else
+            tangent = glm::vec3(0.0f);
+
+
+        float frictionCoef = std::sqrt(rbA.frictionCoef * rbB.frictionCoef);
+
+    
+        float jt = -glm::dot(relativeVelocity, tangent) / (invMassA + invMassB);
+        jt = glm::clamp(jt, -j, j);
+
+        glm::vec3 frictionImpulse = jt * tangent;
+
+        if(overlapping.aSeeB) rbA.velocity += frictionImpulse * invMassA;
+        if(overlapping.bSeeA) rbB.velocity -= frictionImpulse * invMassB;
+
+
+
+        if(rbA.isStatic && !rbB.isStatic && overlapping.bSeeA){
+            tB.translate(overlapping.normal * overlapping.correctionDepth);
+        } else if(rbB.isStatic && !rbA.isStatic && overlapping.aSeeB){
+            tA.translate(-overlapping.normal * overlapping.correctionDepth);
+        } else if(!rbA.isStatic && !rbB.isStatic){
+            tB.translate(overlapping.normal * overlapping.correctionDepth * 0.5f);
+            tA.translate(-overlapping.normal * overlapping.correctionDepth * 0.5f);
         }
     }
 }
 
 
 void PhysicSystem::update(float deltaTime){
+    solver();
+
     for(auto &entity: mEntities){
         auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
@@ -113,10 +124,7 @@ void PhysicSystem::update(float deltaTime){
             transform.translate(rigidBody.velocity * deltaTime);
         }
     }
-    
-    narrowPhase();
 
-    solver();
 }
 
 

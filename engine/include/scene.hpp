@@ -38,7 +38,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     mountainShape.plane.normal = glm::vec3(0,1,0);
     RigidBody mountainBody;
     mountainBody.isStatic = true;
-    // ecs.AddComponent(mountainEntity, mountainDraw);
+    ecs.AddComponent(mountainEntity, mountainDraw);
     ecs.AddComponent(mountainEntity, mountainTransform);
     ecs.AddComponent(mountainEntity, mountainShape);
     ecs.AddComponent(mountainEntity, mountainBody);
@@ -98,7 +98,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
     sunDraw.switchDistance = 15;
 
-    // ecs.AddComponent(sunEntity, sunDraw);
+    ecs.AddComponent(sunEntity, sunDraw);
     ecs.AddComponent(sunEntity, sunTransform);
     ecs.AddComponent(sunEntity, sunBehavior);
     ecs.AddComponent(sunEntity, sunBody);
@@ -119,7 +119,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     /////////////////////////////// collision debug
     auto otherEntity = ecs.CreateEntity();
     Transform otherTransform;
-    otherTransform.translate(glm::vec3(0,3,0));
+    otherTransform.translate(glm::vec3(0,5,0));
     CollisionShape otherCollision;
     otherCollision.shapeType = SPHERE;
     otherCollision.sphere.radius = 1.2;
@@ -167,8 +167,11 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
     std::unique_ptr<SpatialNode> mountainNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(mountainEntity));
     std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+    std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+
     
     sunNode->AddChild(std::move(rayNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(mountainNode));
+    root.AddChild(std::move(otherNode));
 }

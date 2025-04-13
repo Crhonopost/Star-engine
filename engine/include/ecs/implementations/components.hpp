@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <engine/include/ecs/base/entity.hpp>
 
 
 struct Texture {
@@ -209,13 +210,12 @@ struct RigidBody: Component {
 
 
 
-struct IntersectionInfo {
+struct OverlapingShape {
     bool exist = false;
+    Entity entityA, entityB;
     bool aSeeB, bSeeA;
     glm::vec3 position, normal;
     float correctionDepth;
-    RigidBody *rbA, *rbB;
-    Transform *tA, *tB;
 };
 
 enum CollisionShapeTypeEnum {
@@ -308,7 +308,7 @@ struct CollisionShape: Component{
         }
     }
 
-    static IntersectionInfo intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB);
+    static OverlapingShape intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB);
 
     static bool canSee(CollisionShape &checker, CollisionShape &checked);
 };
