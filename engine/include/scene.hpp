@@ -57,7 +57,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     RigidBody sunBody;
     // sunBody.velocity = glm::vec3(1,1,0) * 2.f;
     sunBody.restitutionCoef = 1.0f;
-    sunBody.weight = 1.f;
+    sunBody.weight = 3.f;
     CollisionShape sunShape;
     sunShape.shapeType = SPHERE;
     sunShape.sphere.radius = 1.f;
@@ -70,9 +70,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
 
         const float speed = 10.0f;
-        const float jumpStrength = 20.0f;
+        const float jumpStrength = 15.0f;
         auto &sunBody = ecs.GetComponent<RigidBody>(sunEntity);
-        glm::vec3 inputVelocity(0, sunBody.velocity.y, 0);
+        glm::vec3 inputVelocity(0);
         if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
             inputVelocity += forward;
         if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
@@ -82,18 +82,14 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
             inputVelocity -= left;
         
+            
         if(inputVelocity.x + inputVelocity.z != 0.f){
-            sunBody.velocity = glm::normalize(inputVelocity) * speed;
+            inputVelocity = glm::normalize(inputVelocity) * speed;
+            sunBody.velocity = glm::vec3(inputVelocity.x, sunBody.velocity.y, inputVelocity.z);
         }
 
         if (actions[InputManager::ActionEnum::ACTION_JUMP].pressed)
             sunBody.velocity.y = jumpStrength;
-        
-        // if(vel.x !=0 || vel.y != 0 || vel.z != 0){
-        //     sunBody.velocity = glm::normalize(vel) * speed;
-        // } else {
-        //     sunBody.velocity = vel;
-        // }
     };
 
     Drawable lowerRes = Render::generatePlane(1, 2);
@@ -113,11 +109,22 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Transform rayTransform;
     CollisionShape rayShape;
     rayShape.shapeType = RAY;
-    rayShape.ray.length = 5;
-    rayShape.ray.ray_direction = glm::vec3(0,1,0);
+    rayShape.ray.length = 1.5;
+    rayShape.ray.ray_direction = glm::vec3(0,-1,0);
     
     ecs.AddComponent<Transform>(rayTestEntity, rayTransform);
     ecs.AddComponent<CollisionShape>(rayTestEntity, rayShape);
+
+
+    /////////////////////////////// collision debug
+    auto otherEntity = ecs.CreateEntity();
+    Transform otherTransform;
+    otherTransform.translate(glm::vec3(0,3,0));
+    CollisionShape otherCollision;
+    otherCollision.shapeType = SPHERE;
+    otherCollision.sphere.radius = 1.2;
+    ecs.AddComponent<Transform>(otherEntity, otherTransform);
+    ecs.AddComponent<CollisionShape>(otherEntity, otherCollision);
 
     
 

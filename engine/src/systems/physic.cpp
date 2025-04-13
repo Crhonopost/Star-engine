@@ -25,6 +25,11 @@ void PhysicSystem::narrowPhase(){
             auto& transformB = ecs.GetComponent<Transform>(entityB);
             auto& shapeB = ecs.GetComponent<CollisionShape>(entityB);
 
+            bool aSeeB = CollisionShape::canSee(shapeA, shapeB);
+            bool bSeeA = CollisionShape::canSee(shapeB, shapeA);
+
+            if(!aSeeB && !bSeeA) continue;
+
             IntersectionInfo collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
 
             if(collision.exist){
@@ -40,6 +45,8 @@ void PhysicSystem::narrowPhase(){
                 collision.tB = &transformB;
                 collision.rbA = &rbA;
                 collision.rbB = &rbB;
+                collision.aSeeB = aSeeB;
+                collision.bSeeA = bSeeA;
                 detectedCollisions.push_back(collision);
 
 
@@ -51,8 +58,8 @@ void PhysicSystem::narrowPhase(){
                 float j = -(1 + e) * velAlongNormal / (invMassA + invMassB);
                 glm::vec3 impulse = j * collision.normal;
 
-                rbA.velocity += impulse * invMassA;
-                rbB.velocity -= impulse * invMassB;
+                if(aSeeB) rbA.velocity += impulse * invMassA;
+                if(bSeeA) rbB.velocity -= impulse * invMassB;
 
                 // friction
                 glm::vec3 tangent = relativeVelocity - velAlongNormal * collision.normal;
@@ -64,14 +71,14 @@ void PhysicSystem::narrowPhase(){
 
                 float frictionCoef = std::sqrt(rbA.frictionCoef * rbB.frictionCoef);
 
-           
+            
                 float jt = -glm::dot(relativeVelocity, tangent) / (invMassA + invMassB);
                 jt = glm::clamp(jt, -j, j);
 
                 glm::vec3 frictionImpulse = jt * tangent;
 
-                rbA.velocity += frictionImpulse * invMassA;
-                rbB.velocity -= frictionImpulse * invMassB;
+                if(aSeeB) rbA.velocity += frictionImpulse * invMassA;
+                if(bSeeA) rbB.velocity -= frictionImpulse * invMassB;
             }
         }
     }
@@ -80,11 +87,11 @@ void PhysicSystem::narrowPhase(){
 
 void PhysicSystem::solver(){
     for(auto collision: detectedCollisions){
-        if(collision.rbA->isStatic){
+        if(collision.rbA->isStatic && !collision.rbB->isStatic && collision.bSeeA){
             collision.tB->translate(collision.normal * collision.correctionDepth);
-        } else if(collision.rbB->isStatic){
+        } else if(collision.rbB->isStatic && !collision.rbA->isStatic && collision.aSeeB){
             collision.tA->translate(-collision.normal * collision.correctionDepth);
-        } else {
+        } else if(!collision.rbA->isStatic && !collision.rbB->isStatic){
             collision.tB->translate(collision.normal * collision.correctionDepth * 0.5f);
             collision.tA->translate(-collision.normal * collision.correctionDepth * 0.5f);
         }
@@ -103,7 +110,6 @@ void PhysicSystem::update(float deltaTime){
         } else {
             float acceleration = G * rigidBody.weight;
             rigidBody.velocity.y -= acceleration * deltaTime;
-    
             transform.translate(rigidBody.velocity * deltaTime);
         }
     }
@@ -222,6 +228,7 @@ void PhysicDebugSystem::update(){
     
     GLuint tempVBO;
     glGenBuffers(1, &tempVBO);
+    GLuint colorLocation = glGetUniformLocation(program.programID, "albedo");
 
     glm::mat4 VP = Camera::getInstance().getVP();
     program.updateViewProjectionMatrix(VP);
@@ -234,6 +241,8 @@ void PhysicDebugSystem::update(){
 
         glm::mat4 model = transform.getModelMatrix();
         program.updateModelMatrix(model);
+        if(shape.isColliding) glUniform4f(colorLocation, 1,0,0,1);
+        else glUniform4f(colorLocation, 0,1,0,1);
 
         int indexCount = 0;
         if(shape.shapeType == SPHERE){

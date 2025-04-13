@@ -119,6 +119,10 @@ void Transform::translate(glm::vec3 translation){
 
 
 
+bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
+    return (checker.mask & checked.layer) != 0;
+}
+
 IntersectionInfo spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
     IntersectionInfo res;
     glm::vec3 planeToSphere = transformA.getLocalPosition() - transformB.getLocalPosition();

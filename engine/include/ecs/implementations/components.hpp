@@ -211,6 +211,7 @@ struct RigidBody: Component {
 
 struct IntersectionInfo {
     bool exist = false;
+    bool aSeeB, bSeeA;
     glm::vec3 position, normal;
     float correctionDepth;
     RigidBody *rbA, *rbB;
@@ -239,6 +240,7 @@ struct Plane {
     glm::vec3 normal;
 };
 
+
 struct CollisionShape: Component{
     CollisionShapeTypeEnum shapeType;
     union {
@@ -246,6 +248,8 @@ struct CollisionShape: Component{
         Sphere sphere;
         Plane plane;
     };
+    uint16_t layer = 1;
+    uint16_t mask = 1;
 
     bool isColliding=false;
 
@@ -305,4 +309,6 @@ struct CollisionShape: Component{
     }
 
     static IntersectionInfo intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB);
+
+    static bool canSee(CollisionShape &checker, CollisionShape &checked);
 };
