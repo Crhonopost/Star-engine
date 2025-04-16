@@ -25,7 +25,9 @@ public:
         ACTION_LOOK_LEFT,
         ACTION_LOOK_RIGHT,
         ACTION_LOCK_POSITION,
-        ACTION_JUMP
+        ACTION_JUMP,
+
+        EDITOR_SWITCH_MODE
     };
 
     struct ActionState {

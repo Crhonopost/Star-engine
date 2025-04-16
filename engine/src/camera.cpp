@@ -1,8 +1,11 @@
 #include <engine/include/camera.hpp>
 
+bool Camera::editor = true;
+
 Camera& Camera::getInstance() {
     static Camera instance;
-    return instance;
+    static Camera editorInstance;
+    return editor ? editorInstance : instance;
 }
 
 glm::mat4 Camera::getVP(){    

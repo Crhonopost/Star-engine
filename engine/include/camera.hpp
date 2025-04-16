@@ -25,6 +25,7 @@ public:
     
     bool locked = false;
 
+    static bool editor;
 private:
     Camera() = default; // Constructeur privé
     ~Camera() = default;

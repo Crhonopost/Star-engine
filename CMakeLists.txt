@@ -42,6 +42,7 @@ include_directories(
 	external/glfw-3.1.2/include/
 	external/glm-0.9.7.1/
 	external/glew-1.13.0/include/
+	external/imgui/include/
 	.
 )
 
@@ -57,6 +58,7 @@ add_definitions(
 	-DTW_NO_DIRECT3D
 	-DGLEW_STATIC
 	-D_CRT_SECURE_NO_WARNINGS
+	-DIMGUI_IMPL_OPENGL_LOADER_GLEW
 )
 
 add_executable(main
@@ -87,6 +89,10 @@ add_executable(main
 	engine/shaders/vertex_shader.glsl
 	engine/shaders/fragment_shader.glsl
 )
+
+add_subdirectory(external/imgui)
+target_link_libraries(main imgui)
+
 target_link_libraries(main
 	${ALL_LIBS}
 )

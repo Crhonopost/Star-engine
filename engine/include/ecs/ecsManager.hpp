@@ -3,6 +3,7 @@
 
 #include <engine/include/ecs/base/system.hpp>
 #include <engine/include/ecs/base/component.hpp>
+#include <typeindex>
 
 class ecsManager
 {
@@ -15,11 +16,27 @@ public:
 		mSystemManager = std::make_unique<SystemManager>();
 	}
 
+	template<typename T>
+	bool HasComponent(Entity entity){
+		return mEntityManager->GetSignature(entity)[mComponentManager->GetComponentType<T>()];
+	}
 
 	// Entity methods
 	Entity CreateEntity()
 	{
 		return mEntityManager->CreateEntity();
+	}
+
+	void SetEntityName(Entity entity, std::string name){
+		mEntityManager->SetName(entity, name);
+	}
+
+	std::string GetEntityName(Entity entity){
+		return mEntityManager->GetName(entity);
+	}
+
+	uint32_t getEntityCount(){
+		return mEntityManager->getEntityCount();
 	}
 
 	void DestroyEntity(Entity entity)
@@ -34,7 +51,7 @@ public:
 
 	// Component methods
 	template<typename T>
-	void RegisterComponent()
+	void RegisterComponent(const std::string& name)
 	{
 		mComponentManager->RegisterComponent<T>();
 	}

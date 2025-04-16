@@ -17,6 +17,8 @@ GLFWwindow* window;
 
 using namespace glm;
 
+#include <backend/imgui_impl_glfw.h>
+
 #include <common/shader.hpp>
 #include <common/objloader.hpp>
 #include <common/vboindexer.hpp>
@@ -31,6 +33,8 @@ using namespace glm;
 #include <engine/include/spatial.hpp>
 #include <engine/include/stbi.h>
 #include <engine/include/scene.hpp>
+#include <imgui.h>
+#include <backend/imgui_impl_opengl3.h>
 
 
 
@@ -49,9 +53,52 @@ float angle = 0.;
 float zoom = 1.;
 /*******************************************************************************/
 
+bool isInEditor = true;
+
 // SceneGraph scene;
 ecsManager ecs;
+std::shared_ptr<Render> renderSystem;
+std::shared_ptr<CustomSystem> customSystem;
+std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
+std::shared_ptr<PhysicSystem> physicSystem;
+std::shared_ptr<PhysicDebugSystem> physicDebugSystem;
 
+
+
+void switchEditorMode(){
+    isInEditor = !isInEditor;
+    Camera::editor = isInEditor;
+}
+
+void editorUpdate(float deltaTime){
+    if(ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
+        if (ImGui::Button("Switch mode")) switchEditorMode();
+
+        for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
+            if(ecs.HasComponent<Transform>(entity)){
+                if(ImGui::TreeNode(ecs.GetEntityName(entity).c_str())){
+                    auto &transform = ecs.GetComponent<Transform>(entity);
+                    transform.updateInterface();
+                    ImGui::TreePop();
+                }   
+            }
+        }
+
+    }
+    ImGui::End();
+
+    Camera::getInstance().updateInput(deltaTime);
+    renderSystem->update();
+    physicDebugSystem->update();
+}
+
+void gameUpdate(float deltaTime){
+    customSystem->update(deltaTime);
+    collisionDetectionSystem->update(deltaTime);
+    physicSystem->update(deltaTime);
+    physicDebugSystem->update();
+    renderSystem->update();
+}
 
 int main( void )
 {
@@ -112,17 +159,17 @@ int main( void )
         ecs.Init();
         auto actions = InputManager::getInstance().getActions();
         
-        ecs.RegisterComponent<Transform>();
-        ecs.RegisterComponent<Drawable>();
-        ecs.RegisterComponent<CustomBehavior>();
-        ecs.RegisterComponent<RigidBody>();
-        ecs.RegisterComponent<CollisionShape>();
+        ecs.RegisterComponent<Transform>("Transform");
+        ecs.RegisterComponent<Drawable>("Drawable");
+        ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
+        ecs.RegisterComponent<RigidBody>("RigidBody");
+        ecs.RegisterComponent<CollisionShape>("CollisionShape");
     
-        auto renderSystem = ecs.RegisterSystem<Render>();
-        auto customSystem = ecs.RegisterSystem<CustomSystem>();
-        auto collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
-        auto physicSystem = ecs.RegisterSystem<PhysicSystem>();
-        auto physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
+        renderSystem = ecs.RegisterSystem<Render>();
+        customSystem = ecs.RegisterSystem<CustomSystem>();
+        collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
+        physicSystem = ecs.RegisterSystem<PhysicSystem>();
+        physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
         physicDebugSystem->init();
         
         Signature renderSignature;
@@ -154,14 +201,23 @@ int main( void )
 
         SpatialNode root;
         initScene(root, ecs);
+
+
+
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init();
         
         
         do{
-            // sunTransform.computeModelMatrix();
             // error = glGetError();
             // if(error != GL_NO_ERROR){
             //     std::cerr << "OpenGL error: " << error << std::endl;
             // // } 
+            
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
             
             float currentFrame = glfwGetTime();
             deltaTime = currentFrame - lastFrame;
@@ -176,24 +232,28 @@ int main( void )
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             root.updateSelfAndChildTransform();
 
+            if(actions[InputManager::EDITOR_SWITCH_MODE].clicked) switchEditorMode();
+
     
-            customSystem->update(deltaTime);
-            collisionDetectionSystem->update(deltaTime);
-            physicSystem->update(deltaTime);
-            physicDebugSystem->update();
-            renderSystem->update();
-    
+            if(isInEditor) editorUpdate(deltaTime);
+            else gameUpdate(deltaTime);
             
-    
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             // Swap buffers
             glfwSwapBuffers(window);
             glfwPollEvents();
+
     
         } // Check if the ESC key was pressed or the window was closed
         while( !actions[InputManager::ActionEnum::KEY_ESCAPE].clicked &&
                glfwWindowShouldClose(window) == 0 );
     
         // scene.clear();
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
     
         for(auto &prog: Program::programs){
             prog.clear();

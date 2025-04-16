@@ -23,11 +23,13 @@ constexpr size_t MAX_ENTITIES = 5000;
 class EntityManager
 {
 private:
+
 	// Queue of unused entity IDs
 	std::queue<Entity> mAvailableEntities{};
 
 	// Array of signatures where the index corresponds to the entity ID
 	std::array<Signature, MAX_ENTITIES> mSignatures{};
+	std::array<std::string, MAX_ENTITIES> mNames{};
 
 	// Total living entities - used to keep limits on how many exist
 	uint32_t mLivingEntityCount{};
@@ -49,6 +51,8 @@ public:
 		mAvailableEntities.pop();
 		++mLivingEntityCount;
 
+		mNames[id] = "Entity - " + std::to_string(id);
+
 		return id;
 	}
 
@@ -58,18 +62,35 @@ public:
 
 		// Invalidate the destroyed entity's signature
 		mSignatures[entity].reset();
+		mNames[entity].clear();
 
 		// Put the destroyed ID at the back of the queue
 		mAvailableEntities.push(entity);
 		--mLivingEntityCount;
 	}
 
+	uint32_t getEntityCount(){
+		return mLivingEntityCount;
+	}
+
 	void SetSignature(Entity entity, Signature signature)
 	{
 		assert(entity < MAX_ENTITIES && "Entity out of range.");
-
+		
 		// Put this entity's signature into the array
 		mSignatures[entity] = signature;
+	}
+	
+	void SetName(Entity entity, std::string name){
+		assert(entity < MAX_ENTITIES && "Entity out of range.");
+		
+		mNames[entity] = name;
+	}
+	
+	std::string GetName(Entity entity){
+		assert(entity < MAX_ENTITIES && "Entity out of range.");
+
+		return mNames[entity];
 	}
 
 	Signature GetSignature(Entity entity)

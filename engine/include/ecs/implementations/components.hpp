@@ -8,6 +8,8 @@
 #include <functional>
 #include <iostream>
 #include <engine/include/ecs/base/entity.hpp>
+#include <imgui.h>
+
 
 
 struct Texture {
@@ -144,6 +146,18 @@ class Transform: Component {
             other.dirty = true;
         }
         return *this;
+    }
+
+    void updateInterface(){
+        if(ImGui::DragFloat3("Position", &pos[0])) dirty = true;
+        if(ImGui::DragFloat3("Rotation", &eulerRot[0])) dirty = true;
+        if(ImGui::BeginMenu("Rotation order")){
+            if(ImGui::MenuItem("XYZ")) rotationOrder = XYZ;
+            if(ImGui::MenuItem("YXZ")) rotationOrder = YXZ;
+            if(ImGui::MenuItem("ZYX")) rotationOrder = ZYX;
+            ImGui::EndMenu();
+        }
+        if(ImGui::DragFloat3("Scale", &scale[0])) dirty = true;
     }
 };
 
