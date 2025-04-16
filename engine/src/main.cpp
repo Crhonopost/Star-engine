@@ -74,13 +74,13 @@ void editorUpdate(float deltaTime){
     if(ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
         if (ImGui::Button("Switch mode")) switchEditorMode();
 
+        
         for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
-            if(ecs.HasComponent<Transform>(entity)){
-                if(ImGui::TreeNode(ecs.GetEntityName(entity).c_str())){
-                    auto &transform = ecs.GetComponent<Transform>(entity);
-                    transform.updateInterface();
-                    ImGui::TreePop();
-                }   
+            if(ImGui::TreeNode(ecs.GetEntityName(entity).c_str())){
+                for (auto& inspector : ecs.componentInspectors) {
+                    inspector->DisplayGUI(ecs, entity);
+                }
+                ImGui::TreePop();
             }
         }
 

@@ -57,6 +57,7 @@
         "typeinfo": "cpp",
         "bitset": "cpp",
         "codecvt": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "typeindex": "cpp"
     }
 }

@@ -9,6 +9,32 @@
 #include <iostream>
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
+#include <engine/include/ecs/ecsWithoutInspector.hpp>
+
+
+class IComponentInspector {
+    public:
+    virtual ~IComponentInspector() = default;
+    virtual void DisplayGUI(ecsWithoutInspector &ecs, Entity entity) = 0;
+    virtual const char* GetName() = 0;
+};
+
+template<typename T>
+class ComponentInspector : public IComponentInspector {
+public:
+    const char* GetName() override {
+        return typeid(T).name();
+    }
+
+    inline void DisplayGUI(ecsWithoutInspector &ecs, Entity entity) override {
+        if (ecs.HasComponent<T>(entity)) {
+            auto& component = ecs.GetComponent<T>(entity);
+            DisplayComponentGUI(component);
+        }
+    }
+    
+    static void DisplayComponentGUI(T& component);
+};
 
 
 
@@ -91,6 +117,8 @@ enum RotationOrderEnum {
 };
 class Transform: Component {
     private:
+    friend class ComponentInspector<Transform>;
+
     glm::vec3 pos = { 0.0f, 0.0f, 0.0f };
     glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
@@ -160,7 +188,6 @@ class Transform: Component {
         if(ImGui::DragFloat3("Scale", &scale[0])) dirty = true;
     }
 };
-
 
 struct CustomBehavior: Component {
     std::function<void(float)> update;
@@ -326,3 +353,40 @@ struct CollisionShape: Component{
 
     static bool canSee(CollisionShape &checker, CollisionShape &checked);
 };
+
+
+// Inspectors
+
+template<>
+inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable){
+    ImGui::SeparatorText("Drawable");
+    ImGui::DragFloat("Lod switch distance", &drawable.switchDistance);
+}
+
+template<>
+inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transform) {
+    ImGui::SeparatorText("Transform");
+    if(ImGui::DragFloat3("Position", &transform.pos.x)) transform.dirty = true;
+    if(ImGui::DragFloat3("Rotation", &transform.eulerRot.x)) transform.dirty = true;
+    if(ImGui::DragFloat3("Scale", &transform.scale.x)) transform.dirty = true;
+}
+
+template<>
+inline void ComponentInspector<CustomBehavior>::DisplayComponentGUI(CustomBehavior& customBehavior) {}
+
+template<>
+inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidBody) {
+    ImGui::SeparatorText("Rigid body");
+    ImGui::DragFloat("Weight", &rigidBody.weight);
+    ImGui::DragFloat("Friction coef", &rigidBody.frictionCoef);
+    ImGui::DragFloat("Restitution coef", &rigidBody.restitutionCoef);
+    ImGui::Checkbox("Static", &rigidBody.isStatic);
+}
+
+template<>
+inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {
+}
+
+
+
+
