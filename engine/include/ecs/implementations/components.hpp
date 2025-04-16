@@ -10,12 +10,17 @@
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
 #include <engine/include/ecs/ecsWithoutInspector.hpp>
+#include <common/json.hpp>
 
+
+
+using json = nlohmann::json;
 
 class IComponentInspector {
     public:
     virtual ~IComponentInspector() = default;
     virtual void DisplayGUI(ecsWithoutInspector &ecs, Entity entity) = 0;
+    virtual json GetJson(ecsWithoutInspector &ecs, Entity entity) = 0;
     virtual const char* GetName() = 0;
 };
 
@@ -34,6 +39,16 @@ public:
     }
     
     static void DisplayComponentGUI(T& component);
+
+    inline json GetJson(ecsWithoutInspector &ecs, Entity entity) override {
+        json res;
+        if (ecs.HasComponent<T>(entity)) {
+            auto& component = ecs.GetComponent<T>(entity);
+            res.push_back(GetComponentJson(component));
+        }
+        return res;
+    }
+    static json GetComponentJson(T& component);
 };
 
 
@@ -355,8 +370,9 @@ struct CollisionShape: Component{
 };
 
 
-// Inspectors
+//////////////////////////////////// Inspectors
 
+// Imgui
 template<>
 inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable){
     ImGui::SeparatorText("Drawable");
@@ -388,5 +404,31 @@ inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionSha
 }
 
 
+// Json serialization
+template<>
+inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
+    return {
+        {
+            "Drawable", {{"switch_distance", drawable.switchDistance}}
+        }
+    };
+}
+
+template<>
+inline json ComponentInspector<Transform>::GetComponentJson(Transform& transform){
+    return {"Transform", false};
+}
+template<>
+inline json ComponentInspector<CustomBehavior>::GetComponentJson(CustomBehavior& custom){
+    return {"CustomBehavior", false};
+}
+template<>
+inline json ComponentInspector<RigidBody>::GetComponentJson(RigidBody& rigidBody){
+    return {"RigidBody", false};
+}
+template<>
+inline json ComponentInspector<CollisionShape>::GetComponentJson(CollisionShape& collisionShape){
+    return {"CollisionShape", false};
+}
 
 

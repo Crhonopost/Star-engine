@@ -1,0 +1,157 @@
+{
+ "entities": [
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    [
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
+    null,
+    [
+     [
+      "RigidBody",
+      false
+     ]
+    ],
+    [
+     [
+      "CollisionShape",
+      false
+     ]
+    ]
+   ],
+   "name": "Entity - 0"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    [
+     {
+      "Drawable": {
+       "switch_distance": 15.0
+      }
+     }
+    ],
+    [
+     [
+      "CustomBehavior",
+      false
+     ]
+    ],
+    [
+     [
+      "RigidBody",
+      false
+     ]
+    ],
+    [
+     [
+      "CollisionShape",
+      false
+     ]
+    ]
+   ],
+   "name": "Entity - 1"
+  },
+  {
+   "components": [
+    null,
+    [
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
+    null,
+    null,
+    null
+   ],
+   "name": "Entity - 2"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    null,
+    null,
+    null,
+    [
+     [
+      "CollisionShape",
+      false
+     ]
+    ]
+   ],
+   "name": "Entity - 3"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    null,
+    null,
+    null,
+    [
+     [
+      "CollisionShape",
+      false
+     ]
+    ]
+   ],
+   "name": "Entity - 4"
+  },
+  {
+   "components": [
+    null,
+    null,
+    [
+     [
+      "CustomBehavior",
+      false
+     ]
+    ],
+    null,
+    null
+   ],
+   "name": "Entity - 5"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    null,
+    null,
+    null,
+    null
+   ],
+   "name": "Entity - 6"
+  }
+ ]
+}

@@ -35,10 +35,15 @@ using namespace glm;
 #include <engine/include/scene.hpp>
 #include <imgui.h>
 #include <backend/imgui_impl_opengl3.h>
-
+#include <common/json.hpp>
+#include <engine/include/API/FileSystem.hpp>
 
 
 void userInteractions(GLFWwindow *window);
+
+using json = nlohmann::json;
+using namespace nlohmann::literals;
+
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -84,6 +89,18 @@ void editorUpdate(float deltaTime){
             }
         }
 
+    }
+
+    if(ImGui::Button("json test")){
+        json state;
+        for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
+            json entityValue = {{"name", ecs.GetEntityName(entity)}};
+            for (auto& inspector : ecs.componentInspectors) {
+                entityValue["components"].push_back(inspector->GetJson(ecs, entity));
+            }
+            state["entities"].push_back(entityValue);
+        }
+        writeToFile("scenes/test.json", state);
     }
     ImGui::End();
 
