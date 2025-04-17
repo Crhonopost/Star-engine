@@ -65,14 +65,14 @@ add_executable(main
 	engine/src/main.cpp
 	
 	engine/include/spatial.hpp
-	engine/include/program.hpp
+	engine/include/rendering.hpp
 	engine/include/input.hpp
     engine/include/camera.hpp
     engine/include/ecs/implementations/components.hpp
     engine/include/ecs/implementations/systems.hpp
 	
 	engine/src/spatial.cpp
-	engine/src/program.cpp
+	engine/src/rendering.cpp
 	engine/src/systems/physic.cpp
 	engine/src/input.cpp
     engine/src/camera.cpp
@@ -86,9 +86,6 @@ add_executable(main
 	common/vboindexer.cpp
 	common/vboindexer.hpp
 	common/json.hpp
-	
-	engine/shaders/vertex_shader.glsl
-	engine/shaders/fragment_shader.glsl
 )
 
 add_subdirectory(external/imgui)
