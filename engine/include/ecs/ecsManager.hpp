@@ -2,6 +2,7 @@
 
 
 #include <engine/include/ecs/ecsWithoutInspector.hpp>
+#include <engine/include/ecs/implementations/componentInspector.hpp>
 
 class ecsManager: public ecsWithoutInspector
 {

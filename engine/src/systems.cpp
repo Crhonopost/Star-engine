@@ -1,7 +1,7 @@
 #include <GL/glew.h>
 #include <engine/include/ecs/implementations/systems.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
-#include <engine/include/program.hpp>
+#include <engine/include/rendering.hpp>
 #include <engine/include/camera.hpp>
 #include <iostream>
 
@@ -16,22 +16,11 @@ void Render::update() {
 
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
 
-        auto& program = Program::programs[drawable.programIdx];
+        auto& program = *drawable.program;
 
         glm::mat4 model = transform.getModelMatrix();
 
-        glUseProgram(program.programID);
-        for (auto& texture : drawable.textures) {
-            if (texture.id == 0) {
-                std::cerr << "ID de texture invalide\n";
-                continue;
-            }
-
-            glBindTextureUnit(activationInt, texture.id);
-            glUniform1i(texture.uniformLocation, activationInt);
-
-            activationInt++;
-        }
+        program.renderTextures();
         program.updateModelMatrix(model);
         program.updateViewProjectionMatrix(VP);
 

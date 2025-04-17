@@ -1,5 +1,5 @@
 #include <engine/include/spatial.hpp>
-#include <engine/include/program.hpp>
+#include <engine/include/rendering.hpp>
 #include <engine/include/input.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
@@ -8,18 +8,18 @@
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
-    Program::generateTextures(4);
+    Texture::generateTextures(4);
     Program baseProg("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl");
-    Texture sunTexture = baseProg.loadTexture("../assets/images/planets/tex_sun.jpg", "tex\0");
+    baseProg.initTexture("../assets/images/planets/tex_sun.jpg", "tex\0");
 
 
     Program mountainProg("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
-    Texture grassTex = mountainProg.loadTexture("../assets/images/grass.png", "texGrass\0");
-    Texture rockTex = mountainProg.loadTexture("../assets/images/rock.png", "texRock\0");
-    Texture heightMap = mountainProg.loadTexture("../assets/images/HeightMap.png", "heightMap\0");
+    mountainProg.initTexture("../assets/images/grass.png", "texGrass\0");
+    mountainProg.initTexture("../assets/images/rock.png", "texRock\0");
+    mountainProg.initTexture("../assets/images/HeightMap.png", "heightMap\0");
 
-    Program::programs.push_back(baseProg);
-    Program::programs.push_back(mountainProg);
+    programs.push_back(baseProg);
+    programs.push_back(mountainProg);
 
 
 
@@ -28,10 +28,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto mountainEntity = ecs.CreateEntity();
     const int sideLength = 100;
     auto mountainDraw = Render::generatePlane(sideLength,256);
-    mountainDraw.programIdx = 1;
-    mountainDraw.textures.push_back(grassTex);
-    mountainDraw.textures.push_back(rockTex);
-    mountainDraw.textures.push_back(heightMap);
+    mountainDraw.program = &mountainProg;    
     Transform mountainTransform;
     CollisionShape mountainShape;
     mountainShape.shapeType = PLANE;
@@ -50,8 +47,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// sun
     auto sunEntity = ecs.CreateEntity();
     auto sunDraw = Render::generateSphere(0.5f);
-    sunDraw.programIdx = 0;
-    sunDraw.textures.push_back(sunTexture);
+    sunDraw.program = &baseProg;
     Transform sunTransform;
     sunTransform.translate(glm::vec3(5,0,0));
     RigidBody sunBody;

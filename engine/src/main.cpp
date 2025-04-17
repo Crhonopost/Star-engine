@@ -25,7 +25,7 @@ using namespace glm;
 
 // personnals
 #include <engine/include/input.hpp>
-#include <engine/include/program.hpp>
+#include <engine/include/rendering.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/components.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
@@ -272,7 +272,7 @@ int main( void )
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     
-        for(auto &prog: Program::programs){
+        for(auto &prog: programs){
             prog.clear();
         }
     }
