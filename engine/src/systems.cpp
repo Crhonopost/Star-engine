@@ -47,6 +47,7 @@ Drawable Render::generateSphere(float radius){
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
     std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
 
     const int latitudeBands = 20;
     const int longitudeBands = 20;
@@ -63,6 +64,7 @@ Drawable Render::generateSphere(float radius){
 
             glm::vec3 vertex = radius * glm::vec3(cosPhi * sinTheta, cosTheta, sinPhi * sinTheta);
             indexed_vertices.push_back(vertex);
+            normal.push_back(glm::normalize(vertex));
 
             tex_coords.push_back(glm::vec2(
                 (float) lon / (float) longitudeBands, 
@@ -92,6 +94,7 @@ Drawable Render::generateSphere(float radius){
     
     for(int i=0; i<indexed_vertices.size(); i++){
         glm::vec3 vertex = indexed_vertices[i];
+        glm::vec3 n = normal[i];
 
         vertex_buffer_data.push_back(vertex.x);
         vertex_buffer_data.push_back(vertex.y);
@@ -99,6 +102,11 @@ Drawable Render::generateSphere(float radius){
     
         vertex_buffer_data.push_back(tex_coords[i].x);
         vertex_buffer_data.push_back(tex_coords[i].y);
+
+        vertex_buffer_data.push_back(n.x);
+        vertex_buffer_data.push_back(n.y);
+        vertex_buffer_data.push_back(n.z);
+
     }
 
     res.init(vertex_buffer_data, indices);
@@ -112,6 +120,7 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
     std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
 
     float edgeLength = sideLength / (nbOfVerticesSide - 1.);
 
@@ -130,6 +139,7 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
             }
 
             indexed_vertices.push_back(vertexPos);
+            normal.push_back(glm::vec3(0.f,1.f,0.f));
             
             glm::vec2 v_coords(
                 1. - (double) i / (double) (nbOfVerticesSide - 1),
@@ -156,6 +166,7 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
     
     for(int i=0; i<indexed_vertices.size(); i++){
         glm::vec3 vertex = indexed_vertices[i];
+        glm::vec3 n = normal[i];
 
         vertex_buffer_data.push_back(vertex.x);
         vertex_buffer_data.push_back(vertex.y);
@@ -163,6 +174,11 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
     
         vertex_buffer_data.push_back(tex_coords[i].x);
         vertex_buffer_data.push_back(tex_coords[i].y);
+
+        vertex_buffer_data.push_back(n.x);
+        vertex_buffer_data.push_back(n.y);
+        vertex_buffer_data.push_back(n.z);
+
     }
 
     res.init(vertex_buffer_data, indices);
