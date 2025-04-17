@@ -14,12 +14,12 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 
     Program mountainProg("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
-    mountainProg.initTexture("../assets/images/grass.png", "texGrass\0");
+    mountainProg.initTexture("../assets/images/planets/tex_sun.jpg", "texGrass\0");
     mountainProg.initTexture("../assets/images/rock.png", "texRock\0");
     mountainProg.initTexture("../assets/images/HeightMap.png", "heightMap\0");
 
-    programs.push_back(baseProg);
-    programs.push_back(mountainProg);
+    Program::programs.push_back(baseProg);
+    Program::programs.push_back(mountainProg);
 
 
 
@@ -28,7 +28,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto mountainEntity = ecs.CreateEntity();
     const int sideLength = 100;
     auto mountainDraw = Render::generatePlane(sideLength,256);
-    mountainDraw.program = &mountainProg;    
+    mountainDraw.program = &Program::programs[1];
     Transform mountainTransform;
     CollisionShape mountainShape;
     mountainShape.shapeType = PLANE;
@@ -47,7 +47,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// sun
     auto sunEntity = ecs.CreateEntity();
     auto sunDraw = Render::generateSphere(0.5f);
-    sunDraw.program = &baseProg;
+    sunDraw.program = &Program::programs[0];
     Transform sunTransform;
     sunTransform.translate(glm::vec3(5,0,0));
     RigidBody sunBody;

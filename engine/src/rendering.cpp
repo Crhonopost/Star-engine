@@ -10,6 +10,9 @@
 int activationInt = 0;
 std::vector<GLuint> freeIds;
 
+std::map<std::string, Texture> Texture::textures;
+std::vector<Program> Program::programs;
+
 void Texture::generateTextures(int count) {
     freeIds.resize(count);
     glGenTextures(count, freeIds.data());
@@ -107,7 +110,7 @@ Program::Program(char *vertexPath, char *fragmentPath){
 }
 
 void Program::clear(){
-    for (auto& [key, tex] : textures) {
+    for (auto& [key, tex] : Texture::textures) {
         glDeleteTextures(1, &tex.id);
     }
     glDeleteProgram(programID);

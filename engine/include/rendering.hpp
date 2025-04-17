@@ -11,6 +11,8 @@ struct Texture {
 
     static Texture& loadTexture(char * path);
     static void generateTextures(int count);
+
+    static std::map<std::string, Texture> textures;
 };
 
 
@@ -32,14 +34,13 @@ class Program {
     void initTexture(char *path, char *uniformName);
     void updateViewProjectionMatrix(glm::mat4 &vp);
     void updateModelMatrix(glm::mat4 model);
+
+    static std::vector<Program> programs;
 };
 
 
 // class Material: public Program{
 
 // };
-
-extern std::vector<Program> programs;
-extern std::map<std::string, Texture> textures;
 
 

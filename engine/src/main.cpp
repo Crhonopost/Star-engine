@@ -272,7 +272,7 @@ int main( void )
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     
-        for(auto &prog: programs){
+        for(auto &prog: Program::programs){
             prog.clear();
         }
     }
