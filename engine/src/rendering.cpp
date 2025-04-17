@@ -7,11 +7,10 @@
 #include <common/shader.hpp>
 #include <engine/include/rendering.hpp>
 
-int activationInt = 0;
 std::vector<GLuint> freeIds;
 
 std::map<std::string, Texture> Texture::textures;
-std::vector<Program> Program::programs;
+std::vector<std::unique_ptr<Program>> Program::programs;
 
 void Texture::generateTextures(int count) {
     freeIds.resize(count);
@@ -41,7 +40,7 @@ Texture& Texture::loadTexture(char * path){
     // glGenTextures(1, &texture.id);
     texture.id = freeIds[freeIds.size()-1];
     freeIds.pop_back();
-    glActiveTexture(GL_TEXTURE0 + activationInt);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture.id);
  
 
@@ -95,18 +94,21 @@ Texture& Texture::loadTexture(char * path){
     // glBindTexture(GL_TEXTURE_2D, texture.id);
 
     textures.emplace(texture.path, texture);
-    activationInt ++;
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return texture;
 }
 
-Program::Program(char *vertexPath, char *fragmentPath){
+Program::Program(const char *vertexPath, const char *fragmentPath){
     programID = LoadShaders( vertexPath, fragmentPath );
     glUseProgram(programID);
 
     modelLocation = glGetUniformLocation(programID, "model");
-    vpLocation = glGetUniformLocation(programID, "vp");
+    vLocation = glGetUniformLocation(programID, "v");
+    pLocation = glGetUniformLocation(programID, "p");
+
+    glm::mat4 p = Camera::getInstance().getP();
+    updateProjectionMatrix(p);
 }
 
 void Program::clear(){
@@ -116,8 +118,11 @@ void Program::clear(){
     glDeleteProgram(programID);
 }
 
-void Program::updateViewProjectionMatrix(glm::mat4 &vp){
-    glUniformMatrix4fv(vpLocation, 1, GL_FALSE, &vp[0][0]);
+void Program::updateViewMatrix(glm::mat4 &v){
+    glUniformMatrix4fv(vLocation, 1, GL_FALSE, &v[0][0]);
+}
+void Program::updateProjectionMatrix(glm::mat4 &p){
+    glUniformMatrix4fv(pLocation, 1, GL_FALSE, &p[0][0]);
 }
 void Program::updateModelMatrix(glm::mat4 model){
     glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &model[0][0]);
@@ -134,7 +139,7 @@ void Program::initTexture(char *path, char *uniformName){
 }
 
 
-void Program::renderTextures(){
+void Program::renderTextures(int &activationInt){
     glUseProgram(programID);
     for (auto& [textureLocation, texture] : programTextures) {
         if (texture->id == 0){
@@ -149,3 +154,30 @@ void Program::renderTextures(){
     }
 }
 
+
+void Program::updateGUI(){}
+
+Material::Material(): Program("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl"){
+    albedoLocation = glGetUniformLocation(programID, "albedo");
+    metallicLocation = glGetUniformLocation(programID, "metallic");
+    roughnessLocation = glGetUniformLocation(programID, "roughness");
+    aoLocation = glGetUniformLocation(programID, "ao");
+    camPosLocation = glGetUniformLocation(programID, "camPos");
+    hasTextureLocation = glGetUniformLocation(programID, "hasTexture");
+    texLocation = glGetUniformLocation(programID,"tex");
+}
+
+void Material::updateGUI(){
+    glUseProgram(programID);
+    if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 5.0f)){
+        glUniform1f(metallicLocation, metallic);
+    }
+
+    if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 5.0f)){
+        glUniform1f(roughnessLocation, roughness);
+    }
+
+    if(ImGui::SliderFloat("ao", &ao, 0.0f, 5.0f)){
+        glUniform1f(aoLocation, ao);
+    }
+}

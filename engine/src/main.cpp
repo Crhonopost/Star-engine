@@ -77,6 +77,13 @@ void switchEditorMode(){
 
 void editorUpdate(float deltaTime){
     if(ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
+        if(ImGui::Begin("Shaders")){
+            for(auto &prog: Program::programs){
+                prog->updateGUI();
+            }
+        }
+        ImGui::End();
+
         if (ImGui::Button("Switch mode")) switchEditorMode();
 
         
@@ -104,9 +111,11 @@ void editorUpdate(float deltaTime){
     }
     ImGui::End();
 
+    
     Camera::getInstance().updateInput(deltaTime);
     renderSystem->update();
-    physicDebugSystem->update();
+    
+    // physicDebugSystem->update();
 }
 
 void gameUpdate(float deltaTime){
@@ -226,12 +235,7 @@ int main( void )
         ImGui_ImplOpenGL3_Init();
         
         
-        do{
-            // error = glGetError();
-            // if(error != GL_NO_ERROR){
-            //     std::cerr << "OpenGL error: " << error << std::endl;
-            // // } 
-            
+        do{            
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
@@ -273,7 +277,7 @@ int main( void )
         ImGui::DestroyContext();
     
         for(auto &prog: Program::programs){
-            prog.clear();
+            prog->clear();
         }
     }
 

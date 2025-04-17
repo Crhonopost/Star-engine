@@ -9,17 +9,15 @@
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
     Texture::generateTextures(4);
-    Program baseProg("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl");
-    baseProg.initTexture("../assets/images/planets/tex_sun.jpg", "tex\0");
 
 
-    Program mountainProg("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
-    mountainProg.initTexture("../assets/images/planets/tex_sun.jpg", "texGrass\0");
-    mountainProg.initTexture("../assets/images/rock.png", "texRock\0");
-    mountainProg.initTexture("../assets/images/HeightMap.png", "heightMap\0");
+    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
+    mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
+    mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
+    mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
 
-    Program::programs.push_back(baseProg);
-    Program::programs.push_back(mountainProg);
+    Program::programs.push_back(std::make_unique<Material>());
+    Program::programs.push_back(std::move(mountainProg));
 
 
 
@@ -28,7 +26,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto mountainEntity = ecs.CreateEntity();
     const int sideLength = 100;
     auto mountainDraw = Render::generatePlane(sideLength,256);
-    mountainDraw.program = &Program::programs[1];
+    mountainDraw.program = Program::programs[1].get();
     Transform mountainTransform;
     CollisionShape mountainShape;
     mountainShape.shapeType = PLANE;
@@ -47,7 +45,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// sun
     auto sunEntity = ecs.CreateEntity();
     auto sunDraw = Render::generateSphere(0.5f);
-    sunDraw.program = &Program::programs[0];
+    sunDraw.program = Program::programs[0].get();
     Transform sunTransform;
     sunTransform.translate(glm::vec3(5,0,0));
     RigidBody sunBody;

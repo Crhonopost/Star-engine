@@ -200,6 +200,9 @@ void initBuffer(GLuint &VAO, std::vector<float> &vertex_buffer_data, std::vector
 void PhysicDebugSystem::init() {
     program = Program("shaders/debug/vertex.glsl", "shaders/debug/fragment.glsl");
 
+    auto p = Camera::getInstance().getP();
+    program.updateProjectionMatrix(p);
+
     // Génération de la sphère
     std::vector<float> sphereVertices;
     std::vector<unsigned int> sphereIndices;
@@ -234,15 +237,17 @@ void PhysicDebugSystem::init() {
 void PhysicDebugSystem::update(){
     glUseProgram(program.programID);
     
+    glm::mat4 V = Camera::getInstance().getV();
+    program.updateViewMatrix(V);
+    
     GLuint tempVBO;
     glGenBuffers(1, &tempVBO);
     GLuint colorLocation = glGetUniformLocation(program.programID, "albedo");
-
-    glm::mat4 VP = Camera::getInstance().getVP();
-    program.updateViewProjectionMatrix(VP);
     
     glLineWidth(2.0f);
-
+    
+    
+    
     for(auto &entity: mEntities){
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
@@ -282,8 +287,7 @@ void PhysicDebugSystem::update(){
             (void*)0           // element array buffer offset
         );
         
-        glBindVertexArray(0);
-        
+        glBindVertexArray(0);        
     }
     glDeleteBuffers(1,&tempVBO);
 }

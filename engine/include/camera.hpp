@@ -8,7 +8,8 @@ class Camera {
 public:
     static Camera& getInstance(); // Accès unique à l'instance
 
-    glm::mat4 getVP();
+    glm::mat4 getV();
+    glm::mat4 getP();
     void updateInput(float deltaTime);
 
     glm::vec3 camera_position   = glm::vec3(0.0f, 0.0f,  3.0f);    

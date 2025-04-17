@@ -16,8 +16,9 @@ uniform vec3 lightPositions[1] = vec3[1](vec3(2.f,2.f,0.f));
 uniform vec3 lightColors[1] = vec3[1](vec3(1.f));
 
 
-uniform vec3 camPos = vec3(0.f);
+in vec3 camPos;
 
+uniform bool hasTexture = false;
 uniform sampler2D tex;
 
 const float PI = 3.14159265359;
@@ -107,6 +108,8 @@ void main(){
     colorPBR = colorPBR / (colorPBR + vec3(1.0));
     colorPBR = pow(colorPBR, vec3(1.0/2.2));  
 
-    // color = vec4(texture(tex, texCoords).rgb, 1);
+    // if(hasTexture)
+    //     color = vec4(texture(tex, texCoords).rgb, 1);
+    // else
     color = vec4(colorPBR, 1.0);
 }

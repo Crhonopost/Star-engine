@@ -8,14 +8,12 @@ Camera& Camera::getInstance() {
     return editor ? editorInstance : instance;
 }
 
-glm::mat4 Camera::getVP(){    
-    glm::mat4 view = glm::lookAt(camera_position, camera_position + camera_target, camera_up);
+glm::mat4 Camera::getV(){    
+    return glm::lookAt(camera_position, camera_position + camera_target, camera_up);
+}
 
-    glm::mat4 projection = glm::perspective(glm::radians(45.f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-    glm::mat4 vp = projection * view;
-
-    return vp;
+glm::mat4 Camera::getP(){
+    return glm::perspective(glm::radians(45.f), 800.0f / 600.0f, 0.1f, 100.0f);
 }
 
 glm::vec3 rotateY(glm::vec3 in, float angle){

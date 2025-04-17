@@ -7,25 +7,29 @@
 
 
 void Render::update() {
-    glm::mat4 VP = Camera::getInstance().getVP();
+    
+    glm::mat4 V = Camera::getInstance().getV();
     int activationInt = 0;
-
+    
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
-
+        
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
-
+        
         auto& program = *drawable.program;
-
+        glUseProgram(program.programID);
+        
         glm::mat4 model = transform.getModelMatrix();
 
-        program.renderTextures();
+        program.renderTextures(activationInt);
+
         program.updateModelMatrix(model);
-        program.updateViewProjectionMatrix(VP);
+        program.updateViewMatrix(V);
 
         drawable.draw(distanceToCam);
     }
+
 }
 
 

@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <map>
+#include <memory>
 
 struct Texture {
     char *path;
@@ -18,7 +19,7 @@ struct Texture {
 
 class Program {
     private:
-    GLuint modelLocation, vpLocation;
+    GLuint modelLocation, vLocation, pLocation;
 
     // Setup à l'initialisation uniquement
     std::map<GLuint, Texture*> programTextures;
@@ -27,20 +28,32 @@ class Program {
     GLuint programID;
 
     Program() = default;
-    Program(char *vertexPath, char *fragmentPath);
+    Program(const char *vertexPath, const char *fragmentPath);
     
     void clear();
-    void renderTextures();
+    void renderTextures(int &activationInt);
     void initTexture(char *path, char *uniformName);
-    void updateViewProjectionMatrix(glm::mat4 &vp);
+    virtual void updateGUI();
+
+    void updateViewMatrix(glm::mat4 &v);
+    void updateProjectionMatrix(glm::mat4 &p);
     void updateModelMatrix(glm::mat4 model);
 
-    static std::vector<Program> programs;
+    static std::vector<std::unique_ptr<Program>> programs;
 };
 
 
-// class Material: public Program{
+class Material: public Program{
+    private:
+    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, camPosLocation, hasTextureLocation, texLocation;
+    glm::vec3 albedo, camPos;
+    float metallic = 0.5f;
+    float roughness = 0.5f;
+    float ao = 1.0f;
 
-// };
+    public:
+    Material();
+    void updateGUI() override;
+};
 
 
