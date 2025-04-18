@@ -39,6 +39,10 @@ class Program {
     void updateProjectionMatrix(glm::mat4 &p);
     void updateModelMatrix(glm::mat4 model);
 
+    void updateLightCount(int count);
+    void updateLightPosition(int lightIndex, glm::vec3 position);
+    void updateLightColor(int lightIndex, glm::vec3 color);
+
     static std::vector<std::unique_ptr<Program>> programs;
 };
 

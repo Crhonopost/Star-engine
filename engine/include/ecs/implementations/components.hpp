@@ -77,6 +77,11 @@ struct Drawable: Component {
     void draw(float renderDistance);
 };
 
+struct Light: Component {
+    glm::vec3 color;
+    float strength;
+};
+
 enum RotationOrderEnum {
     XYZ,
     YXZ,

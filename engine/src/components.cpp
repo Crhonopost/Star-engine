@@ -78,7 +78,8 @@ glm::mat4 Transform::getLocalModelMatrix(){
            rotationMatrix *
            glm::scale(glm::mat4(1.0f), scale);
 }
-    
+
+
 void Transform::computeModelMatrix(){
     modelMatrix = getLocalModelMatrix();
     dirty = false;

@@ -154,6 +154,20 @@ void Program::renderTextures(int &activationInt){
     }
 }
 
+void Program::updateLightCount(int count){
+    GLuint lightCountLocation = glGetUniformLocation(programID, "lightCount");
+    glUniform1i(lightCountLocation, count);
+}
+void Program::updateLightPosition(int lightIndex, glm::vec3 position){
+    
+    GLuint lightLocation = glGetUniformLocation(programID, ("lightPositions[" + std::to_string(lightIndex) + "]").c_str());
+    glUniform3f(lightLocation, position[0], position[1], position[2]);
+}
+void Program::updateLightColor(int lightIndex, glm::vec3 color){
+    GLuint lightLocation = glGetUniformLocation(programID, ("lightColors[" + std::to_string(lightIndex) + "]").c_str());
+    glUniform3f(lightLocation, color[0], color[1], color[2]);
+}
+
 
 void Program::updateGUI(){}
 

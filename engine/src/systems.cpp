@@ -33,7 +33,6 @@ void Render::update() {
 }
 
 
-
 Drawable Render::generateSphere(float radius){
     Drawable res;
 
@@ -178,6 +177,27 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
 
     return res;
 }
+
+
+void LightRender::update(){
+    //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
+    int associatedLight = 0;
+    for (const auto& entity : mEntities) {
+        auto& light = ecs.GetComponent<Light>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+
+        for(auto &prog : Program::programs){
+            prog->updateLightPosition(associatedLight, transform.getLocalPosition());
+            prog->updateLightColor(associatedLight, light.color);
+        }
+        associatedLight ++;
+    }
+
+    for(auto &prog : Program::programs){
+        prog->updateLightCount(associatedLight);
+    }
+}
+
 
 
 void CustomSystem::update(float deltaTime){

@@ -17,6 +17,11 @@ class Render: public System {
 };
 
 
+class LightRender: public System {
+    public:
+    void update();
+};
+
 
 class CollisionDetectionSystem: public System {
     private:

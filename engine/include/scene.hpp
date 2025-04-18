@@ -114,10 +114,13 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto otherEntity = ecs.CreateEntity();
     Transform otherTransform;
     otherTransform.translate(glm::vec3(0,5,0));
+    Light lightSource;
+    lightSource.color = glm::vec3(0,1,0);
     CollisionShape otherCollision;
     otherCollision.shapeType = SPHERE;
     otherCollision.sphere.radius = 1.2;
     ecs.AddComponent<Transform>(otherEntity, otherTransform);
+    ecs.AddComponent<Light>(otherEntity, lightSource);
     ecs.AddComponent<CollisionShape>(otherEntity, otherCollision);
 
     

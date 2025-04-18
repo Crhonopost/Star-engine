@@ -12,8 +12,10 @@ uniform float roughness = 0.5f;
 uniform float ao = 1.f;
 
 // lights
-uniform vec3 lightPositions[1] = vec3[1](vec3(2.f,2.f,0.f));
-uniform vec3 lightColors[1] = vec3[1](vec3(1.f));
+const int MAX_LIGHT = 20;
+uniform int lightCount = 0;
+uniform vec3 lightPositions[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(2.f,2.f,0.f));
+uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
 
 
 in vec3 camPos;
@@ -76,7 +78,7 @@ void main(){
     // reflectance equation
     vec3 Lo = vec3(0.0);
 
-    for(int i = 0; i < 1; ++i) 
+    for(int i = 0; i < lightCount; ++i) 
     {
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i] - WorldPos);

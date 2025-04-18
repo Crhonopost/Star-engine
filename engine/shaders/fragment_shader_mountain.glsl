@@ -14,6 +14,14 @@ uniform sampler2D texGrass;
 uniform sampler2D texRock;
 uniform sampler2D heightMap;
 
+// Lights
+const int MAX_LIGHT = 20;
+uniform int lightCount = 0;
+uniform vec3 lightPositions[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(2.f,2.f,0.f));
+uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
+
+
+
 float tiltDegree(float height, vec2 coords, vec2 direction){
     float otherHeight = texture(heightMap, coords + direction).r;
     return abs(height - otherHeight);

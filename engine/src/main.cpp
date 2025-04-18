@@ -63,6 +63,7 @@ bool isInEditor = true;
 // SceneGraph scene;
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
+std::shared_ptr<LightRender> lightRenderSystem;
 std::shared_ptr<CustomSystem> customSystem;
 std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
 std::shared_ptr<PhysicSystem> physicSystem;
@@ -113,6 +114,7 @@ void editorUpdate(float deltaTime){
 
     
     Camera::getInstance().updateInput(deltaTime);
+    lightRenderSystem->update();
     renderSystem->update();
     
     // physicDebugSystem->update();
@@ -187,11 +189,13 @@ int main( void )
         
         ecs.RegisterComponent<Transform>("Transform");
         ecs.RegisterComponent<Drawable>("Drawable");
+        ecs.RegisterComponent<Light>("Light");
         ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
         ecs.RegisterComponent<RigidBody>("RigidBody");
         ecs.RegisterComponent<CollisionShape>("CollisionShape");
     
         renderSystem = ecs.RegisterSystem<Render>();
+        lightRenderSystem = ecs.RegisterSystem<LightRender>();
         customSystem = ecs.RegisterSystem<CustomSystem>();
         collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
         physicSystem = ecs.RegisterSystem<PhysicSystem>();
@@ -202,6 +206,11 @@ int main( void )
         renderSignature.set(ecs.GetComponentType<Transform>());
         renderSignature.set(ecs.GetComponentType<Drawable>());
         ecs.SetSystemSignature<Render>(renderSignature);
+
+        Signature lightSignature;
+        lightSignature.set(ecs.GetComponentType<Transform>());
+        lightSignature.set(ecs.GetComponentType<Light>());
+        ecs.SetSystemSignature<LightRender>(lightSignature);
     
         Signature customSignature;
         customSignature.set(ecs.GetComponentType<CustomBehavior>());
@@ -227,6 +236,8 @@ int main( void )
 
         SpatialNode root;
         initScene(root, ecs);
+
+        lightRenderSystem->update();
 
 
 

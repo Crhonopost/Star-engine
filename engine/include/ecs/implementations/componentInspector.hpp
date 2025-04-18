@@ -50,6 +50,13 @@ inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable
 }
 
 template<>
+inline void ComponentInspector<Light>::DisplayComponentGUI(Light& light){
+    ImGui::SeparatorText("Light");
+    ImGui::DragFloat3("Color", &light.color.x, 0.01f, 0.0f, 1.0f);
+}
+
+
+template<>
 inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transform) {
     ImGui::SeparatorText("Transform");
     if(ImGui::DragFloat3("Position", &transform.pos.x)) transform.dirty = true;
@@ -80,6 +87,15 @@ inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
     return {
         {
             "Drawable", {{"switch_distance", drawable.switchDistance}}
+        }
+    };
+}
+
+template<>
+inline json ComponentInspector<Light>::GetComponentJson(Light& drawable){
+    return {
+        {
+            "Light", false
         }
     };
 }
