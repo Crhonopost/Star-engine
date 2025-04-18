@@ -177,7 +177,7 @@ int main( void )
         glClearColor(0.1f, 0.1f, 0.2f, 0.0f);
     
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
+        glDepthFunc(GL_LEQUAL);
     
         //glEnable(GL_CULL_FACE);
     
