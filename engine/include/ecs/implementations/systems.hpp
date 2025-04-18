@@ -14,6 +14,7 @@ class Render: public System {
 
     static Drawable generateSphere(float radius);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
+    static Drawable generateInwardCube(float sideLength, int nbOfVerticesSide);
 };
 
 

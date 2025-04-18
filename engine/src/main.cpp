@@ -241,6 +241,16 @@ int main( void )
         // initScene(root, ecs);
         pbrScene(root, ecs);
 
+        Program::programs.push_back(std::make_unique<Skybox>());
+        Entity skyboxEntity = ecs.CreateEntity();
+        ecs.SetEntityName(skyboxEntity, "Skybox");
+        Drawable skyboxDraw = Render::generateInwardCube(9999, 2);
+        skyboxDraw.program = Program::programs[Program::programs.size()-1].get();
+        Transform skyboxTransform;
+        ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
+        ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
+
+
         lightRenderSystem->update();
 
 

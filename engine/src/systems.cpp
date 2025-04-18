@@ -19,15 +19,17 @@ void Render::update() {
         
         auto& program = *drawable.program;
         glUseProgram(program.programID);
+        program.beforeRender();
         
         glm::mat4 model = transform.getModelMatrix();
 
         program.renderTextures(activationInt);
 
-        program.updateModelMatrix(model);
         program.updateViewMatrix(V);
+        program.updateModelMatrix(model);
 
         drawable.draw(distanceToCam);
+        program.afterRender();
     }
 
 }
@@ -177,6 +179,89 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
 
     return res;
 }
+
+Drawable Render::generateInwardCube(float sideLength, int nbOfVerticesSide) {
+    Drawable res;
+
+    std::vector<unsigned short> indices;
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
+
+    float edge = sideLength / (nbOfVerticesSide - 1);
+    float half = sideLength / 2.0f;
+
+    // 6 faces
+    struct Face {
+        glm::vec3 origin;
+        glm::vec3 u_dir;
+        glm::vec3 v_dir;
+        glm::vec3 normal;
+    };
+
+    std::vector<Face> faces = {
+        // Face +Y (haut)
+        {{-half, half, -half}, {edge, 0, 0}, {0, 0, edge}, {0, -1, 0}},
+        // Face -Y (bas)
+        {{-half, -half, half}, {edge, 0, 0}, {0, 0, -edge}, {0, 1, 0}},
+        // Face +X
+        {{half, -half, -half}, {0, edge, 0}, {0, 0, edge}, {-1, 0, 0}},
+        // Face -X
+        {{-half, -half, half}, {0, edge, 0}, {0, 0, -edge}, {1, 0, 0}},
+        // Face +Z
+        {{-half, -half, half}, {edge, 0, 0}, {0, edge, 0}, {0, 0, -1}},
+        // Face -Z
+        {{half, -half, -half}, {-edge, 0, 0}, {0, edge, 0}, {0, 0, 1}},
+    };
+
+    int vertexOffset = 0;
+
+    for (auto& face : faces) {
+        for (int i = 0; i < nbOfVerticesSide; ++i) {
+            for (int j = 0; j < nbOfVerticesSide; ++j) {
+                glm::vec3 pos = face.origin + float(i) * face.u_dir + float(j) * face.v_dir;
+                indexed_vertices.push_back(pos);
+                normal.push_back(face.normal);
+                tex_coords.push_back(glm::vec2((float)i / (nbOfVerticesSide - 1), (float)j / (nbOfVerticesSide - 1)));
+            }
+        }
+
+        for (int i = 0; i < nbOfVerticesSide - 1; ++i) {
+            for (int j = 0; j < nbOfVerticesSide - 1; ++j) {
+                int a = vertexOffset + i * nbOfVerticesSide + j;
+                int b = a + 1;
+                int c = a + nbOfVerticesSide;
+                int d = c + 1;
+
+                // Inversé pour normales vers l'intérieur
+                indices.push_back(a);
+                indices.push_back(c);
+                indices.push_back(b);
+
+                indices.push_back(b);
+                indices.push_back(c);
+                indices.push_back(d);
+            }
+        }
+
+        vertexOffset += nbOfVerticesSide * nbOfVerticesSide;
+    }
+
+    res.indexCount = indices.size();
+
+    std::vector<float> vertex_buffer_data;
+    for (int i = 0; i < indexed_vertices.size(); ++i) {
+        glm::vec3 v = indexed_vertices[i];
+        glm::vec3 n = normal[i];
+        glm::vec2 t = tex_coords[i];
+
+        vertex_buffer_data.insert(vertex_buffer_data.end(), {v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z});
+    }
+
+    res.init(vertex_buffer_data, indices);
+    return res;
+}
+
 
 
 void LightRender::update(){
