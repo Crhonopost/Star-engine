@@ -40,6 +40,8 @@ using namespace glm;
 
 
 void userInteractions(GLFWwindow *window);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+
 
 using json = nlohmann::json;
 using namespace nlohmann::literals;
@@ -117,14 +119,14 @@ void editorUpdate(float deltaTime){
     lightRenderSystem->update();
     renderSystem->update();
     
-    // physicDebugSystem->update();
+    physicDebugSystem->update();
 }
 
 void gameUpdate(float deltaTime){
     customSystem->update(deltaTime);
     collisionDetectionSystem->update(deltaTime);
     physicSystem->update(deltaTime);
-    physicDebugSystem->update();
+    lightRenderSystem->update();
     renderSystem->update();
 }
 
@@ -166,6 +168,7 @@ int main( void )
         }
     
         glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+        glfwSetWindowSizeCallback(window, framebuffer_size_callback);
         //  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
         glfwPollEvents();
@@ -235,7 +238,8 @@ int main( void )
 
 
         SpatialNode root;
-        initScene(root, ecs);
+        // initScene(root, ecs);
+        pbrScene(root, ecs);
 
         lightRenderSystem->update();
 
@@ -305,18 +309,6 @@ void userInteractions(GLFWwindow *window)
     if(actions[InputManager::KEY_ESCAPE].clicked){
         glfwSetWindowShouldClose(window, true);
     }
-    
-    // if(Input::actions[Input::ActionEnum::KEY_PLUS].pressed){
-    //     scene.mountain.addVerticesQuantity(1);
-    // }
-    // if(Input::actions[Input::ActionEnum::KEY_MINUS].pressed){
-    //     if(scene.mountain.getNumberOfVertices() > 2){
-    //         scene.mountain.addVerticesQuantity(-1);
-    //     }
-    // }
-
-    // Camera::getInstance().updateInput(deltaTime);   
-
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

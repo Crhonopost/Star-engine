@@ -2,32 +2,17 @@
  "entities": [
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
+    null,
+    null,
     null,
     [
      [
-      "RigidBody",
+      "CustomBehavior",
       false
      ]
     ],
-    [
-     [
-      "CollisionShape",
-      false
-     ]
-    ]
+    null,
+    null
    ],
    "name": "Entity - 0"
   },
@@ -39,37 +24,27 @@
       false
      ]
     ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": 4.0
-      }
-     }
-    ],
+    null,
+    null,
     [
      [
       "CustomBehavior",
       false
      ]
     ],
-    [
-     [
-      "RigidBody",
-      false
-     ]
-    ],
-    [
-     [
-      "CollisionShape",
-      false
-     ]
-    ]
+    null,
+    null
    ],
    "name": "Entity - 1"
   },
   {
    "components": [
-    null,
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
     [
      {
       "Drawable": {
@@ -77,6 +52,7 @@
       }
      }
     ],
+    null,
     null,
     null,
     null
@@ -91,15 +67,17 @@
       false
      ]
     ],
-    null,
-    null,
-    null,
     [
-     [
-      "CollisionShape",
-      false
-     ]
-    ]
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
+    null,
+    null,
+    null,
+    null
    ],
    "name": "Entity - 3"
   },
@@ -111,28 +89,37 @@
       false
      ]
     ],
-    null,
-    null,
-    null,
     [
-     [
-      "CollisionShape",
-      false
-     ]
-    ]
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
+    null,
+    null,
+    null,
+    null
    ],
    "name": "Entity - 4"
   },
   {
    "components": [
-    null,
-    null,
     [
      [
-      "CustomBehavior",
+      "Transform",
       false
      ]
     ],
+    [
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
+    null,
+    null,
     null,
     null
    ],
@@ -146,12 +133,59 @@
       false
      ]
     ],
+    [
+     {
+      "Drawable": {
+       "switch_distance": -1.0
+      }
+     }
+    ],
     null,
     null,
     null,
     null
    ],
    "name": "Entity - 6"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    null,
+    [
+     {
+      "Light": false
+     }
+    ],
+    null,
+    null,
+    null
+   ],
+   "name": "Entity - 7"
+  },
+  {
+   "components": [
+    [
+     [
+      "Transform",
+      false
+     ]
+    ],
+    null,
+    [
+     {
+      "Light": false
+     }
+    ],
+    null,
+    null,
+    null
+   ],
+   "name": "Entity - 8"
   }
  ]
 }

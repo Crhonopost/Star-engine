@@ -6,6 +6,32 @@
 
 #include <iostream>
 
+Entity generateSpherePBR(ecsManager &ecs, Program *pbrProg, float radius, glm::vec3 position){
+    auto sphereEntity = ecs.CreateEntity();
+    auto sphereDraw = Render::generateSphere(radius);
+    sphereDraw.program = pbrProg;
+    Transform sphereTransform;
+    sphereTransform.translate(position);
+    
+
+    ecs.AddComponent(sphereEntity, sphereDraw);
+    ecs.AddComponent(sphereEntity, sphereTransform);
+
+    return sphereEntity;
+}
+
+Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
+    auto otherEntity = ecs.CreateEntity();
+    Transform otherTransform;
+    otherTransform.translate(position);
+    Light lightSource;
+    lightSource.color = color;
+    ecs.AddComponent<Transform>(otherEntity, otherTransform);
+    ecs.AddComponent<Light>(otherEntity, lightSource);
+
+    return otherEntity;
+}
+
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
     Texture::generateTextures(4);
@@ -172,3 +198,73 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     root.AddChild(std::move(mountainNode));
     root.AddChild(std::move(otherNode));
 }
+
+
+
+
+float totalTime = 0;
+void pbrScene(SpatialNode &root, ecsManager &ecs){
+    auto cameraEntity = ecs.CreateEntity();
+    CustomBehavior cameraUpdate;
+    cameraUpdate.update = [](float deltaTime){
+        auto actions = InputManager::getInstance().getActions();
+
+        const glm::vec3 left = glm::normalize(glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target));
+        const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
+
+        const float speed = 10.0f;
+        // glm::vec3 inputVelocity(0);
+        // if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
+        //     inputVelocity += forward;
+        // if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
+        //     inputVelocity -= forward;
+        // if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
+        //     inputVelocity += left;
+        // if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
+        //     inputVelocity -= left;
+
+        // if(inputVelocity.length() != 0)
+        //     Camera::getInstance().camera_position += glm::normalize(inputVelocity) * deltaTime * speed;
+    };
+    ecs.AddComponent(cameraEntity, cameraUpdate);
+    Camera::editor = false;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);
+    Camera::editor = true;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);
+    
+    
+    
+    auto rootEntity = ecs.CreateEntity();
+    Transform rootTransform;
+    ecs.AddComponent(rootEntity, rootTransform);
+    root.transform = &ecs.GetComponent<Transform>(rootEntity);
+
+    CustomBehavior continuousRotation;
+    continuousRotation.update = [&root](float deltaTime){
+        root.transform->rotate(glm::vec3(0, deltaTime * 10.f, 0));
+    };
+    ecs.AddComponent<CustomBehavior>(rootEntity, continuousRotation);
+
+    Program::programs.push_back(std::make_unique<Material>());
+    for(int i=0; i<5; i++){
+        auto ent = generateSpherePBR(ecs, Program::programs[0].get(), 0.75f, glm::vec3(-5 + i*2, 0, 0));
+        std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(ent));
+
+        root.AddChild(std::move(sphereNode));
+    }
+
+    
+    auto light1 = createLightSource(ecs, glm::vec3(0,6,1), glm::vec3(1));
+    ecs.SetEntityName(light1, "Center top light");
+    auto movingLight = createLightSource(ecs, glm::vec3(5,0,2), glm::vec3(1));
+    ecs.SetEntityName(movingLight, "Y moving light");
+    CustomBehavior oscilatingLight;
+    oscilatingLight.update = [movingLight, &ecs, &totalTime](float deltaTime){
+        totalTime += deltaTime;
+        auto &transfo = ecs.GetComponent<Transform>(movingLight);
+        float direction = cos(totalTime); 
+        transfo.translate({0,direction * deltaTime * 10.f,0});
+    };
+    ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
+}
+
