@@ -8,7 +8,7 @@
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
-    Texture::generateTextures(4);
+    Texture::generateTextures(8);
 
 
     auto mountainProg = std::make_unique<Program>("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
