@@ -26,9 +26,13 @@ class Program {
     
     public:
     GLuint programID;
+    static std::vector<std::unique_ptr<Program>> programs;
 
     Program() = default;
     Program(const char *vertexPath, const char *fragmentPath);
+
+    virtual void beforeRender();
+    virtual void afterRender();
     
     void clear();
     void renderTextures(int &activationInt);
@@ -42,8 +46,17 @@ class Program {
     void updateLightCount(int count);
     void updateLightPosition(int lightIndex, glm::vec3 position);
     void updateLightColor(int lightIndex, glm::vec3 color);
+};
 
-    static std::vector<std::unique_ptr<Program>> programs;
+class Skybox: public Program{
+    GLuint skyboxID;
+
+    public:
+    Skybox();
+    
+    void setSkybox(std::vector<std::string> faces);
+    void beforeRender() override;
+    void afterRender() override;
 };
 
 

@@ -128,7 +128,8 @@ void Program::updateModelMatrix(glm::mat4 model){
     glUniformMatrix4fv(modelLocation, 1, GL_FALSE, &model[0][0]);
 }
 
-
+void Program::beforeRender(){}
+void Program::afterRender(){}
 
 void Program::initTexture(char *path, char *uniformName){
     Texture &texture = Texture::loadTexture(path);
@@ -168,6 +169,57 @@ void Program::updateLightColor(int lightIndex, glm::vec3 color){
     glUniform3f(lightLocation, color[0], color[1], color[2]);
 }
 
+void Skybox::beforeRender(){
+    glDepthMask(GL_FALSE);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+}
+
+void Skybox::afterRender(){
+    glDepthMask(GL_TRUE);
+}
+
+Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.glsl")
+{
+    setSkybox({
+        "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
+} 
+
+void Skybox::setSkybox(std::vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    skyboxID = textureID;
+}
 
 void Program::updateGUI(){}
 
