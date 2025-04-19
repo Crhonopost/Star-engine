@@ -259,7 +259,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     auto movingLight = createLightSource(ecs, glm::vec3(5,0,2), glm::vec3(1));
     ecs.SetEntityName(movingLight, "Y moving light");
     CustomBehavior oscilatingLight;
-    oscilatingLight.update = [movingLight, &ecs, &totalTime](float deltaTime){
+    oscilatingLight.update = [movingLight, &ecs](float deltaTime){
         totalTime += deltaTime;
         auto &transfo = ecs.GetComponent<Transform>(movingLight);
         float direction = cos(totalTime); 

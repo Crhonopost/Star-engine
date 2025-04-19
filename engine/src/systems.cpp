@@ -34,6 +34,27 @@ void Render::update() {
 
 }
 
+void LightRender::update(){
+    //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
+    int associatedLight = 0;
+    for (const auto& entity : mEntities) {
+        auto& light = ecs.GetComponent<Light>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+
+        for(auto &prog : Program::programs){
+            glUseProgram(prog->programID);
+            prog->updateLightPosition(associatedLight, transform.getLocalPosition());
+            prog->updateLightColor(associatedLight, light.color);
+        }
+        associatedLight ++;
+    }
+    
+    for(auto &prog : Program::programs){
+        glUseProgram(prog->programID);
+        prog->updateLightCount(associatedLight);
+    }
+}
+
 
 Drawable Render::generateSphere(float radius){
     Drawable res;
@@ -260,27 +281,6 @@ Drawable Render::generateInwardCube(float sideLength, int nbOfVerticesSide) {
 
     res.init(vertex_buffer_data, indices);
     return res;
-}
-
-
-
-void LightRender::update(){
-    //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
-    int associatedLight = 0;
-    for (const auto& entity : mEntities) {
-        auto& light = ecs.GetComponent<Light>(entity);
-        auto& transform = ecs.GetComponent<Transform>(entity);
-
-        for(auto &prog : Program::programs){
-            prog->updateLightPosition(associatedLight, transform.getLocalPosition());
-            prog->updateLightColor(associatedLight, light.color);
-        }
-        associatedLight ++;
-    }
-
-    for(auto &prog : Program::programs){
-        prog->updateLightCount(associatedLight);
-    }
 }
 
 
