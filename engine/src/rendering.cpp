@@ -172,26 +172,35 @@ void Program::updateLightColor(int lightIndex, glm::vec3 color){
 void Program::updateGUI(){}
 
 Material::Material(): Program("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl"){
-    albedoLocation = glGetUniformLocation(programID, "albedo");
-    metallicLocation = glGetUniformLocation(programID, "metallic");
-    roughnessLocation = glGetUniformLocation(programID, "roughness");
-    aoLocation = glGetUniformLocation(programID, "ao");
+    albedoLocation = glGetUniformLocation(programID, "albedoVal");
+    metallicLocation = glGetUniformLocation(programID, "metallicVal");
+    roughnessLocation = glGetUniformLocation(programID, "roughnessVal");
+    aoLocation = glGetUniformLocation(programID, "aoVal");
     camPosLocation = glGetUniformLocation(programID, "camPos");
     hasTextureLocation = glGetUniformLocation(programID, "hasTexture");
     texLocation = glGetUniformLocation(programID,"tex");
+    initTexture("../assets/images/pbr_rock/Albedo.jpg","albedoMap");
+    initTexture("../assets/images/pbr_rock/Normal.jpg","normalMap");
+    initTexture("../assets/images/pbr_rock/Specular.jpg","metallicMap");
+    initTexture("../assets/images/pbr_rock/Roughness.jpg","roughnessMap");
+    initTexture("../assets/images/pbr_rock/AO.jpg","aoMap");
+
 }
 
 void Material::updateGUI(){
     glUseProgram(programID);
-    if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 5.0f)){
+    if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 1.0f)){
         glUniform1f(metallicLocation, metallic);
     }
 
-    if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 5.0f)){
+    if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 1.0f)){
         glUniform1f(roughnessLocation, roughness);
     }
 
     if(ImGui::SliderFloat("ao", &ao, 0.0f, 5.0f)){
         glUniform1f(aoLocation, ao);
+    }
+    if(ImGui::Checkbox("use textures",&hasTexture)){
+        glUniform1i(hasTextureLocation, hasTexture);
     }
 }

@@ -3,13 +3,20 @@
 // Ouput data
 in vec2 texCoords;
 in vec3 WorldPos;
-in vec3 normal;
+in vec3 normalVal;
 out vec4 color;
 
-uniform vec3 albedo = vec3(1.0,0.f,0.f);
-uniform float metallic = 0.5f;
-uniform float roughness = 0.5f;
-uniform float ao = 1.f;
+uniform vec3 albedoVal = vec3(1.0,0.f,0.f);
+uniform float metallicVal = 0.5f;
+uniform float roughnessVal = 0.5f;
+uniform float aoVal = 1.f;
+
+uniform sampler2D albedoMap;
+uniform sampler2D normalMap;
+uniform sampler2D metallicMap;
+uniform sampler2D roughnessMap;
+uniform sampler2D aoMap;
+uniform sampler2D tex;
 
 // lights
 const int MAX_LIGHT = 20;
@@ -21,7 +28,6 @@ uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
 in vec3 camPos;
 
 uniform bool hasTexture = false;
-uniform sampler2D tex;
 
 const float PI = 3.14159265359;
 
@@ -65,9 +71,29 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }  
+
+vec3 getNormalFromNormalMap(){
+    return normalize(texture2D(normalMap,texCoords).rgb*2.0-1.0);
+}
 /*--------------------------------------PBR--------------------------------------*/
 
 void main(){
+    vec3 albedo,normal;
+    float metallic,roughness,ao;
+
+    if(hasTexture){
+        albedo      = pow(texture(albedoMap, texCoords).rgb, vec3(2.2));
+        normal      = getNormalFromNormalMap();
+        metallic   = texture(metallicMap, texCoords).r;
+        roughness  = texture(roughnessMap, texCoords).r ;
+        ao         = texture(aoMap, texCoords).r;
+    }else{
+        albedo = albedoVal;
+        normal = normalVal;
+        metallic = metallicVal;
+        roughness = roughnessVal;
+        ao = aoVal;
+    }
 
     vec3 N = normalize(normal);
     vec3 V = normalize(camPos - WorldPos);
@@ -111,7 +137,7 @@ void main(){
     colorPBR = pow(colorPBR, vec3(1.0/2.2));  
 
     // if(hasTexture)
-    //     color = vec4(texture(tex, texCoords).rgb, 1);
+        // color = vec4(texture(tex, texCoords).rgb, 1);
     // else
     color = vec4(colorPBR, 1.0);
 }

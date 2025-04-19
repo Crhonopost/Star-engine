@@ -11,7 +11,7 @@ uniform mat4 model;
 
 out vec2 texCoords;
 out vec3 WorldPos;
-out vec3 normal;
+out vec3 normalVal;
 out vec3 camPos;
 
 void main(){
@@ -22,7 +22,7 @@ void main(){
 
         camPos = vec3(inverse(v)[3]);
 
-        normal = normalize(mat3(transpose(inverse(model))) * vNormal);
+        normalVal = normalize(mat3(transpose(inverse(model))) * vNormal);
         WorldPos = vec3(model * vec4(vertices_position_modelspace, 1.0));
 }
 

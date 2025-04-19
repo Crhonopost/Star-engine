@@ -54,6 +54,7 @@ class Material: public Program{
     float metallic = 0.5f;
     float roughness = 0.5f;
     float ao = 1.0f;
+    bool hasTexture;
 
     public:
     Material();
