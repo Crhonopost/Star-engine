@@ -5,9 +5,11 @@
 #include <engine/include/camera.hpp>
 #include <iostream>
 
+#include <assimp/cimport.h>
 #include <assimp/scene.h>
+#include <assimp/postprocess.h> 
 #include <assimp/Importer.hpp>
-#include <assimp/postprocess.h>
+
 
 
 void Render::update() {
