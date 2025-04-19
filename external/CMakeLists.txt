@@ -54,4 +54,3 @@ target_link_libraries(GLEW_1130
 	${OPENGL_LIBRARY}
 	${EXTRA_LIBS}
 )
-

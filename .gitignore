@@ -1,2 +1,3 @@
 build/*
 engine/main
+external/assimp

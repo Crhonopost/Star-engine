@@ -149,6 +149,23 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent<Light>(otherEntity, lightSource);
     ecs.AddComponent<CollisionShape>(otherEntity, otherCollision);
 
+
+
+
+    /////////////////////////////////// Mesh test
+    auto barrierEntity = ecs.CreateEntity();
+    ecs.SetEntityName(barrierEntity, "Barrier");
+    Transform barrierTransform;
+    barrierTransform.translate(glm::vec3(0,2,0));
+    Drawable barrierDrawable = Render::loadMesh("../assets/meshes/barrier_1x1x1.gltf");
+    barrierDrawable.program = Program::programs[0].get();
+    CollisionShape barrierCollision;
+    barrierCollision.shapeType = SPHERE;
+    barrierCollision.sphere.radius = 1.2;
+    ecs.AddComponent<Transform>(barrierEntity, barrierTransform);
+    ecs.AddComponent<Drawable>(barrierEntity, barrierDrawable);
+    ecs.AddComponent<CollisionShape>(barrierEntity, barrierCollision);
+
     
 
     
@@ -191,12 +208,14 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     std::unique_ptr<SpatialNode> mountainNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(mountainEntity));
     std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
     std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+    std::unique_ptr<SpatialNode> barrierNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(barrierEntity));
 
     
     sunNode->AddChild(std::move(rayNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(mountainNode));
     root.AddChild(std::move(otherNode));
+    root.AddChild(std::move(barrierNode));
 }
 
 

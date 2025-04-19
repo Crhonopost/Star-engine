@@ -238,8 +238,8 @@ int main( void )
 
 
         SpatialNode root;
-        // initScene(root, ecs);
-        pbrScene(root, ecs);
+        initScene(root, ecs);
+        // pbrScene(root, ecs);
 
         Program::programs.push_back(std::make_unique<Skybox>());
         Entity skyboxEntity = ecs.CreateEntity();

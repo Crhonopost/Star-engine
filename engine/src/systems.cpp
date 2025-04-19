@@ -5,6 +5,10 @@
 #include <engine/include/camera.hpp>
 #include <iostream>
 
+#include <assimp/scene.h>
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+
 
 void Render::update() {
     
@@ -283,6 +287,75 @@ Drawable Render::generateInwardCube(float sideLength, int nbOfVerticesSide) {
     return res;
 }
 
+
+
+
+Drawable Render::loadMesh(char *filePath){
+    Drawable res;
+
+    std::vector<unsigned short> indices;
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
+    
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_SortByPType |
+        aiProcess_FlipUVs); // si besoin
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+        return res;
+    }
+    
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        aiMesh* mesh = scene->mMeshes[i];
+    
+        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
+                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
+            }
+        }
+    
+        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+            aiVector3D vertex = mesh->mVertices[j];
+            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
+        }
+    
+        if (mesh->HasNormals()) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D normal_vec = mesh->mNormals[j];
+                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
+            }
+        }
+    
+        if (mesh->HasTextureCoords(0)) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
+                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
+            }
+        }
+    }
+
+
+    res.indexCount = indices.size();
+
+    std::vector<float> vertex_buffer_data;
+    for (int i = 0; i < indexed_vertices.size(); ++i) {
+        glm::vec3 v = indexed_vertices[i];
+        glm::vec3 n = normal[i];
+        glm::vec2 t = tex_coords[i];
+
+        vertex_buffer_data.insert(vertex_buffer_data.end(), {v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z});
+    }
+
+    res.init(vertex_buffer_data, indices);
+
+    return res;
+}
 
 
 void CustomSystem::update(float deltaTime){

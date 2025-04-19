@@ -43,6 +43,7 @@ include_directories(
 	external/glm-0.9.7.1/
 	external/glew-1.13.0/include/
 	external/imgui/include/
+	external/assimp/include/
 	.
 )
 
@@ -87,6 +88,13 @@ add_executable(main
 	common/vboindexer.hpp
 	common/json.hpp
 )
+
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+add_subdirectory(external/assimp)
+include_directories(external/assimp/include)
+target_link_libraries(main assimp)
+
 
 add_subdirectory(external/imgui)
 target_link_libraries(main imgui)
