@@ -137,8 +137,5 @@ void main(){
     colorPBR = pow(colorPBR, vec3(1.0/2.2));  
 
 
-    if(hasTexture)
-        color = vec4(texture(tex, texCoords).rgb, 1);
-    else
-        color = vec4(colorPBR, 1.0);
+    color = vec4(colorPBR, 1.0);
 }

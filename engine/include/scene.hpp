@@ -204,6 +204,8 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 float totalTime = 0;
 void pbrScene(SpatialNode &root, ecsManager &ecs){
+    Texture::generateTextures(8);
+    
     auto cameraEntity = ecs.CreateEntity();
     CustomBehavior cameraUpdate;
     cameraUpdate.update = [](float deltaTime){

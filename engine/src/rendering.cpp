@@ -223,7 +223,7 @@ void Skybox::setSkybox(std::vector<std::string> faces)
 
 void Program::updateGUI(){}
 
-Material::Material(): Program("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl"){
+Material::Material(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shader.glsl"){
     albedoLocation = glGetUniformLocation(programID, "albedoVal");
     metallicLocation = glGetUniformLocation(programID, "metallicVal");
     roughnessLocation = glGetUniformLocation(programID, "roughnessVal");
