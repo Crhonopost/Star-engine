@@ -18,6 +18,14 @@ class Render: public System {
     static Drawable loadMesh(char *filePath);
 };
 
+class PBRrender: public System {
+    private:
+    PBR pbrProg;
+    public:
+    PBRrender();
+    void update();
+};
+
 
 class LightRender: public System {
     public:

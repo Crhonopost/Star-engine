@@ -3,6 +3,9 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <engine/include/ecs/implementations/components.hpp>
+
+class Material;
 
 struct Texture {
     char *path;
@@ -60,17 +63,14 @@ class Skybox: public Program{
 };
 
 
-class Material: public Program{
+class PBR: public Program{
     private:
     GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, camPosLocation, hasTextureLocation, texLocation;
-    glm::vec3 albedo, camPos;
-    float metallic = 0.5f;
-    float roughness = 0.5f;
-    float ao = 1.0f;
 
     public:
-    Material();
+    PBR();
     void updateGUI() override;
+    void updateMaterial(Material &value);
 };
 
 

@@ -223,7 +223,7 @@ void Skybox::setSkybox(std::vector<std::string> faces)
 
 void Program::updateGUI(){}
 
-Material::Material(): Program("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl"){
+PBR::PBR(): Program("shaders/vertex_shader.glsl", "shaders/fragment_shader.glsl"){
     albedoLocation = glGetUniformLocation(programID, "albedo");
     metallicLocation = glGetUniformLocation(programID, "metallic");
     roughnessLocation = glGetUniformLocation(programID, "roughness");
@@ -233,17 +233,11 @@ Material::Material(): Program("shaders/vertex_shader.glsl", "shaders/fragment_sh
     texLocation = glGetUniformLocation(programID,"tex");
 }
 
-void Material::updateGUI(){
-    glUseProgram(programID);
-    if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 5.0f)){
-        glUniform1f(metallicLocation, metallic);
-    }
-
-    if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 5.0f)){
-        glUniform1f(roughnessLocation, roughness);
-    }
-
-    if(ImGui::SliderFloat("ao", &ao, 0.0f, 5.0f)){
-        glUniform1f(aoLocation, ao);
-    }
+void PBR::updateMaterial(Material &material){
+    glUniform1f(metallicLocation, material.metallic);
+    glUniform1f(roughnessLocation, material.roughness);
+    glUniform1f(aoLocation, material.ao);
+    glUniform3f(albedoLocation, material.albedo[0], material.albedo[1], material.albedo[2]);
 }
+
+void PBR::updateGUI(){}

@@ -20,10 +20,10 @@ void Render::update() {
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
+        auto& program = *ecs.GetComponent<CustomProgram>(entity).programPtr;
         
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
         
-        auto& program = *drawable.program;
         glUseProgram(program.programID);
         program.beforeRender();
         
@@ -37,7 +37,35 @@ void Render::update() {
         drawable.draw(distanceToCam);
         program.afterRender();
     }
+}
 
+PBRrender::PBRrender():pbrProg(){}
+
+void PBRrender::update(){
+    glUseProgram(pbrProg.programID);
+    pbrProg.beforeRender();
+    
+    auto v = Camera::getInstance().getV();
+    pbrProg.updateViewMatrix(v);
+
+    int activationInt = 0;
+    for (const auto& entity : mEntities) {
+        auto& drawable = ecs.GetComponent<Drawable>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+        auto& material = ecs.GetComponent<Material>(entity);
+
+        pbrProg.updateMaterial(material);
+        
+        float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
+        
+        glm::mat4 model = transform.getModelMatrix();
+
+        pbrProg.renderTextures(activationInt);
+        pbrProg.updateModelMatrix(model);
+
+        drawable.draw(distanceToCam);
+    }
+    pbrProg.afterRender();
 }
 
 void LightRender::update(){
