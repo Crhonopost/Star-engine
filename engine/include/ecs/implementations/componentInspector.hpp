@@ -33,7 +33,7 @@ public:
         json res;
         if (ecs.HasComponent<T>(entity)) {
             auto& component = ecs.GetComponent<T>(entity);
-            res.push_back(GetComponentJson(component));
+            res = GetComponentJson(component);
         }
         return res;
     }
@@ -91,61 +91,68 @@ inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidB
 }
 
 template<>
-inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {
-}
+inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {}
 
 
 // Json serialization
+// json serializeVec3(glm::vec3 &vec){
+//     return {
+//         {"x", vec.x},
+//         {"y", vec.y},
+//         {"z", vec.z}
+//     };
+// }
+
 template<>
 inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
+    // TODO: store mesh path for drawable and reference lod lower
     return {
-        {
-            "Drawable", {{"switch_distance", drawable.switchDistance}}
+        {"name", "Drawable"}, 
+        {"data", {
+            {"switch_distance", drawable.switchDistance}}
         }
     };
 }
 
 template<>
 inline json ComponentInspector<CustomProgram>::GetComponentJson(CustomProgram& prog){
-    return {
-        {"CustomProg", false}
-    };
+    return {{"name", "CustomProg"}};
 }
 
 
 template<>
 inline json ComponentInspector<Material>::GetComponentJson(Material& material){
     return {
-        {
-            "Material", false
-        }
+        {"name", "Material"},
+        {"data", {
+            {"ao", material.ao},
+            {"metallic", material.metallic},
+            {"roughness", material.roughness},
+            // {"albedo", serializeVec3(material.albedo)}
+        }}
     };
 }
 
 template<>
 inline json ComponentInspector<Light>::GetComponentJson(Light& drawable){
-    return {
-        {
-            "Light", false
-        }
-    };
+    return {{"name", "Light"}};
 }
 
 template<>
 inline json ComponentInspector<Transform>::GetComponentJson(Transform& transform){
-    return {"Transform", false};
+    return {{"name", "Transform"}};
 }
 template<>
 inline json ComponentInspector<CustomBehavior>::GetComponentJson(CustomBehavior& custom){
-    return {"CustomBehavior", false};
+    return {{"name", "CustomBehavior"}};
 }
 template<>
 inline json ComponentInspector<RigidBody>::GetComponentJson(RigidBody& rigidBody){
-    return {"RigidBody", false};
+    return {{"name", "RigidBody"}};
 }
 template<>
 inline json ComponentInspector<CollisionShape>::GetComponentJson(CollisionShape& collisionShape){
-    return {"CollisionShape", false};
+    return {{"name", "CollisionShape"}};
 }
 
 

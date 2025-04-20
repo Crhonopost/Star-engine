@@ -2,190 +2,151 @@
  "entities": [
   {
    "components": [
-    null,
-    null,
-    null,
-    [
-     [
-      "CustomBehavior",
-      false
-     ]
-    ],
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "data": {
+      "switch_distance": -1.0
+     },
+     "name": "Drawable"
+    },
+    {
+     "name": "CustomProg"
+    },
+    {
+     "name": "RigidBody"
+    },
+    {
+     "name": "CollisionShape"
+    }
    ],
    "name": "Entity - 0"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    null,
-    null,
-    [
-     [
-      "CustomBehavior",
-      false
-     ]
-    ],
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "data": {
+      "switch_distance": 15.0
+     },
+     "name": "Drawable"
+    },
+    {
+     "data": {
+      "ao": 1.0,
+      "metallic": 0.5,
+      "roughness": 0.5
+     },
+     "name": "Material"
+    },
+    {
+     "name": "CustomBehavior"
+    },
+    {
+     "name": "RigidBody"
+    },
+    {
+     "name": "CollisionShape"
+    }
    ],
    "name": "Entity - 1"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
-    null,
-    null,
-    null,
-    null
+    {
+     "data": {
+      "switch_distance": -1.0
+     },
+     "name": "Drawable"
+    }
    ],
    "name": "Entity - 2"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
-    null,
-    null,
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "name": "CollisionShape"
+    }
    ],
    "name": "Entity - 3"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
-    null,
-    null,
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "name": "Light"
+    },
+    {
+     "name": "CollisionShape"
+    }
    ],
    "name": "Entity - 4"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
-    null,
-    null,
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "data": {
+      "switch_distance": -1.0
+     },
+     "name": "Drawable"
+    },
+    {
+     "data": {
+      "ao": 1.0,
+      "metallic": 0.5,
+      "roughness": 0.5
+     },
+     "name": "Material"
+    },
+    {
+     "name": "CollisionShape"
+    }
    ],
-   "name": "Entity - 5"
+   "name": "Barrier"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    [
-     {
-      "Drawable": {
-       "switch_distance": -1.0
-      }
-     }
-    ],
-    null,
-    null,
-    null,
-    null
+    {
+     "name": "CustomBehavior"
+    }
    ],
    "name": "Entity - 6"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    null,
-    [
-     {
-      "Light": false
-     }
-    ],
-    null,
-    null,
-    null
+    {
+     "name": "Transform"
+    }
    ],
    "name": "Entity - 7"
   },
   {
    "components": [
-    [
-     [
-      "Transform",
-      false
-     ]
-    ],
-    null,
-    [
-     {
-      "Light": false
-     }
-    ],
-    null,
-    null,
-    null
+    {
+     "name": "Transform"
+    },
+    {
+     "data": {
+      "switch_distance": -1.0
+     },
+     "name": "Drawable"
+    },
+    {
+     "name": "CustomProg"
+    }
    ],
-   "name": "Entity - 8"
+   "name": "Skybox"
   }
  ]
 }

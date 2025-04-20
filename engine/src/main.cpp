@@ -107,7 +107,9 @@ void editorUpdate(float deltaTime){
         for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
             json entityValue = {{"name", ecs.GetEntityName(entity)}};
             for (auto& inspector : ecs.componentInspectors) {
-                entityValue["components"].push_back(inspector->GetJson(ecs, entity));
+                auto res = inspector->GetJson(ecs, entity);
+                if(!res.empty())
+                    entityValue["components"].push_back(res);
             }
             state["entities"].push_back(entityValue);
         }
@@ -252,8 +254,8 @@ int main( void )
 
 
         SpatialNode root;
-        // initScene(root, ecs);
-        pbrScene(root, ecs);
+        initScene(root, ecs);
+        // pbrScene(root, ecs);
 
         Program::programs.push_back(std::make_unique<Skybox>());
         Entity skyboxEntity = ecs.CreateEntity();
