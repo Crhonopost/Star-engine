@@ -47,6 +47,10 @@ void Drawable::init(std::vector<float> &vertex_buffer_data, std::vector<short un
     glBindVertexArray(0);
 }
 
+CustomProgram::CustomProgram(Program *progPtr): Component(){
+    programPtr = progPtr;
+}
+
 glm::mat4 Transform::getLocalModelMatrix(){
     const glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
     glm::radians(eulerRot.x),

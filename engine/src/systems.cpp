@@ -5,6 +5,12 @@
 #include <engine/include/camera.hpp>
 #include <iostream>
 
+#include <assimp/cimport.h>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h> 
+#include <assimp/Importer.hpp>
+
+
 
 void Render::update() {
     
@@ -14,10 +20,10 @@ void Render::update() {
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
+        auto& program = *ecs.GetComponent<CustomProgram>(entity).programPtr;
         
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
         
-        auto& program = *drawable.program;
         glUseProgram(program.programID);
         program.beforeRender();
         
@@ -31,28 +37,59 @@ void Render::update() {
         drawable.draw(distanceToCam);
         program.afterRender();
     }
+}
 
+PBR* PBRrender::pbrProgPtr = nullptr;
+
+void PBRrender::initPBR() {
+    if (!pbrProgPtr) {
+        pbrProgPtr = new PBR();
+    }
+}
+
+void PBRrender::update(){
+    PBR &pbrProg = *pbrProgPtr;
+    glUseProgram(pbrProg.programID);
+    pbrProg.beforeRender();
+    
+    auto v = Camera::getInstance().getV();
+    pbrProg.updateViewMatrix(v);
+
+    int activationInt = 0;
+    for (const auto& entity : mEntities) {
+        auto& drawable = ecs.GetComponent<Drawable>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+        auto& material = ecs.GetComponent<Material>(entity);
+
+        pbrProg.updateMaterial(material);
+        
+        float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
+        
+        glm::mat4 model = transform.getModelMatrix();
+
+        pbrProg.renderTextures(activationInt);
+        pbrProg.updateModelMatrix(model);
+
+        drawable.draw(distanceToCam);
+    }
+    pbrProg.afterRender();
 }
 
 void LightRender::update(){
     //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
     int associatedLight = 0;
+    glUseProgram(PBRrender::pbrProgPtr->programID);
     for (const auto& entity : mEntities) {
         auto& light = ecs.GetComponent<Light>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
+        
+        PBRrender::pbrProgPtr->updateLightPosition(associatedLight, transform.getLocalPosition());
+        PBRrender::pbrProgPtr->updateLightColor(associatedLight, light.color);
 
-        for(auto &prog : Program::programs){
-            glUseProgram(prog->programID);
-            prog->updateLightPosition(associatedLight, transform.getLocalPosition());
-            prog->updateLightColor(associatedLight, light.color);
-        }
         associatedLight ++;
     }
     
-    for(auto &prog : Program::programs){
-        glUseProgram(prog->programID);
-        prog->updateLightCount(associatedLight);
-    }
+    PBRrender::pbrProgPtr->updateLightCount(associatedLight);
 }
 
 
@@ -283,6 +320,75 @@ Drawable Render::generateInwardCube(float sideLength, int nbOfVerticesSide) {
     return res;
 }
 
+
+
+
+Drawable Render::loadMesh(char *filePath){
+    Drawable res;
+
+    std::vector<unsigned short> indices;
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
+    
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_SortByPType |
+        aiProcess_FlipUVs); // si besoin
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+        return res;
+    }
+    
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        aiMesh* mesh = scene->mMeshes[i];
+    
+        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
+                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
+            }
+        }
+    
+        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+            aiVector3D vertex = mesh->mVertices[j];
+            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
+        }
+    
+        if (mesh->HasNormals()) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D normal_vec = mesh->mNormals[j];
+                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
+            }
+        }
+    
+        if (mesh->HasTextureCoords(0)) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
+                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
+            }
+        }
+    }
+
+
+    res.indexCount = indices.size();
+
+    std::vector<float> vertex_buffer_data;
+    for (int i = 0; i < indexed_vertices.size(); ++i) {
+        glm::vec3 v = indexed_vertices[i];
+        glm::vec3 n = normal[i];
+        glm::vec2 t = tex_coords[i];
+
+        vertex_buffer_data.insert(vertex_buffer_data.end(), {v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z});
+    }
+
+    res.init(vertex_buffer_data, indices);
+
+    return res;
+}
 
 
 void CustomSystem::update(float deltaTime){

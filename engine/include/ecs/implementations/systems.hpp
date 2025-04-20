@@ -15,13 +15,24 @@ class Render: public System {
     static Drawable generateSphere(float radius);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
     static Drawable generateInwardCube(float sideLength, int nbOfVerticesSide);
+    static Drawable loadMesh(char *filePath);
 };
-
 
 class LightRender: public System {
     public:
     void update();
 };
+
+class PBRrender: public System {
+    private:
+    friend LightRender;
+    static PBR* pbrProgPtr;
+
+    public:
+    static void initPBR();
+    void update();
+};
+
 
 
 class CollisionDetectionSystem: public System {

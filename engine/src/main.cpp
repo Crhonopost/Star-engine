@@ -65,6 +65,7 @@ bool isInEditor = true;
 // SceneGraph scene;
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
+std::shared_ptr<PBRrender> pbrRenderSystem;
 std::shared_ptr<LightRender> lightRenderSystem;
 std::shared_ptr<CustomSystem> customSystem;
 std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
@@ -118,6 +119,7 @@ void editorUpdate(float deltaTime){
     Camera::getInstance().updateInput(deltaTime);
     lightRenderSystem->update();
     renderSystem->update();
+    pbrRenderSystem->update();
     
     physicDebugSystem->update();
 }
@@ -128,6 +130,7 @@ void gameUpdate(float deltaTime){
     physicSystem->update(deltaTime);
     lightRenderSystem->update();
     renderSystem->update();
+    pbrRenderSystem->update();
 }
 
 int main( void )
@@ -180,7 +183,8 @@ int main( void )
         glDepthFunc(GL_LEQUAL);
     
         //glEnable(GL_CULL_FACE);
-    
+
+        pbrRenderSystem->initPBR();
         // scene.init();
     
     
@@ -192,12 +196,15 @@ int main( void )
         
         ecs.RegisterComponent<Transform>("Transform");
         ecs.RegisterComponent<Drawable>("Drawable");
+        ecs.RegisterComponent<CustomProgram>("CustomProgram");
+        ecs.RegisterComponent<Material>("Material");
         ecs.RegisterComponent<Light>("Light");
         ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
         ecs.RegisterComponent<RigidBody>("RigidBody");
         ecs.RegisterComponent<CollisionShape>("CollisionShape");
     
         renderSystem = ecs.RegisterSystem<Render>();
+        pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
         lightRenderSystem = ecs.RegisterSystem<LightRender>();
         customSystem = ecs.RegisterSystem<CustomSystem>();
         collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
@@ -208,7 +215,14 @@ int main( void )
         Signature renderSignature;
         renderSignature.set(ecs.GetComponentType<Transform>());
         renderSignature.set(ecs.GetComponentType<Drawable>());
+        renderSignature.set(ecs.GetComponentType<CustomProgram>());
         ecs.SetSystemSignature<Render>(renderSignature);
+
+        Signature pbrRenderSignature;
+        pbrRenderSignature.set(ecs.GetComponentType<Transform>());
+        pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
+        pbrRenderSignature.set(ecs.GetComponentType<Material>());
+        ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
 
         Signature lightSignature;
         lightSignature.set(ecs.GetComponentType<Transform>());
@@ -245,10 +259,11 @@ int main( void )
         Entity skyboxEntity = ecs.CreateEntity();
         ecs.SetEntityName(skyboxEntity, "Skybox");
         Drawable skyboxDraw = Render::generateInwardCube(9999, 2);
-        skyboxDraw.program = Program::programs[Program::programs.size()-1].get();
+        CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
         Transform skyboxTransform;
         ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
         ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
+        ecs.AddComponent<CustomProgram>(skyboxEntity, skyboxProg);
 
 
         lightRenderSystem->update();

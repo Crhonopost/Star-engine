@@ -50,6 +50,20 @@ inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable
 }
 
 template<>
+inline void ComponentInspector<CustomProgram>::DisplayComponentGUI(CustomProgram& prog){}
+
+template<>
+inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material){
+    ImGui::SeparatorText("Material");
+    
+    ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 5.0f);
+    ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 5.0f);
+    ImGui::SliderFloat("Ambient oclusion", &material.ao, 0.0f, 5.0f);
+    ImGui::SliderFloat3("Albedo", &material.albedo[0], 0.f, 1.f);
+    ImGui::Checkbox("use textures",&material.hasTexture);
+}
+
+template<>
 inline void ComponentInspector<Light>::DisplayComponentGUI(Light& light){
     ImGui::SeparatorText("Light");
     ImGui::DragFloat3("Color", &light.color.x, 0.01f, 0.0f, 1.0f);
@@ -87,6 +101,23 @@ inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
     return {
         {
             "Drawable", {{"switch_distance", drawable.switchDistance}}
+        }
+    };
+}
+
+template<>
+inline json ComponentInspector<CustomProgram>::GetComponentJson(CustomProgram& prog){
+    return {
+        {"CustomProg", false}
+    };
+}
+
+
+template<>
+inline json ComponentInspector<Material>::GetComponentJson(Material& material){
+    return {
+        {
+            "Material", false
         }
     };
 }

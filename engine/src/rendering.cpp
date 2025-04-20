@@ -7,19 +7,8 @@
 #include <common/shader.hpp>
 #include <engine/include/rendering.hpp>
 
-std::vector<GLuint> freeIds;
-
 std::map<std::string, Texture> Texture::textures;
 std::vector<std::unique_ptr<Program>> Program::programs;
-
-void Texture::generateTextures(int count) {
-    freeIds.resize(count);
-    glGenTextures(count, freeIds.data());
-
-    for (int i = 0; i < count; i++) {
-        std::cout << "Generated Texture ID: " << freeIds[i] << std::endl;
-    }
-}
 
 Texture& Texture::loadTexture(char * path){
     std::string key(path);
@@ -37,9 +26,7 @@ Texture& Texture::loadTexture(char * path){
     Texture &texture = it->second;
     texture.path = path;
 
-    // glGenTextures(1, &texture.id);
-    texture.id = freeIds[freeIds.size()-1];
-    freeIds.pop_back();
+    glGenTextures(1, &texture.id);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture.id);
  
@@ -155,16 +142,15 @@ void Program::renderTextures(int &activationInt){
     }
 }
 
-void Program::updateLightCount(int count){
+void PBR::updateLightCount(int count){
     GLuint lightCountLocation = glGetUniformLocation(programID, "lightCount");
     glUniform1i(lightCountLocation, count);
 }
-void Program::updateLightPosition(int lightIndex, glm::vec3 position){
-    
+void PBR::updateLightPosition(int lightIndex, glm::vec3 position){
     GLuint lightLocation = glGetUniformLocation(programID, ("lightPositions[" + std::to_string(lightIndex) + "]").c_str());
     glUniform3f(lightLocation, position[0], position[1], position[2]);
 }
-void Program::updateLightColor(int lightIndex, glm::vec3 color){
+void PBR::updateLightColor(int lightIndex, glm::vec3 color){
     GLuint lightLocation = glGetUniformLocation(programID, ("lightColors[" + std::to_string(lightIndex) + "]").c_str());
     glUniform3f(lightLocation, color[0], color[1], color[2]);
 }
@@ -223,36 +209,31 @@ void Skybox::setSkybox(std::vector<std::string> faces)
 
 void Program::updateGUI(){}
 
-Material::Material(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shader.glsl"){
+PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shader.glsl"){
     albedoLocation = glGetUniformLocation(programID, "albedoVal");
     metallicLocation = glGetUniformLocation(programID, "metallicVal");
     roughnessLocation = glGetUniformLocation(programID, "roughnessVal");
     aoLocation = glGetUniformLocation(programID, "aoVal");
-    camPosLocation = glGetUniformLocation(programID, "camPos");
+
     hasTextureLocation = glGetUniformLocation(programID, "hasTexture");
     texLocation = glGetUniformLocation(programID,"tex");
+
     initTexture("../assets/images/pbr_rock/Albedo.jpg","albedoMap");
     initTexture("../assets/images/pbr_rock/Normal.jpg","normalMap");
     initTexture("../assets/images/pbr_rock/Specular.jpg","metallicMap");
     initTexture("../assets/images/pbr_rock/Roughness.jpg","roughnessMap");
     initTexture("../assets/images/pbr_rock/AO.jpg","aoMap");
 
+
+
 }
 
-void Material::updateGUI(){
-    glUseProgram(programID);
-    if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 1.0f)){
-        glUniform1f(metallicLocation, metallic);
-    }
-
-    if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 1.0f)){
-        glUniform1f(roughnessLocation, roughness);
-    }
-
-    if(ImGui::SliderFloat("ao", &ao, 0.0f, 5.0f)){
-        glUniform1f(aoLocation, ao);
-    }
-    if(ImGui::Checkbox("use textures",&hasTexture)){
-        glUniform1i(hasTextureLocation, hasTexture);
-    }
+void PBR::updateMaterial(Material &material){
+    glUniform1f(metallicLocation, material.metallic);
+    glUniform1f(roughnessLocation, material.roughness);
+    glUniform1f(aoLocation, material.ao);
+    glUniform3f(albedoLocation, material.albedo[0], material.albedo[1], material.albedo[2]);
+    glUniform1i(hasTextureLocation, material.hasTexture);
 }
+
+void PBR::updateGUI(){}
