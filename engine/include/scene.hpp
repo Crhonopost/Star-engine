@@ -35,7 +35,7 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
-    auto mountainProg = std::make_unique<Program>("shaders/pbr/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
+    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader_mountain.glsl", "shaders/fragment_shader_mountain.glsl");
     mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
     mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
     mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
