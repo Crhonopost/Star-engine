@@ -18,6 +18,13 @@ struct Texture {
 };
 
 
+struct Cubemap {
+    GLuint textureID;
+    int resolution;
+    Cubemap(int resolution);
+    // void setTop(unsigned char *data);
+};
+
 class Program {
     private:
     GLuint modelLocation, vLocation, pLocation;
@@ -46,14 +53,22 @@ class Program {
 };
 
 class Skybox: public Program{
-    GLuint skyboxID;
-
     public:
+    GLuint skyboxID;
     Skybox();
     
     void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
+};
+
+class CubemapProg: public Program {
+    public:
+    GLuint textureID;
+
+    CubemapProg();
+
+    void beforeRender() override;
 };
 
 
@@ -71,4 +86,5 @@ class PBR: public Program{
     void updateLightColor(int lightIndex, glm::vec3 color);
 };
 
+void save_PPM_file(int width, int height, const std::string& filename);
 

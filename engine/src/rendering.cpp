@@ -6,6 +6,7 @@
 #include <engine/include/rendering.hpp>
 #include <common/shader.hpp>
 #include <engine/include/rendering.hpp>
+#include <fstream>
 
 std::map<std::string, Texture> Texture::textures;
 std::vector<std::unique_ptr<Program>> Program::programs;
@@ -207,6 +208,45 @@ void Skybox::setSkybox(std::vector<std::string> faces)
     skyboxID = textureID;
 }
 
+CubemapProg::CubemapProg(): Program("shaders/cubemap/vertex.glsl", "shaders/cubemap/fragment.glsl"){}
+
+void CubemapProg::beforeRender(){
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+}
+
+Cubemap::Cubemap(int resolution){
+    this->resolution = resolution;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    for (GLuint i = 0; i < 6; ++i) {
+        glTexImage2D(
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+            0,
+            GL_RGB,                    // ou GL_RGBA selon ton besoin
+            resolution,
+            resolution,
+            0,
+            GL_RGB,                    // même format ici
+            GL_UNSIGNED_BYTE,
+            nullptr                    // pas de données, juste allocation
+        );
+    }    
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+}
+
+// void Cubemap::setFace(int idx, unsigned char *data){
+//     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + idx, 
+//                  0, GL_RGB, resolution, resolution, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+//     );
+// }
+
+
 void Program::updateGUI(){}
 
 PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shader.glsl"){
@@ -237,3 +277,30 @@ void PBR::updateMaterial(Material &material){
 }
 
 void PBR::updateGUI(){}
+
+
+void save_PPM_file(int width, int height, const std::string& filename) {
+    std::ofstream output_image(filename);
+    unsigned char* pixels = new unsigned char[width * height * 3];
+
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+
+    output_image << "P3\n";
+    output_image << width << " " << height << "\n";
+    output_image << "255\n";
+
+    for (int j = height - 1; j >= 0; --j) { // image OpenGL = bottom to top
+        for (int i = 0; i < width; ++i) {
+            int idx = (j * width + i) * 3;
+            output_image << (int)pixels[idx] << " "
+                         << (int)pixels[idx + 1] << " "
+                         << (int)pixels[idx + 2] << " ";
+        }
+        output_image << "\n";
+    }
+
+    delete[] pixels;
+    output_image.close();
+}
+

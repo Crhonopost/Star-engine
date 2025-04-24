@@ -51,6 +51,9 @@ using namespace nlohmann::literals;
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
+unsigned int currentWidth = SCR_WIDTH;
+unsigned int currentHeight = SCR_HEIGHT;
+
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
@@ -102,6 +105,8 @@ void editorUpdate(float deltaTime){
 
     }
 
+    bool savePicture = ImGui::Button("save ppm");
+
     if(ImGui::Button("json test")){
         json state;
         for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
@@ -119,20 +124,25 @@ void editorUpdate(float deltaTime){
 
     
     Camera::getInstance().updateInput(deltaTime);
+    glm::mat4 view = Camera::getInstance().getV();
     lightRenderSystem->update();
-    renderSystem->update();
-    pbrRenderSystem->update();
+    renderSystem->update(view);
+    pbrRenderSystem->update(view);
     
     physicDebugSystem->update();
+
+    if(savePicture)  save_PPM_file(SCR_WIDTH, SCR_HEIGHT, "scene.ppm");
 }
 
 void gameUpdate(float deltaTime){
+    glm::mat4 view = Camera::getInstance().getV();
+
     customSystem->update(deltaTime);
     collisionDetectionSystem->update(deltaTime);
     physicSystem->update(deltaTime);
     lightRenderSystem->update();
-    renderSystem->update();
-    pbrRenderSystem->update();
+    renderSystem->update(view);
+    pbrRenderSystem->update(view);
 }
 
 int main( void )
@@ -260,15 +270,36 @@ int main( void )
         Program::programs.push_back(std::make_unique<Skybox>());
         Entity skyboxEntity = ecs.CreateEntity();
         ecs.SetEntityName(skyboxEntity, "Skybox");
-        Drawable skyboxDraw = Render::generateInwardCube(9999, 2);
-        CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
+        Drawable skyboxDraw = Render::generateCube(9999, 2, true);
         Transform skyboxTransform;
+        CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
+
         ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
         ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
         ecs.AddComponent<CustomProgram>(skyboxEntity, skyboxProg);
 
 
         lightRenderSystem->update();
+
+
+        CubemapRender testCubemap(128);
+        testCubemap.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+
+        auto testCubemapRenderEntity = ecs.CreateEntity();
+        ecs.SetEntityName(testCubemapRenderEntity, "Cubemap visu");
+        Drawable cubemapDraw = Render::generateCube(2, 2, false);
+        Transform cubemapTransform;
+        cubemapTransform.translate({0,5,0});
+
+        Program::programs.push_back(std::make_unique<CubemapProg>());
+        CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
+        ((CubemapProg*) cubemapProg.programPtr)->textureID = testCubemap.cubemap.textureID;
+        ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
+        ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
+        ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
+
+        std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
+        root.AddChild(std::move(cubemapNode));
 
 
 
@@ -344,5 +375,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
+    currentWidth = width;
+    currentHeight = height;
     glViewport(0, 0, width, height);
 }
