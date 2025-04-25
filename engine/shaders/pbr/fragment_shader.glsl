@@ -17,12 +17,14 @@ uniform sampler2D metallicMap;
 uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
 uniform sampler2D tex;
+uniform samplerCube irradianceMap;
 
 // lights
 const int MAX_LIGHT = 20;
 uniform int lightCount = 0;
 uniform vec3 lightPositions[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(2.f,2.f,0.f));
 uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
+uniform float indensiteScaleLight = 1.f;
 
 
 in vec3 camPos;
@@ -73,7 +75,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 }  
 
 vec3 getNormalFromNormalMap(){
-    return normalize(texture2D(normalMap,texCoords).rgb*2.0-1.0);
+    return -normalize(texture2D(normalMap,texCoords).rgb*2.0-1.0);
 }
 /*--------------------------------------PBR--------------------------------------*/
 
@@ -82,13 +84,13 @@ void main(){
     float metallic,roughness,ao;
 
     if(hasTexture){
-        albedo      = pow(texture(albedoMap, texCoords).rgb, vec3(2.2));
+        albedo      = pow(texture(albedoMap, texCoords).rgb, vec3(2.2f));
         normal      = getNormalFromNormalMap();
         metallic   = texture(metallicMap, texCoords).r;
         roughness  = texture(roughnessMap, texCoords).r ;
         ao         = texture(aoMap, texCoords).r;
     }else{
-        albedo = albedoVal;
+        albedo = pow(albedoVal,vec3(2.2f));
         normal = normalVal;
         metallic = metallicVal;
         roughness = roughnessVal;
@@ -110,7 +112,7 @@ void main(){
         vec3 L = normalize(lightPositions[i] - WorldPos);
         vec3 H = normalize(V + L);
         float distance    = length(lightPositions[i] - WorldPos);
-        float attenuation = 1.0 / (distance * distance);
+        float attenuation = 1.f / (distance * distance);
         vec3 radiance     = lightColors[i] * attenuation;        
         
         // cook-torrance brdf
@@ -128,9 +130,15 @@ void main(){
             
         // add to outgoing radiance Lo
         float NdotL = max(dot(N, L), 0.0);                
-        Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
+        Lo += indensiteScaleLight * (kD * albedo / PI + specular) * radiance * NdotL; 
     }
-    vec3 ambient = vec3(0.03) * albedo * ao;
+    // vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+    vec3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;	  
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+    vec3 diffuse      = irradiance * albedo;
+    vec3 ambient = (kD * diffuse) * ao;
     vec3 colorPBR = ambient + Lo;
 	
     colorPBR = colorPBR / (colorPBR + vec3(1.0));

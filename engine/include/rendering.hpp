@@ -3,7 +3,9 @@
 #include <vector>
 #include <map>
 #include <memory>
+
 #include <engine/include/ecs/implementations/components.hpp>
+class Drawable;
 
 class Material;
 
@@ -29,6 +31,7 @@ class Program {
     private:
     GLuint modelLocation, vLocation, pLocation;
 
+    protected:
     // Setup à l'initialisation uniquement
     std::map<GLuint, Texture*> programTextures;
     
@@ -50,6 +53,14 @@ class Program {
     void updateViewMatrix(glm::mat4 &v);
     void updateProjectionMatrix(glm::mat4 &p);
     void updateModelMatrix(glm::mat4 model);
+
+    void updateLightCount(int count);
+    void updateLightPosition(int lightIndex, glm::vec3 position);
+    void updateLightColor(int lightIndex, glm::vec3 color);
+
+    void use() {
+        glUseProgram(programID);
+    }
 };
 
 class Skybox: public Program{
@@ -60,6 +71,22 @@ class Skybox: public Program{
     void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
+};
+
+class IrradianceShader:public Program{
+    public:
+    IrradianceShader();
+    
+};
+
+
+class CubemapProg: public Program {
+    public:
+    GLuint textureID;
+
+    CubemapProg();
+
+    void beforeRender() override;
 };
 
 class CubemapProg: public Program {
@@ -74,7 +101,8 @@ class CubemapProg: public Program {
 
 class PBR: public Program{
     private:
-    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, camPosLocation, hasTextureLocation, texLocation;
+    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, hasTextureLocation, indensiteScaleLightLocation;
+    GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation;
 
     public:
     PBR();
@@ -88,3 +116,4 @@ class PBR: public Program{
 
 void save_PPM_file(int width, int height, const std::string& filename);
 
+GLuint generateIrradianceMap(GLuint envCubemap, Program* irradianceProgram, Drawable* cubeDrawable);
