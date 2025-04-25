@@ -14,6 +14,7 @@
 template<typename T>
 class ComponentInspector;
 class Program;
+class Texture;
 
 struct Component{
     Component(const Component&) = delete;
@@ -87,6 +88,8 @@ struct Material: Component {
     float roughness = 0.5f;
     float ao = 1.0f;
     bool hasTexture = false;
+
+    Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
 };
 
 

@@ -42,6 +42,7 @@ class CubemapRender {
     Cubemap cubemap;
     CubemapRender(int res);
     void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
+    void applyFilter(Program *filterProg);
 };
 
 

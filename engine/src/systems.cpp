@@ -109,6 +109,51 @@ CubemapRender::CubemapRender(int res): cubemap(res){
 }
 
 
+void CubemapRender::applyFilter(Program *filterProg){
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    GLuint depthBufffer;
+    glGenRenderbuffers(1, &depthBufffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBufffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, cubemap.resolution, cubemap.resolution);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBufffer);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cerr << "Framebuffer not complete!" << std::endl;
+    }    
+
+    GLint m_viewport[4];
+    glGetIntegerv( GL_VIEWPORT, m_viewport );
+    
+    glViewport(0,0, cubemap.resolution, cubemap.resolution);
+
+    auto cube = Render::generateCube(10, 2, true);
+
+    filterProg->use();
+    filterProg->beforeRender();
+    filterProg->updateProjectionMatrix(projection);
+    for(int i=0; i<6; i++){
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap.textureID, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        auto dir = orientations[i];
+        
+        glm::mat4 view = glm::lookAt({0,0,0}, dir, ups[i]);
+        filterProg->updateViewMatrix(view);
+        
+        cube.draw(-1);
+    }
+    glm::mat4 camProjection = Camera::getInstance().getP();
+    filterProg->updateProjectionMatrix(camProjection);
+    filterProg->afterRender();
+
+    glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
+    glDeleteRenderbuffers(1, &depthBufffer);
+    glDeleteFramebuffers(1, &fbo);
+}
 
 void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr){
     GLuint fbo;
@@ -144,32 +189,10 @@ void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *
         
         render->update(view);
         pbr->update(view);
-
-        // switch (i)
-        // {
-        // case 0:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_top.ppm");
-        //     break;
-        // case 1:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_bot.ppm");
-        //     break;
-        // case 2:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_right.ppm");
-        //     break;
-        // case 3:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_left.ppm");
-        //     break;
-        // case 4:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_front.ppm");
-        //     break;
-        // default:
-        //     save_PPM_file(cubemap.resolution, cubemap.resolution, "face_cubemap_back.ppm");
-        //     break;
-        // }
     }
-    projection = Camera::getInstance().getP();
+    glm::mat4 camProjection = Camera::getInstance().getP();
     for(auto &prog:Program::programs){
-        prog->updateProjectionMatrix(projection);
+        prog->updateProjectionMatrix(camProjection);
     }
 
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);

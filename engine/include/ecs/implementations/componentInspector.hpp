@@ -61,6 +61,18 @@ inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material
     ImGui::SliderFloat("Ambient oclusion", &material.ao, 0.0f, 5.0f);
     ImGui::SliderFloat3("Albedo", &material.albedo[0], 0.f, 1.f);
     ImGui::Checkbox("use textures",&material.hasTexture);
+
+
+    // if(ImGui::SliderFloat("indensity of light", &indensiteScaleLight, 1.0f, 500.0f)){
+    //     glUniform1f(indensiteScaleLightLocation, indensiteScaleLight);
+    // }
+
+    // const char* items[] = { "gold", "oldMetal", "rock", "woods" };
+    // static int selected = currentMaterialIndex;
+    // if (ImGui::Combo("Material Folder", &selected, items, IM_ARRAYSIZE(items))) {
+    //     currentMaterialIndex = selected;
+    //     loadCurrentMaterial();
+    // }
 }
 
 template<>

@@ -33,6 +33,6 @@ void main()
     }
     irradiance = PI * irradiance * (1.0 / float(nrSamples));
     // FragColor = vec4(irradiance, 1.0);
-    FragColor = vec4(0.f,0.f,1.f, 1.0);
+    FragColor = vec4(0.f,1.f,1.f, 1.0);
 
 }

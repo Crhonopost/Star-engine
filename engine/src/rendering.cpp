@@ -87,6 +87,11 @@ Texture& Texture::loadTexture(char * path){
     return texture;
 }
 
+void Texture::activate(GLuint textureLocation, int activationInt){
+    glBindTextureUnit(activationInt, id);
+    glUniform1i(textureLocation, activationInt);
+}
+
 Program::Program(const char *vertexPath, const char *fragmentPath){
     programID = LoadShaders( vertexPath, fragmentPath );
     glUseProgram(programID);
@@ -342,12 +347,14 @@ PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shad
     aoLocation = glGetUniformLocation(programID, "aoVal");
 
     hasTextureLocation = glGetUniformLocation(programID, "hasTexture");
-    texLocation = glGetUniformLocation(programID,"tex");
+
+    albedoTexLocation = glGetUniformLocation(programID, "albedoMap");
+    metallicTexLocation = glGetUniformLocation(programID, "metallicMap");
+    aoTexLocation = glGetUniformLocation(programID, "aoMap");
+    normalTexLocation = glGetUniformLocation(programID, "normalMap");
+    roughnessTexLocation = glGetUniformLocation(programID, "roughnessMap");
 
     indensiteScaleLightLocation = glGetUniformLocation(programID,"indensiteScaleLight");
-    // loadCurrentMaterial();
-
-
 }
 
 void PBR::updateMaterial(Material &material){
@@ -356,6 +363,14 @@ void PBR::updateMaterial(Material &material){
     glUniform1f(aoLocation, material.ao);
     glUniform3f(albedoLocation, material.albedo[0], material.albedo[1], material.albedo[2]);
     glUniform1i(hasTextureLocation, material.hasTexture);
+
+    if(material.hasTexture){
+        material.albedoTex->activate(albedoTexLocation, 0);
+        material.metallicTex->activate(metallicTexLocation, 1);
+        material.aoTex->activate(aoTexLocation, 2);
+        material.normalTex->activate(normalTexLocation, 3);
+        material.roughnessTex->activate(roughnessTexLocation, 3);
+    }
 }
 
 void PBR::updateGUI(){}

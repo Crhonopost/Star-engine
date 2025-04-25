@@ -11,9 +11,15 @@ Entity generateSpherePBR(ecsManager &ecs, Program *pbrProg, float radius, glm::v
     auto sphereEntity = ecs.CreateEntity();
     auto sphereDraw = Render::generateSphere(radius);
     auto sphereMaterial = Material();
+
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/rock/Albedo.jpg");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/rock/Normal.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/rock/Specular.jpg");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/rock/Roughness.jpg");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/rock/AO.jpg");
+
     Transform sphereTransform;
     sphereTransform.translate(position);
-    
 
     ecs.AddComponent(sphereEntity, sphereDraw);
     ecs.AddComponent(sphereEntity, sphereMaterial);
@@ -251,19 +257,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     Camera::editor = false;
     Camera::getInstance().camera_position = glm::vec3(0,1,10);
     Camera::editor = true;
-    Camera::getInstance().camera_position = glm::vec3(0,1,10);
-    
-    auto skybox = std::make_unique<Skybox>();
-    GLuint envCubemap = skybox->getSkyboxID();
-
-    auto cube = Render::generateInwardCube(1.0f, 2);
-    auto irradianceShader = std::make_unique<IrradianceShader>();
-    
-    GLuint irradianceMap = generateIrradianceMap(envCubemap, irradianceShader.get(), &cube);
-    // std::cout<<"[Debug] : irradianceMap ID : "<<irradianceMap<<"  ; skybox ID : "<<envCubemap<<std::endl;
-    int screenWidth, screenHeight;
-    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
-    glViewport(0, 0, screenWidth, screenHeight);
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);   
     
     auto rootEntity = ecs.CreateEntity();
     Transform rootTransform;

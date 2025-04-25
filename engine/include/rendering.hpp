@@ -17,6 +17,8 @@ struct Texture {
 
     static Texture& loadTexture(char * path);
     static std::map<std::string, Texture> textures;
+
+    void activate(GLuint textureLocation, int activationInt);
 };
 
 
@@ -89,20 +91,10 @@ class CubemapProg: public Program {
     void beforeRender() override;
 };
 
-class CubemapProg: public Program {
-    public:
-    GLuint textureID;
-
-    CubemapProg();
-
-    void beforeRender() override;
-};
-
-
 class PBR: public Program{
     private:
     GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, hasTextureLocation, indensiteScaleLightLocation;
-    GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation;
+    GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation, normalTexLocation;
 
     public:
     PBR();
