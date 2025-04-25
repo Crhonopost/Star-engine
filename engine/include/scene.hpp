@@ -4,6 +4,7 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
 
+
 #include <iostream>
 
 Entity generateSpherePBR(ecsManager &ecs, Program *pbrProg, float radius, glm::vec3 position){
@@ -34,7 +35,7 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
-    Texture::generateTextures(8);
+    Texture::generateTextures(3);
 
 
     auto mountainProg = std::make_unique<Program>("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
@@ -204,7 +205,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 float totalTime = 0;
 void pbrScene(SpatialNode &root, ecsManager &ecs){
-    Texture::generateTextures(8);
+    Texture::generateTextures(5);
     
     auto cameraEntity = ecs.CreateEntity();
     CustomBehavior cameraUpdate;
@@ -234,7 +235,17 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     Camera::editor = true;
     Camera::getInstance().camera_position = glm::vec3(0,1,10);
     
+    auto skybox = std::make_unique<Skybox>();
+    GLuint envCubemap = skybox->getSkyboxID();
+
+    auto cube = Render::generateInwardCube(1.0f, 2);
+    auto irradianceShader = std::make_unique<IrradianceShader>();
     
+    GLuint irradianceMap = generateIrradianceMap(envCubemap, irradianceShader.get(), &cube);
+    // std::cout<<"[Debug] : irradianceMap ID : "<<irradianceMap<<"  ; skybox ID : "<<envCubemap<<std::endl;
+    int screenWidth, screenHeight;
+    glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+    glViewport(0, 0, screenWidth, screenHeight);
     
     auto rootEntity = ecs.CreateEntity();
     Transform rootTransform;
@@ -247,17 +258,39 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     };
     ecs.AddComponent<CustomBehavior>(rootEntity, continuousRotation);
 
-    Program::programs.push_back(std::make_unique<Material>());
+
+
+    auto materialShader = std::make_unique<Material>();
+    glUseProgram(materialShader->programID);
+    GLuint irradianceLoc = glGetUniformLocation(materialShader->programID, "irradianceMap");
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+    glUniform1i(irradianceLoc, 1);
+    Program::programs.push_back(std::move(materialShader));
+
+
     for(int i=0; i<5; i++){
         auto ent = generateSpherePBR(ecs, Program::programs[0].get(), 0.75f, glm::vec3(-5 + i*2, 0, 0));
         std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(ent));
-
         root.AddChild(std::move(sphereNode));
     }
-
     
-    auto light1 = createLightSource(ecs, glm::vec3(0,6,1), glm::vec3(1));
-    ecs.SetEntityName(light1, "Center top light");
+    // auto light1 = createLightSource(ecs, glm::vec3(1,5,-6), glm::vec3(1));
+    // ecs.SetEntityName(light1, "Center top light");
+    std::vector<Entity> staticLights;
+    std::vector<glm::vec3> lightPositions = {
+        {-3, 3, -5},
+        {-3, 3, 3},
+        {0, 1,  5},
+        {3, -3,  -2}
+    };
+
+    for (int i = 0; i < lightPositions.size(); ++i) {
+        auto light = createLightSource(ecs, lightPositions[i], glm::vec3(1));
+        ecs.SetEntityName(light, "Static Light " + std::to_string(i + 1));
+        staticLights.push_back(light);
+    }
+
     auto movingLight = createLightSource(ecs, glm::vec3(5,0,2), glm::vec3(1));
     ecs.SetEntityName(movingLight, "Y moving light");
     CustomBehavior oscilatingLight;
@@ -269,4 +302,3 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     };
     ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
 }
-

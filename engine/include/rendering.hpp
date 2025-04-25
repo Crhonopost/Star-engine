@@ -4,6 +4,8 @@
 #include <map>
 #include <memory>
 
+class Drawable;
+
 struct Texture {
     char *path;
     GLuint id;
@@ -21,6 +23,7 @@ class Program {
     private:
     GLuint modelLocation, vLocation, pLocation;
 
+    protected:
     // Setup à l'initialisation uniquement
     std::map<GLuint, Texture*> programTextures;
     
@@ -46,6 +49,10 @@ class Program {
     void updateLightCount(int count);
     void updateLightPosition(int lightIndex, glm::vec3 position);
     void updateLightColor(int lightIndex, glm::vec3 color);
+
+    void use() {
+        glUseProgram(programID);
+    }
 };
 
 class Skybox: public Program{
@@ -57,21 +64,45 @@ class Skybox: public Program{
     void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
+    GLuint getSkyboxID() const { return skyboxID; }
 };
 
+class IrradianceShader:public Program{
+    public:
+    IrradianceShader();
+    
+};
 
 class Material: public Program{
     private:
-    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, camPosLocation, hasTextureLocation, texLocation;
+    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, camPosLocation, 
+        hasTextureLocation, texLocation,indensiteScaleLightLocation;
     glm::vec3 albedo, camPos;
     float metallic = 0.5f;
     float roughness = 0.5f;
     float ao = 1.0f;
+    float indensiteScaleLight = 100.f;
     bool hasTexture;
+
+    std::vector<std::string> materialOptions = {
+        "../assets/images/PBR/gold/",
+        "../assets/images/PBR/oldMetal/",
+        "../assets/images/PBR/rock/",
+        "../assets/images/PBR/woods/"
+    };
+    std::vector<std::string> materialFormats = {
+        ".png",
+        ".png",
+        ".jpg",
+        ".jpg"
+    };
+    int currentMaterialIndex = 1;
 
     public:
     Material();
     void updateGUI() override;
+    void loadCurrentMaterial();
 };
 
 
+GLuint generateIrradianceMap(GLuint envCubemap, Program* irradianceProgram, Drawable* cubeDrawable);

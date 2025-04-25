@@ -188,6 +188,7 @@ Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.
         "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
         "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
 } 
+IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
 
 void Skybox::setSkybox(std::vector<std::string> faces)
 {
@@ -221,7 +222,110 @@ void Skybox::setSkybox(std::vector<std::string> faces)
     skyboxID = textureID;
 }
 
+GLuint generateIrradianceMap(GLuint envCubemap, Program* irradianceProgram, Drawable* cubeDrawable) {
+    GLuint irradianceMap;
+    glGenTextures(1, &irradianceMap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMap);
+
+    for (unsigned int i = 0; i < 6; ++i) {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB,
+                     32, 32, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    GLuint captureFBO, captureRBO;
+    glGenFramebuffers(1, &captureFBO);
+    glGenRenderbuffers(1, &captureRBO);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 32, 32);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
+
+    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    glm::mat4 captureViews[] = {
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+        glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+    };
+
+    glUseProgram(irradianceProgram->programID);
+    glDisable(GL_CULL_FACE);  
+    glEnable(GL_DEPTH_TEST); 
+
+    irradianceProgram->updateProjectionMatrix(captureProjection);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
+    GLuint skyboxLoc = glGetUniformLocation(irradianceProgram->programID, "skybox");
+    glUniform1i(skyboxLoc, 0);
+
+    glViewport(0, 0, 32, 32);
+    glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+
+
+    for (unsigned int i = 0; i < 6; ++i) {
+        irradianceProgram->updateViewMatrix(captureViews[i]);
+        irradianceProgram->updateModelMatrix(glm::mat4(1.0f));
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap, 0);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        glDepthMask(GL_TRUE);
+        glClearColor(1.0,0.0,1.0,1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                        
+
+        ////////////////// debug
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            std::cerr << "[ERROR] Framebuffer is not complete!" << std::endl;
+        }
+        float pixels[4];
+        glReadPixels(16, 16, 1, 1, GL_RGB, GL_FLOAT, pixels);
+        std::cout << "[DEBUG] face " << i << " pixel (16,16): ("
+                << pixels[0] << ", "
+                << pixels[1] << ", "
+                << pixels[2] << ")\n";
+        GLint currentTex = 0;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &currentTex);
+        std::cout << "[DEBUG] writing to face " << i << ", bound texture ID = " << currentTex << std::endl;
+        std::cout << "[DEBUG] cubeDrawable->VAO = " << cubeDrawable->VAO << std::endl;
+        std::cout << "[DEBUG] cubeDrawable->indexCount = " << cubeDrawable->indexCount << std::endl;
+        /////////////////// end debug
+        glBindVertexArray(cubeDrawable->VAO);
+        glDrawElements(GL_TRIANGLES, cubeDrawable->indexCount, GL_UNSIGNED_INT, 0);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+    return irradianceMap;
+}
+
+
 void Program::updateGUI(){}
+
+
+void Material::loadCurrentMaterial(){
+    // for (auto& [key, tex] : Texture::textures) {
+    //     glDeleteTextures(1, &tex.id);
+    // }
+    // Texture::textures.clear();
+    // Texture::generateTextures(5);
+    programTextures.clear(); 
+    std::string path = materialOptions[currentMaterialIndex];
+    std::string format = materialFormats[currentMaterialIndex];
+    initTexture((char*)(path + "Albedo" + format).c_str(), "albedoMap");
+    initTexture((char*)(path + "Normal" + format).c_str(), "normalMap");
+    initTexture((char*)(path + "Metallic" + format).c_str(), "metallicMap");
+    initTexture((char*)(path + "roughness" + format).c_str(), "roughnessMap");
+    initTexture((char*)(path + "AO" + format).c_str(), "aoMap");
+}
+
 
 Material::Material(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shader.glsl"){
     albedoLocation = glGetUniformLocation(programID, "albedoVal");
@@ -231,12 +335,8 @@ Material::Material(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fra
     camPosLocation = glGetUniformLocation(programID, "camPos");
     hasTextureLocation = glGetUniformLocation(programID, "hasTexture");
     texLocation = glGetUniformLocation(programID,"tex");
-    initTexture("../assets/images/pbr_rock/Albedo.jpg","albedoMap");
-    initTexture("../assets/images/pbr_rock/Normal.jpg","normalMap");
-    initTexture("../assets/images/pbr_rock/Specular.jpg","metallicMap");
-    initTexture("../assets/images/pbr_rock/Roughness.jpg","roughnessMap");
-    initTexture("../assets/images/pbr_rock/AO.jpg","aoMap");
-
+    indensiteScaleLightLocation = glGetUniformLocation(programID,"indensiteScaleLight");
+    loadCurrentMaterial();
 }
 
 void Material::updateGUI(){
@@ -244,15 +344,25 @@ void Material::updateGUI(){
     if(ImGui::SliderFloat("metallic", &metallic, 0.0f, 1.0f)){
         glUniform1f(metallicLocation, metallic);
     }
-
     if(ImGui::SliderFloat("roughness", &roughness, 0.0f, 1.0f)){
         glUniform1f(roughnessLocation, roughness);
     }
-
     if(ImGui::SliderFloat("ao", &ao, 0.0f, 5.0f)){
         glUniform1f(aoLocation, ao);
     }
+
     if(ImGui::Checkbox("use textures",&hasTexture)){
         glUniform1i(hasTextureLocation, hasTexture);
+    }
+
+    if(ImGui::SliderFloat("indensity of light", &indensiteScaleLight, 1.0f, 500.0f)){
+        glUniform1f(indensiteScaleLightLocation, indensiteScaleLight);
+    }
+
+    const char* items[] = { "gold", "oldMetal", "rock", "woods" };
+    static int selected = currentMaterialIndex;
+    if (ImGui::Combo("Material Folder", &selected, items, IM_ARRAYSIZE(items))) {
+        currentMaterialIndex = selected;
+        loadCurrentMaterial();
     }
 }
