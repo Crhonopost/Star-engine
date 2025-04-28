@@ -129,7 +129,7 @@ void main(){
             
         // add to outgoing radiance Lo
         float NdotL = max(dot(N, L), 0.0);                
-        Lo += indensiteScaleLight * (kD * albedo / PI + specular) * radiance * NdotL; 
+        Lo += indensiteScaleLight * (kD * albedo / PI + specular) * radiance * NdotL*200.f; 
     }
     // vec3 ambient = vec3(0.03) * albedo * ao;
     vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
@@ -138,6 +138,8 @@ void main(){
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse      = irradiance * albedo;
     vec3 ambient = (kD * diffuse) * ao;
+    
+    
     vec3 colorPBR = ambient + Lo;
 	
     colorPBR = colorPBR / (colorPBR + vec3(1.0));

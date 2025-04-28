@@ -95,15 +95,17 @@ class PBR: public Program{
     private:
     GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, hasTextureLocation, indensiteScaleLightLocation;
     GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation, normalTexLocation;
+    
 
     public:
     PBR();
     void updateGUI() override;
-    void updateMaterial(Material &value);
+    void updateMaterial(Material &value,int &activationInt);
 
     void updateLightCount(int count);
     void updateLightPosition(int lightIndex, glm::vec3 position);
     void updateLightColor(int lightIndex, glm::vec3 color);
+    
 };
 
 void save_PPM_file(int width, int height, const std::string& filename);

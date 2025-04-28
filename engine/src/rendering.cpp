@@ -217,7 +217,10 @@ void Skybox::setSkybox(std::vector<std::string> faces)
 CubemapProg::CubemapProg(): Program("shaders/cubemap/vertex.glsl", "shaders/cubemap/fragment.glsl"){}
 
 void CubemapProg::beforeRender(){
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    GLuint loc = glGetUniformLocation(programID, "skybox");
+    glUniform1i(loc, 0);
 }
 
 Cubemap::Cubemap(int resolution){
@@ -357,7 +360,7 @@ PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shad
     indensiteScaleLightLocation = glGetUniformLocation(programID,"indensiteScaleLight");
 }
 
-void PBR::updateMaterial(Material &material){
+void PBR::updateMaterial(Material &material,int &activationInt){
     glUniform1f(metallicLocation, material.metallic);
     glUniform1f(roughnessLocation, material.roughness);
     glUniform1f(aoLocation, material.ao);
@@ -365,11 +368,11 @@ void PBR::updateMaterial(Material &material){
     glUniform1i(hasTextureLocation, material.hasTexture);
 
     if(material.hasTexture){
-        material.albedoTex->activate(albedoTexLocation, 0);
-        material.metallicTex->activate(metallicTexLocation, 1);
-        material.aoTex->activate(aoTexLocation, 2);
-        material.normalTex->activate(normalTexLocation, 3);
-        material.roughnessTex->activate(roughnessTexLocation, 3);
+        material.albedoTex->activate(albedoTexLocation, activationInt++);
+        material.metallicTex->activate(metallicTexLocation, activationInt++);
+        material.aoTex->activate(aoTexLocation, activationInt++);
+        material.normalTex->activate(normalTexLocation, activationInt++);
+        material.roughnessTex->activate(roughnessTexLocation, activationInt++);
     }
 }
 

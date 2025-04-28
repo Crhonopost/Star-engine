@@ -27,10 +27,14 @@ class PBRrender: public System {
     private:
     friend LightRender;
     static PBR* pbrProgPtr;
+    GLuint mIrradianceMapID = 0; 
 
     public:
     static void initPBR();
     void update(glm::mat4 &view);
+    void setIrradianceMap(GLuint cubemapTextureID) {
+        mIrradianceMapID = cubemapTextureID;
+    }
 };
 
 class CubemapRender {
@@ -42,7 +46,7 @@ class CubemapRender {
     Cubemap cubemap;
     CubemapRender(int res);
     void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
-    void applyFilter(Program *filterProg);
+    void applyFilter(Program *filterProg,GLuint envCubemapID);
 };
 
 

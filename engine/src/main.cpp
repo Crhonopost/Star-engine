@@ -189,7 +189,7 @@ int main( void )
         glfwPollEvents();
         glfwSetCursorPos(window, 1024/2, 768/2);
     
-        glClearColor(0.1f, 0.1f, 0.2f, 0.0f);
+        glClearColor(0.f, 1.f, 0.2f, 0.0f);
     
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -292,12 +292,13 @@ int main( void )
         irradianceShader->use();
         GLuint skyLoc = glGetUniformLocation(irradianceShader->programID, "skybox");
         
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMapRender.cubemap.textureID);
-        // glUniform1i(skyLoc, 0);
-        // irradianceMapRender.applyFilter(irradianceShader.get());
-        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMapRender.cubemap.textureID);
+        glUniform1i(skyLoc, 0);
+        irradianceMapRender.applyFilter(irradianceShader.get(),irradianceMapRender.cubemap.textureID);
+        pbrRenderSystem->setIrradianceMap(irradianceMapRender.cubemap.textureID);
 
+        ////////////// la je l'ai met dans renderPBR::update()
         // pbr->use();
         // GLuint irradianceLoc = glGetUniformLocation(pbr->programID, "irradianceMap");
         // glActiveTexture(GL_TEXTURE0);

@@ -48,17 +48,22 @@ void PBRrender::initPBR() {
 void PBRrender::update(glm::mat4 &view){
     PBR &pbrProg = *pbrProgPtr;
     glUseProgram(pbrProg.programID);
+    GLuint irrLoc = glGetUniformLocation(pbrProg.programID, "irradianceMap");
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, mIrradianceMapID);
+    glUniform1i(irrLoc, 0);
+
     pbrProg.beforeRender();
     
     pbrProg.updateViewMatrix(view);
 
-    int activationInt = 0;
+    int activationInt = 1;
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& material = ecs.GetComponent<Material>(entity);
 
-        pbrProg.updateMaterial(material);
+        pbrProg.updateMaterial(material,activationInt);
         
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
         
@@ -109,7 +114,7 @@ CubemapRender::CubemapRender(int res): cubemap(res){
 }
 
 
-void CubemapRender::applyFilter(Program *filterProg){
+void CubemapRender::applyFilter(Program *filterProg,GLuint envCubemapID){
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -123,7 +128,7 @@ void CubemapRender::applyFilter(Program *filterProg){
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBufffer);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
-        std::cerr << "Framebuffer not complete!" << std::endl;
+        std::cerr << "[ERROR]Framebuffer not complete!" << std::endl;
     }    
 
     GLint m_viewport[4];
@@ -134,26 +139,51 @@ void CubemapRender::applyFilter(Program *filterProg){
     auto cube = Render::generateCube(10, 2, true);
 
     filterProg->use();
+    GLuint skyLoc = glGetUniformLocation(filterProg->programID, "skybox");
+    glUniform1i(skyLoc, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemapID);
+
     filterProg->beforeRender();
     filterProg->updateProjectionMatrix(projection);
-    for(int i=0; i<6; i++){
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap.textureID, 0);
+
+    for(int i = 0; i < 6; i++){
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                               GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                               cubemap.textureID, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        auto dir = orientations[i];
-        
-        glm::mat4 view = glm::lookAt({0,0,0}, dir, ups[i]);
+
+        glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[i], ups[i]);
         filterProg->updateViewMatrix(view);
-        
-        cube.draw(-1);
+
+        // 真正画
+        glBindVertexArray(cube.VAO);
+        glDrawElements(GL_TRIANGLES, cube.indexCount, GL_UNSIGNED_INT, 0);
+
+        // 确保渲染都完成
+        glFinish();
+
+        // 调试读像素
+        float pix[3];
+        glReadPixels(16, 16, 1, 1, GL_RGB, GL_FLOAT, pix);
+        std::cout << "[DEBUG] face " << i 
+                  << " pixel(16,16): (" 
+                  << pix[0] << ", " 
+                  << pix[1] << ", " 
+                  << pix[2] << ")\n";
     }
-    glm::mat4 camProjection = Camera::getInstance().getP();
-    filterProg->updateProjectionMatrix(camProjection);
+
+    // 恢复投影、清理
+    glm::mat4 camProj = Camera::getInstance().getP();
+    filterProg->updateProjectionMatrix(camProj);
     filterProg->afterRender();
 
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
     glDeleteRenderbuffers(1, &depthBufffer);
     glDeleteFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
 
 void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr){
     GLuint fbo;
