@@ -267,6 +267,8 @@ int main( void )
         // initScene(root, ecs);
         pbrScene(root, ecs);
 
+        root.updateSelfAndChildTransform();
+
         Program *pbr = Program::programs.back().get();
 
         Program::programs.push_back(std::make_unique<Skybox>());
@@ -284,26 +286,16 @@ int main( void )
         lightRenderSystem->update();
 
 
-        CubemapRender irradianceMapRender(32);
+        CubemapRender irradianceMapRender(64);
+        // Render scene into a cubemap
         irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
         
-        
-        auto irradianceShader = std::make_unique<IrradianceShader>();
-        irradianceShader->use();
-        GLuint skyLoc = glGetUniformLocation(irradianceShader->programID, "skybox");
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMapRender.cubemap.textureID);
-        glUniform1i(skyLoc, 0);
-        irradianceMapRender.applyFilter(irradianceShader.get(),irradianceMapRender.cubemap.textureID);
-        pbrRenderSystem->setIrradianceMap(irradianceMapRender.cubemap.textureID);
+        auto irradianceShader = std::make_unique<IrradianceShader>();        
+        Cubemap irradianceMap(32);
 
-        ////////////// la je l'ai met dans renderPBR::update()
-        // pbr->use();
-        // GLuint irradianceLoc = glGetUniformLocation(pbr->programID, "irradianceMap");
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_CUBE_MAP, irradianceMapRender.cubemap.textureID);
-        // glUniform1i(irradianceLoc, 0);
+        // Apply shader onto skybox
+        irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
+        pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
 
 
 
@@ -316,7 +308,7 @@ int main( void )
 
         Program::programs.push_back(std::make_unique<CubemapProg>());
         CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
-        ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMapRender.cubemap.textureID;
+        ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMap.textureID;
         ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
         ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
         ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);

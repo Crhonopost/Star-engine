@@ -109,5 +109,3 @@ class PBR: public Program{
 };
 
 void save_PPM_file(int width, int height, const std::string& filename);
-
-GLuint generateIrradianceMap(GLuint envCubemap, Program* irradianceProgram, Drawable* cubeDrawable);
