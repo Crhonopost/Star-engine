@@ -34,6 +34,7 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
     otherTransform.translate(position);
     Light lightSource;
     lightSource.color = color;
+    
     ecs.AddComponent<Transform>(otherEntity, otherTransform);
     ecs.AddComponent<Light>(otherEntity, lightSource);
 

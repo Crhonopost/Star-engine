@@ -66,6 +66,9 @@ float zoom = 1.;
 bool isInEditor = true;
 
 // SceneGraph scene;
+SpatialNode root;
+
+// ecs
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
 std::shared_ptr<PBRrender> pbrRenderSystem;
@@ -76,6 +79,124 @@ std::shared_ptr<PhysicSystem> physicSystem;
 std::shared_ptr<PhysicDebugSystem> physicDebugSystem;
 
 
+void initEcs(){
+    ecs.Init();
+    
+    ecs.RegisterComponent<Transform>("Transform");
+    ecs.RegisterComponent<Drawable>("Drawable");
+    ecs.RegisterComponent<CustomProgram>("CustomProgram");
+    ecs.RegisterComponent<Material>("Material");
+    ecs.RegisterComponent<Light>("Light");
+    ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
+    ecs.RegisterComponent<RigidBody>("RigidBody");
+    ecs.RegisterComponent<CollisionShape>("CollisionShape");
+
+    renderSystem = ecs.RegisterSystem<Render>();
+    pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
+    lightRenderSystem = ecs.RegisterSystem<LightRender>();
+    customSystem = ecs.RegisterSystem<CustomSystem>();
+    collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
+    physicSystem = ecs.RegisterSystem<PhysicSystem>();
+    physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
+    physicDebugSystem->init();
+    
+    Signature renderSignature;
+    renderSignature.set(ecs.GetComponentType<Transform>());
+    renderSignature.set(ecs.GetComponentType<Drawable>());
+    renderSignature.set(ecs.GetComponentType<CustomProgram>());
+    ecs.SetSystemSignature<Render>(renderSignature);
+
+    Signature pbrRenderSignature;
+    pbrRenderSignature.set(ecs.GetComponentType<Transform>());
+    pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
+    pbrRenderSignature.set(ecs.GetComponentType<Material>());
+    ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
+
+    Signature lightSignature;
+    lightSignature.set(ecs.GetComponentType<Transform>());
+    lightSignature.set(ecs.GetComponentType<Light>());
+    ecs.SetSystemSignature<LightRender>(lightSignature);
+
+    Signature customSignature;
+    customSignature.set(ecs.GetComponentType<CustomBehavior>());
+    ecs.SetSystemSignature<CustomSystem>(customSignature);
+
+    Signature collisionDetectionSignature;
+    collisionDetectionSignature.set(ecs.GetComponentType<Transform>());
+    collisionDetectionSignature.set(ecs.GetComponentType<CollisionShape>());
+    ecs.SetSystemSignature<CollisionDetectionSystem>(collisionDetectionSignature);
+
+    Signature physicSignature;
+    physicSignature.set(ecs.GetComponentType<RigidBody>());
+    physicSignature.set(ecs.GetComponentType<Transform>());        
+    physicSignature.set(ecs.GetComponentType<CollisionShape>());        
+    ecs.SetSystemSignature<PhysicSystem>(physicSignature);
+
+    Signature physicDebugSignature;
+    physicDebugSignature.set(ecs.GetComponentType<Transform>());        
+    physicDebugSignature.set(ecs.GetComponentType<CollisionShape>());        
+    ecs.SetSystemSignature<PhysicDebugSystem>(physicDebugSignature);
+}
+
+
+void unloadScene(){
+    root.destroy();
+    ecs.DestroyAllEntities();
+    Program::destroyPrograms();
+}
+
+void afterSceneInit(){
+    pbrRenderSystem->initPBR();
+
+    root.updateSelfAndChildTransform();
+
+    Program *pbr = Program::programs.back().get();
+
+    Program::programs.push_back(std::make_unique<Skybox>());
+    Entity skyboxEntity = ecs.CreateEntity();
+    ecs.SetEntityName(skyboxEntity, "Skybox");
+    Drawable skyboxDraw = Render::generateCube(9999, 2, true);
+    Transform skyboxTransform;
+    CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
+
+    ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
+    ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
+    ecs.AddComponent<CustomProgram>(skyboxEntity, skyboxProg);
+
+
+    lightRenderSystem->update();
+
+
+    CubemapRender irradianceMapRender(64);
+    // Render scene into a cubemap
+    irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+    
+    auto irradianceShader = std::make_unique<IrradianceShader>();        
+    Cubemap irradianceMap(32);
+
+    // Apply shader onto skybox
+    irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
+    pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
+
+
+
+    
+    auto testCubemapRenderEntity = ecs.CreateEntity();
+    ecs.SetEntityName(testCubemapRenderEntity, "Cubemap visu");
+    Drawable cubemapDraw = Render::generateCube(2, 2, false);
+    Transform cubemapTransform;
+    cubemapTransform.translate({0,5,0});
+
+    Program::programs.push_back(std::make_unique<CubemapProg>());
+    CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
+    ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMap.textureID;
+    ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
+    ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
+    ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
+
+    std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
+    root.AddChild(std::move(cubemapNode));
+}
 
 void switchEditorMode(){
     isInEditor = !isInEditor;
@@ -93,16 +214,17 @@ void editorUpdate(float deltaTime){
 
         if (ImGui::Button("Switch mode")) switchEditorMode();
 
-        
-        for(uint32_t entity = 0; entity<ecs.getEntityCount(); entity ++){
-            if(ImGui::TreeNode(ecs.GetEntityName(entity).c_str())){
-                for (auto& inspector : ecs.componentInspectors) {
-                    inspector->DisplayGUI(ecs, entity);
-                }
-                ImGui::TreePop();
-            }
+        if (ImGui::Button("Load scene 1")){
+            unloadScene();
+            initScene(root, ecs);
+            afterSceneInit();
+        } else if(ImGui::Button("Load scene 2")){
+            unloadScene();
+            pbrScene(root, ecs);
+            afterSceneInit();
         }
 
+        ecs.DisplayUI();
     }
 
     bool savePicture = ImGui::Button("save ppm");
@@ -195,128 +317,18 @@ int main( void )
         glDepthFunc(GL_LEQUAL);
     
         //glEnable(GL_CULL_FACE);
-
-        pbrRenderSystem->initPBR();
-        // scene.init();
-    
     
         // For speed computation
         int nbFrames = 0;
     
-        ecs.Init();
+        
+        initEcs();
         auto actions = InputManager::getInstance().getActions();
-        
-        ecs.RegisterComponent<Transform>("Transform");
-        ecs.RegisterComponent<Drawable>("Drawable");
-        ecs.RegisterComponent<CustomProgram>("CustomProgram");
-        ecs.RegisterComponent<Material>("Material");
-        ecs.RegisterComponent<Light>("Light");
-        ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
-        ecs.RegisterComponent<RigidBody>("RigidBody");
-        ecs.RegisterComponent<CollisionShape>("CollisionShape");
-    
-        renderSystem = ecs.RegisterSystem<Render>();
-        pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
-        lightRenderSystem = ecs.RegisterSystem<LightRender>();
-        customSystem = ecs.RegisterSystem<CustomSystem>();
-        collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
-        physicSystem = ecs.RegisterSystem<PhysicSystem>();
-        physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
-        physicDebugSystem->init();
-        
-        Signature renderSignature;
-        renderSignature.set(ecs.GetComponentType<Transform>());
-        renderSignature.set(ecs.GetComponentType<Drawable>());
-        renderSignature.set(ecs.GetComponentType<CustomProgram>());
-        ecs.SetSystemSignature<Render>(renderSignature);
 
-        Signature pbrRenderSignature;
-        pbrRenderSignature.set(ecs.GetComponentType<Transform>());
-        pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
-        pbrRenderSignature.set(ecs.GetComponentType<Material>());
-        ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
-
-        Signature lightSignature;
-        lightSignature.set(ecs.GetComponentType<Transform>());
-        lightSignature.set(ecs.GetComponentType<Light>());
-        ecs.SetSystemSignature<LightRender>(lightSignature);
-    
-        Signature customSignature;
-        customSignature.set(ecs.GetComponentType<CustomBehavior>());
-        ecs.SetSystemSignature<CustomSystem>(customSignature);
-
-        Signature collisionDetectionSignature;
-        collisionDetectionSignature.set(ecs.GetComponentType<Transform>());
-        collisionDetectionSignature.set(ecs.GetComponentType<CollisionShape>());
-        ecs.SetSystemSignature<CollisionDetectionSystem>(collisionDetectionSignature);
-
-        Signature physicSignature;
-        physicSignature.set(ecs.GetComponentType<RigidBody>());
-        physicSignature.set(ecs.GetComponentType<Transform>());        
-        physicSignature.set(ecs.GetComponentType<CollisionShape>());        
-        ecs.SetSystemSignature<PhysicSystem>(physicSignature);
-
-        Signature physicDebugSignature;
-        physicDebugSignature.set(ecs.GetComponentType<Transform>());        
-        physicDebugSignature.set(ecs.GetComponentType<CollisionShape>());        
-        ecs.SetSystemSignature<PhysicDebugSystem>(physicDebugSignature);
-
-
-
-        SpatialNode root;
         // initScene(root, ecs);
         pbrScene(root, ecs);
-
-        root.updateSelfAndChildTransform();
-
-        Program *pbr = Program::programs.back().get();
-
-        Program::programs.push_back(std::make_unique<Skybox>());
-        Entity skyboxEntity = ecs.CreateEntity();
-        ecs.SetEntityName(skyboxEntity, "Skybox");
-        Drawable skyboxDraw = Render::generateCube(9999, 2, true);
-        Transform skyboxTransform;
-        CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
-
-        ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
-        ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
-        ecs.AddComponent<CustomProgram>(skyboxEntity, skyboxProg);
-
-
-        lightRenderSystem->update();
-
-
-        CubemapRender irradianceMapRender(64);
-        // Render scene into a cubemap
-        irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
-        
-        auto irradianceShader = std::make_unique<IrradianceShader>();        
-        Cubemap irradianceMap(32);
-
-        // Apply shader onto skybox
-        irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
-        pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
-
-
-
-        
-        auto testCubemapRenderEntity = ecs.CreateEntity();
-        ecs.SetEntityName(testCubemapRenderEntity, "Cubemap visu");
-        Drawable cubemapDraw = Render::generateCube(2, 2, false);
-        Transform cubemapTransform;
-        cubemapTransform.translate({0,5,0});
-
-        Program::programs.push_back(std::make_unique<CubemapProg>());
-        CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
-        ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMap.textureID;
-        ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
-        ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
-        ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
-
-        std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
-        root.AddChild(std::move(cubemapNode));
-
-
+    
+        afterSceneInit();
 
         ImGui::CreateContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);

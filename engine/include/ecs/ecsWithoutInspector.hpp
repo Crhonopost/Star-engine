@@ -107,6 +107,12 @@ public:
 		mSystemManager->SetSignature<T>(signature);
 	}
 
+	void DestroyAllEntities(){
+		for(auto entity : mEntityManager->GetAllEntities()){
+			DestroyEntity(entity);
+		}
+	}
+
 	protected:
 	std::unique_ptr<ComponentManager> mComponentManager;
 	std::unique_ptr<EntityManager> mEntityManager;

@@ -62,7 +62,7 @@ public:
 
 		// Invalidate the destroyed entity's signature
 		mSignatures[entity].reset();
-		mNames[entity].clear();
+		mNames[entity] = "";
 
 		// Put the destroyed ID at the back of the queue
 		mAvailableEntities.push(entity);
@@ -71,6 +71,19 @@ public:
 
 	uint32_t getEntityCount(){
 		return mLivingEntityCount;
+	}
+
+	std::vector<Entity> GetAllEntities() const {
+		std::vector<Entity> entities;
+		entities.reserve(mLivingEntityCount); 
+	
+		for (Entity entity = 0; entity < MAX_ENTITIES; ++entity) {
+			if (!mSignatures[entity].none() || !mNames[entity].empty()) {
+				entities.push_back(entity);
+			}
+		}
+	
+		return entities;
 	}
 
 	void SetSignature(Entity entity, Signature signature)

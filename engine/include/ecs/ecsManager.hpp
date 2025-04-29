@@ -18,5 +18,17 @@ class ecsManager: public ecsWithoutInspector
 			
 		mComponentManager->RegisterComponent<T>();
 	}
+
+	void DisplayUI(){
+		auto entities = mEntityManager->GetAllEntities();
+        for(auto entity : entities){
+			if(ImGui::TreeNode(GetEntityName(entity).c_str())){
+				for (auto& inspector : componentInspectors) {
+					inspector->DisplayGUI(*this, entity);
+				}
+				ImGui::TreePop();
+			}
+		}
+	}
 };
 

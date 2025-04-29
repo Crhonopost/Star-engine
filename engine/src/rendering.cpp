@@ -111,6 +111,14 @@ void Program::clear(){
     glDeleteProgram(programID);
 }
 
+void Program::destroyPrograms(){
+    for(int i=0; i<programs.size(); i++){
+        programs[i]->clear();
+    }
+
+    programs.clear();
+}
+
 void Program::updateViewMatrix(glm::mat4 &v){
     glUniformMatrix4fv(vLocation, 1, GL_FALSE, &v[0][0]);
 }

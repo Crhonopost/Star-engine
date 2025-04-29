@@ -63,6 +63,8 @@ class Program {
     void use() {
         glUseProgram(programID);
     }
+
+    static void destroyPrograms();
 };
 
 class Skybox: public Program{

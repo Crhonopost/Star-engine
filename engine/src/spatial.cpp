@@ -16,6 +16,16 @@ void SpatialNode::RemoveChild(SpatialNode* component) {
     }
 }
 
+void SpatialNode::destroy() {
+    children_.clear(); 
+
+    if (parent_ != nullptr) {
+        parent_->RemoveChild(this);
+        parent_ = nullptr;
+    }
+
+}
+
 void SpatialNode::updateSelfAndChildTransform() {
     if (transform->isDirty()) {
         forceUpdateSelfAndChild();
