@@ -44,6 +44,8 @@ public:
         return children_.empty();
     }
 
+    void destroy();
+
     // SpatialNodePart
     Transform* transform;
     void updateSelfAndChildTransform();

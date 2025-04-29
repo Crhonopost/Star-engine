@@ -19,7 +19,7 @@ void main(){
         height = texture(heightMap, texCoords).r;
 
         gl_Position = vec4(vertices_position_modelspace,1);
-        gl_Position.y += height * 20.f;
+        // gl_Position.y += height * 20.f;
         gl_Position = p * v * model *  gl_Position;
         // gl_Position.y += height * 4; //sin(time + texCoord.x * 2) / 2;
 

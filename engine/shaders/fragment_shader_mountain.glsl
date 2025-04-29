@@ -14,6 +14,7 @@ uniform sampler2D texGrass;
 uniform sampler2D texRock;
 uniform sampler2D heightMap;
 
+
 float tiltDegree(float height, vec2 coords, vec2 direction){
     float otherHeight = texture(heightMap, coords + direction).r;
     return abs(height - otherHeight);

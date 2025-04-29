@@ -13,6 +13,8 @@
 
 template<typename T>
 class ComponentInspector;
+class Program;
+class Texture;
 
 struct Component{
     Component(const Component&) = delete;
@@ -23,8 +25,6 @@ struct Drawable: Component {
     GLuint VAO, VBO, EBO;
     int indexCount;
 
-    Program *program;
-
     Drawable* lodLower = nullptr;
     float switchDistance = -1.0f;
 
@@ -33,7 +33,7 @@ struct Drawable: Component {
     Drawable(Drawable&& other) noexcept
         : VAO(other.VAO), VBO(other.VBO), EBO(other.EBO), 
           indexCount(other.indexCount),
-          program(other.program), lodLower(other.lodLower), switchDistance(other.switchDistance) {
+          lodLower(other.lodLower), switchDistance(other.switchDistance) {
         other.VAO = 0;
         other.VBO = 0;
         other.EBO = 0;
@@ -49,7 +49,6 @@ struct Drawable: Component {
             VBO = other.VBO;
             EBO = other.EBO;
             indexCount = other.indexCount;
-            program = other.program;
             lodLower = other.lodLower;
             switchDistance = other.switchDistance;
 
@@ -75,6 +74,28 @@ struct Drawable: Component {
 
     void init(std::vector<float>&, std::vector<short unsigned int>&);
     void draw(float renderDistance);
+};
+
+struct CustomProgram: Component {
+    Program *programPtr;
+    CustomProgram():Component(){};
+    CustomProgram(Program *progPtr);
+};
+
+struct Material: Component {
+    glm::vec3 albedo = {1.f, 0.7f, 0.77f};
+    float metallic = 0.5f;
+    float roughness = 0.5f;
+    float ao = 1.0f;
+    bool hasTexture = false;
+
+    Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
+};
+
+
+struct Light: Component {
+    glm::vec3 color;
+    float strength;
 };
 
 enum RotationOrderEnum {

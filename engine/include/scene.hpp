@@ -4,19 +4,51 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
 
+
 #include <iostream>
+
+Entity generateSpherePBR(ecsManager &ecs, Program *pbrProg, float radius, glm::vec3 position){
+    auto sphereEntity = ecs.CreateEntity();
+    auto sphereDraw = Render::generateSphere(radius);
+    auto sphereMaterial = Material();
+
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/rock/Albedo.jpg");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/rock/Normal.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/rock/Specular.jpg");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/rock/Roughness.jpg");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/rock/AO.jpg");
+
+    Transform sphereTransform;
+    sphereTransform.translate(position);
+
+    ecs.AddComponent(sphereEntity, sphereDraw);
+    ecs.AddComponent(sphereEntity, sphereMaterial);
+    ecs.AddComponent(sphereEntity, sphereTransform);
+
+    return sphereEntity;
+}
+
+Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
+    auto otherEntity = ecs.CreateEntity();
+    Transform otherTransform;
+    otherTransform.translate(position);
+    Light lightSource;
+    lightSource.color = color;
+    
+    ecs.AddComponent<Transform>(otherEntity, otherTransform);
+    ecs.AddComponent<Light>(otherEntity, lightSource);
+
+    return otherEntity;
+}
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// programs
-    Texture::generateTextures(4);
-
-
-    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader.glsl", "shaders/fragment_shader_mountain.glsl");
+    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader_mountain.glsl", "shaders/fragment_shader_mountain.glsl");
     mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
     mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
     mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
 
-    Program::programs.push_back(std::make_unique<Material>());
+    Program::programs.push_back(std::make_unique<PBR>());
     Program::programs.push_back(std::move(mountainProg));
 
 
@@ -26,7 +58,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto mountainEntity = ecs.CreateEntity();
     const int sideLength = 100;
     auto mountainDraw = Render::generatePlane(sideLength,256);
-    mountainDraw.program = Program::programs[1].get();
+    CustomProgram mountainCustomProg(Program::programs[1].get());
     Transform mountainTransform;
     CollisionShape mountainShape;
     mountainShape.shapeType = PLANE;
@@ -34,6 +66,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     RigidBody mountainBody;
     mountainBody.isStatic = true;
     ecs.AddComponent(mountainEntity, mountainDraw);
+    ecs.AddComponent(mountainEntity, mountainCustomProg);
     ecs.AddComponent(mountainEntity, mountainTransform);
     ecs.AddComponent(mountainEntity, mountainShape);
     ecs.AddComponent(mountainEntity, mountainBody);
@@ -45,7 +78,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ///////////////////////////// sun
     auto sunEntity = ecs.CreateEntity();
     auto sunDraw = Render::generateSphere(0.5f);
-    sunDraw.program = Program::programs[0].get();
+    auto sunMaterial = Material();
     Transform sunTransform;
     sunTransform.translate(glm::vec3(5,0,0));
     RigidBody sunBody;
@@ -93,6 +126,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunDraw.switchDistance = 15;
 
     ecs.AddComponent(sunEntity, sunDraw);
+    ecs.AddComponent(sunEntity, sunMaterial);
     ecs.AddComponent(sunEntity, sunTransform);
     ecs.AddComponent(sunEntity, sunBehavior);
     ecs.AddComponent(sunEntity, sunBody);
@@ -106,19 +140,40 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     rayShape.ray.length = 1.5;
     rayShape.ray.ray_direction = glm::vec3(0,-1,0);
     
-    ecs.AddComponent<Transform>(rayTestEntity, rayTransform);
-    ecs.AddComponent<CollisionShape>(rayTestEntity, rayShape);
+    ecs.AddComponent(rayTestEntity, rayTransform);
+    ecs.AddComponent(rayTestEntity, rayShape);
 
 
     /////////////////////////////// collision debug
     auto otherEntity = ecs.CreateEntity();
     Transform otherTransform;
     otherTransform.translate(glm::vec3(0,5,0));
+    Light lightSource;
+    lightSource.color = glm::vec3(0,1,0);
     CollisionShape otherCollision;
     otherCollision.shapeType = SPHERE;
     otherCollision.sphere.radius = 1.2;
-    ecs.AddComponent<Transform>(otherEntity, otherTransform);
-    ecs.AddComponent<CollisionShape>(otherEntity, otherCollision);
+    ecs.AddComponent(otherEntity, otherTransform);
+    ecs.AddComponent(otherEntity, lightSource);
+    ecs.AddComponent(otherEntity, otherCollision);
+
+
+
+
+    /////////////////////////////////// Mesh test
+    auto barrierEntity = ecs.CreateEntity();
+    ecs.SetEntityName(barrierEntity, "Barrier");
+    Transform barrierTransform;
+    barrierTransform.translate(glm::vec3(0,2,0));
+    Drawable barrierDrawable = Render::loadMesh("../assets/meshes/barrier_1x1x1.gltf");
+    Material barrierMaterial;
+    CollisionShape barrierCollision;
+    barrierCollision.shapeType = SPHERE;
+    barrierCollision.sphere.radius = 1.2;
+    ecs.AddComponent(barrierEntity, barrierTransform);
+    ecs.AddComponent(barrierEntity, barrierDrawable);
+    ecs.AddComponent(barrierEntity, barrierMaterial);
+    ecs.AddComponent(barrierEntity, barrierCollision);
 
     
 
@@ -162,10 +217,91 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     std::unique_ptr<SpatialNode> mountainNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(mountainEntity));
     std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
     std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+    std::unique_ptr<SpatialNode> barrierNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(barrierEntity));
 
     
     sunNode->AddChild(std::move(rayNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(mountainNode));
     root.AddChild(std::move(otherNode));
+    root.AddChild(std::move(barrierNode));
+}
+
+
+
+
+float totalTime = 0;
+void pbrScene(SpatialNode &root, ecsManager &ecs){
+    auto cameraEntity = ecs.CreateEntity();
+    CustomBehavior cameraUpdate;
+    cameraUpdate.update = [](float deltaTime){
+        auto actions = InputManager::getInstance().getActions();
+
+        const glm::vec3 left = glm::normalize(glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target));
+        const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
+
+        const float speed = 10.0f;
+        // glm::vec3 inputVelocity(0);
+        // if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
+        //     inputVelocity += forward;
+        // if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
+        //     inputVelocity -= forward;
+        // if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
+        //     inputVelocity += left;
+        // if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
+        //     inputVelocity -= left;
+
+        // if(inputVelocity.length() != 0)
+        //     Camera::getInstance().camera_position += glm::normalize(inputVelocity) * deltaTime * speed;
+    };
+    ecs.AddComponent(cameraEntity, cameraUpdate);
+    Camera::editor = false;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);
+    Camera::editor = true;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);   
+    
+    auto rootEntity = ecs.CreateEntity();
+    Transform rootTransform;
+    ecs.AddComponent(rootEntity, rootTransform);
+    root.transform = &ecs.GetComponent<Transform>(rootEntity);
+
+    CustomBehavior continuousRotation;
+    continuousRotation.update = [&root](float deltaTime){
+        root.transform->rotate(glm::vec3(0, deltaTime * 10.f, 0));
+    };
+    ecs.AddComponent<CustomBehavior>(rootEntity, continuousRotation);
+
+    Program::programs.push_back(std::make_unique<PBR>());
+    for(int i=0; i<5; i++){
+        auto ent = generateSpherePBR(ecs, Program::programs[0].get(), 0.75f, glm::vec3(-5 + i*2, 0, 0));
+        std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(ent));
+        root.AddChild(std::move(sphereNode));
+    }
+    
+    // auto light1 = createLightSource(ecs, glm::vec3(1,5,-6), glm::vec3(1));
+    // ecs.SetEntityName(light1, "Center top light");
+    std::vector<Entity> staticLights;
+    std::vector<glm::vec3> lightPositions = {
+        {-3, 3, -5},
+        {-3, 3, 3},
+        {0, 1,  5},
+        {3, -3,  -2}
+    };
+
+    for (int i = 0; i < lightPositions.size(); ++i) {
+        auto light = createLightSource(ecs, lightPositions[i], glm::vec3(1));
+        ecs.SetEntityName(light, "Static Light " + std::to_string(i + 1));
+        staticLights.push_back(light);
+    }
+
+    auto movingLight = createLightSource(ecs, glm::vec3(5,0,2), glm::vec3(1));
+    ecs.SetEntityName(movingLight, "Y moving light");
+    CustomBehavior oscilatingLight;
+    oscilatingLight.update = [movingLight, &ecs](float deltaTime){
+        totalTime += deltaTime;
+        auto &transfo = ecs.GetComponent<Transform>(movingLight);
+        float direction = cos(totalTime); 
+        transfo.translate({0,direction * deltaTime * 10.f,0});
+    };
+    ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
 }
