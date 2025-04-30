@@ -94,6 +94,95 @@ void LightRender::update(){
     PBRrender::pbrProgPtr->updateLightCount(associatedLight);
 }
 
+InfosRender::InfosRender(): infoProgram("shaders/infos/vertex.glsl", "shaders/infos/fragment.glsl"){};
+
+
+void InfosRender::update(glm::mat4 &view, glm::mat4 &projection, int mode){
+    infoProgram.use();
+    infoProgram.beforeRender();
+    infoProgram.updateViewMatrix(view);
+    infoProgram.updateProjectionMatrix(projection);
+    
+    GLuint renderLocation = glGetUniformLocation(infoProgram.programID, "renderMode");
+    glUniform1i(renderLocation, mode);
+    
+    for (const auto& entity : mEntities) {
+        auto& drawable = ecs.GetComponent<Drawable>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+        
+        glm::mat4 model = transform.getModelMatrix();
+        infoProgram.updateModelMatrix(model);
+
+        drawable.draw(-1);
+    }
+
+    infoProgram.afterRender();
+}
+
+GLuint InfosRender::renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int width, int height, int mode){
+    if(mode == 1){
+        glClearColor(0,0,0,1);
+    }
+    GLuint resTexID;
+
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    GLuint depthBufffer;
+    glGenRenderbuffers(1, &depthBufffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBufffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBufffer);
+
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cerr << "Framebuffer not complete!" << std::endl;
+    }    
+
+    GLint m_viewport[4];
+    glGetIntegerv( GL_VIEWPORT, m_viewport );
+    glViewport(0,0, width, height);
+
+
+    glGenTextures(1, &resTexID);
+    glActiveTexture(GL_TEXTURE0 + Texture::getAvailableActivationInt());
+    glBindTexture(GL_TEXTURE_2D, resTexID);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,                    // ou GL_RGBA selon ton besoin
+        width,
+        height,
+        0,
+        GL_RGB,                    // même format ici
+        GL_UNSIGNED_BYTE,
+        nullptr                    // pas de données, juste allocation
+    );
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resTexID, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    update(view, projection, mode);
+
+    save_PPM_file(width, height, "../pictures/info.ppm");
+
+    glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
+    glDeleteRenderbuffers(1, &depthBufffer);
+    glDeleteFramebuffers(1, &fbo);
+
+    return resTexID;
+}
 
 CubemapRender::CubemapRender(int res): cubemap(res){
     orientations[0] = {1,0,0};
@@ -109,7 +198,7 @@ CubemapRender::CubemapRender(int res): cubemap(res){
     orientations[5] = {0,0,-1};
     ups[4] = ups[5] = {0,-1,0};
 
-    projection = glm::perspective(glm::radians(90.0f), 1.f, 0.1f, 100.f);
+    projection = glm::perspective(glm::radians(90.0f), 1.f, 0.1f, 1000.f);
     
 }
 

@@ -37,6 +37,17 @@ class PBRrender: public System {
     }
 };
 
+
+class InfosRender: public System {
+    private:
+    Program infoProgram;
+    void update(glm::mat4 &view, glm::mat4 &projection, int mode=0);
+    
+    public:
+    InfosRender();
+    GLuint renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int width, int height, int mode=0);
+};
+
 class CubemapRender {
     private:
     glm::mat4 projection;

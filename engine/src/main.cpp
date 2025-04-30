@@ -72,6 +72,7 @@ SpatialNode root;
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
 std::shared_ptr<PBRrender> pbrRenderSystem;
+std::shared_ptr<InfosRender> infoRenderSystem;
 std::shared_ptr<LightRender> lightRenderSystem;
 std::shared_ptr<CustomSystem> customSystem;
 std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
@@ -93,6 +94,7 @@ void initEcs(){
 
     renderSystem = ecs.RegisterSystem<Render>();
     pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
+    infoRenderSystem = ecs.RegisterSystem<InfosRender>();
     lightRenderSystem = ecs.RegisterSystem<LightRender>();
     customSystem = ecs.RegisterSystem<CustomSystem>();
     collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
@@ -111,6 +113,11 @@ void initEcs(){
     pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
     pbrRenderSignature.set(ecs.GetComponentType<Material>());
     ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
+
+    Signature infoRenderSignature;
+    infoRenderSignature.set(ecs.GetComponentType<Transform>());
+    infoRenderSignature.set(ecs.GetComponentType<Drawable>());
+    ecs.SetSystemSignature<InfosRender>(infoRenderSignature);
 
     Signature lightSignature;
     lightSignature.set(ecs.GetComponentType<Transform>());
@@ -227,6 +234,10 @@ void editorUpdate(float deltaTime){
             unloadScene();
             initScene(root, ecs);
             afterSceneInit();
+
+            glm::mat4 v = Camera::getInstance().getV();
+            glm::mat4 p = Camera::getInstance().getP();
+            infoRenderSystem->renderOnFrame(v, p, 500,500,1);
         } else if(ImGui::Button("Load scene 2")){
             unloadScene();
             pbrScene(root, ecs);
@@ -359,6 +370,7 @@ int main( void )
             actions = InputManager::getInstance().getActions();
             
             // Clear the screen
+            glClearColor(0,1,0,1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             root.updateSelfAndChildTransform();
 
