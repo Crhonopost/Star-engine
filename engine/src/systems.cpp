@@ -54,9 +54,13 @@ void PBRrender::update(glm::mat4 &view){
     // pbrProg.setInt("prefilterMap", 1);
     // pbrProg.setInt("brdfLUTMap", 2);
     // ///////////
+<<<<<<< HEAD
     GLuint camLoc = glGetUniformLocation(pbrProg.programID, "camPos");
     glm::vec3 C = Camera::getInstance().getPosition();
     glUniform3f(camLoc, C.x, C.y, C.z);
+=======
+    
+>>>>>>> cc6c90c8d200db0bcfddd2f9a5314ada73321dd7
     ////////// irradiance map
     GLuint irrLoc = glGetUniformLocation(pbrProg.programID, "irradianceMap");
     glActiveTexture(GL_TEXTURE0);
@@ -132,6 +136,7 @@ CubemapRender::CubemapRender(int res): cubemap(res){
     projection = glm::perspective(glm::radians(90.0f), 1.f, 0.1f, 100.f);
     
 }
+
 // void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap){
 //     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
 //     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -235,6 +240,7 @@ void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap)
     glViewport(oldVp[0], oldVp[1], oldVp[2], oldVp[3]);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
 
 
 GLuint CubemapRender::TwoDLUT(Program *brdfProg){
