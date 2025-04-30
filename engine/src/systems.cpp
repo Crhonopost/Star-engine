@@ -12,9 +12,7 @@
 
 
 
-void Render::update(glm::mat4 &view) {
-    int activationInt = 0;
-    
+void Render::update(glm::mat4 &view) {    
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
@@ -27,7 +25,7 @@ void Render::update(glm::mat4 &view) {
         
         glm::mat4 model = transform.getModelMatrix();
 
-        program.renderTextures(activationInt);
+        program.renderTextures();
 
         program.updateViewMatrix(view);
         program.updateModelMatrix(model);
@@ -46,30 +44,32 @@ void PBRrender::initPBR() {
 }
 
 void PBRrender::update(glm::mat4 &view){
+    int current = Texture::getAvailableActivationInt();
+
     PBR &pbrProg = *pbrProgPtr;
     glUseProgram(pbrProg.programID);
     GLuint irrLoc = glGetUniformLocation(pbrProg.programID, "irradianceMap");
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_CUBE_MAP, mIrradianceMapID);
-    glUniform1i(irrLoc, 0);
+    glUniform1i(irrLoc, current);
+
 
     pbrProg.beforeRender();
     
     pbrProg.updateViewMatrix(view);
 
-    int activationInt = 1;
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& material = ecs.GetComponent<Material>(entity);
 
-        pbrProg.updateMaterial(material,activationInt);
+        pbrProg.updateMaterial(material);
         
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
         
         glm::mat4 model = transform.getModelMatrix();
 
-        pbrProg.renderTextures(activationInt);
+        pbrProg.renderTextures();
         pbrProg.updateModelMatrix(model);
 
         drawable.draw(distanceToCam);
@@ -142,15 +142,15 @@ void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
     filterProg->use();
 
     GLuint skyLoc = glGetUniformLocation(filterProg->programID, "skybox");
-    glActiveTexture(GL_TEXTURE0);
+    int current = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
-    glUniform1i(skyLoc, 0);
+    glUniform1i(skyLoc, current);
 
     filterProg->beforeRender();
     filterProg->updateProjectionMatrix(projection);
     filterProg->updateModelMatrix(glm::mat4(1));
 
-    glClearColor(1,0,0,1);
     for(int i = 0; i < 6; i++){
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
