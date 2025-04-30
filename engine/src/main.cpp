@@ -223,8 +223,14 @@ void afterSceneInit(){
 }
 
 void switchEditorMode(){
+    glm::vec3 target = Camera::getInstance().camera_target;
+    glm::vec3 position = Camera::getInstance().camera_position;
+    
     isInEditor = !isInEditor;
     Camera::editor = isInEditor;
+    
+    Camera::getInstance().camera_target = target;
+    Camera::getInstance().camera_position = position;
 }
 
 void editorUpdate(float deltaTime){
@@ -382,6 +388,7 @@ int main( void )
     
             if(isInEditor) editorUpdate(deltaTime);
             else gameUpdate(deltaTime);
+            Texture::resetActivationInt();
             
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

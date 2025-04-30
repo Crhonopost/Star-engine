@@ -10,6 +10,15 @@
 
 std::map<std::string, Texture> Texture::textures;
 std::vector<std::unique_ptr<Program>> Program::programs;
+int Texture::activationInt = 0;
+
+int Texture::getAvailableActivationInt(){
+    return activationInt ++;
+}
+
+void Texture::resetActivationInt(){
+    activationInt = 0;
+}
 
 Texture& Texture::loadTexture(char * path){
     std::string key(path);
@@ -28,7 +37,7 @@ Texture& Texture::loadTexture(char * path){
     texture.path = path;
 
     glGenTextures(1, &texture.id);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0 + getAvailableActivationInt());
     glBindTexture(GL_TEXTURE_2D, texture.id);
  
 
@@ -87,9 +96,10 @@ Texture& Texture::loadTexture(char * path){
     return texture;
 }
 
-void Texture::activate(GLuint textureLocation, int activationInt){
+void Texture::activate(GLuint textureLocation){
     glBindTextureUnit(activationInt, id);
     glUniform1i(textureLocation, activationInt);
+    activationInt ++;
 }
 
 Program::Program(const char *vertexPath, const char *fragmentPath){
@@ -141,7 +151,7 @@ void Program::initTexture(char *path, char *uniformName){
 }
 
 
-void Program::renderTextures(int &activationInt){
+void Program::renderTextures(){
     glUseProgram(programID);
     for (auto& [textureLocation, texture] : programTextures) {
         if (texture->id == 0){
@@ -149,10 +159,7 @@ void Program::renderTextures(int &activationInt){
             continue;
         }
 
-        glBindTextureUnit(activationInt, texture->id);
-        glUniform1i(textureLocation, activationInt);
-
-        activationInt++;
+        texture->activate(textureLocation);
     }
 }
 
@@ -171,10 +178,12 @@ void PBR::updateLightColor(int lightIndex, glm::vec3 color){
 
 void Skybox::beforeRender(){
     glDepthMask(GL_FALSE);
-    glActiveTexture(GL_TEXTURE0);
+
+    int current = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
-    GLint loc = glGetUniformLocation(programID, "skybox");
-    glUniform1i(loc, 0);
+    GLuint loc = glGetUniformLocation(programID, "skybox");
+    glUniform1i(loc, current);
 }
 
 void Skybox::afterRender(){
@@ -192,10 +201,11 @@ BrdfShader::BrdfShader():Program("shaders/skybox/BRDF_vs.glsl", "shaders/skybox/
 CubemapProg::CubemapProg(): Program("shaders/cubemap/vertex.glsl", "shaders/cubemap/fragment.glsl"){}
 
 void CubemapProg::beforeRender(){
-    glActiveTexture(GL_TEXTURE0);
+    int current = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
     GLuint loc = glGetUniformLocation(programID, "skybox");
-    glUniform1i(loc, 0);
+    glUniform1i(loc, current);
 }
 
 Cubemap::Cubemap(int resolution){
@@ -284,7 +294,7 @@ PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shad
     indensiteScaleLightLocation = glGetUniformLocation(programID,"indensiteScaleLight");
 }
 
-void PBR::updateMaterial(Material &material,int &activationInt){
+void PBR::updateMaterial(Material &material){
     glUniform1f(metallicLocation, material.metallic);
     glUniform1f(roughnessLocation, material.roughness);
     glUniform1f(aoLocation, material.ao);
@@ -292,11 +302,11 @@ void PBR::updateMaterial(Material &material,int &activationInt){
     glUniform1i(hasTextureLocation, material.hasTexture);
 
     if(material.hasTexture){
-        material.albedoTex->activate(albedoTexLocation, activationInt++);
-        material.metallicTex->activate(metallicTexLocation, activationInt++);
-        material.aoTex->activate(aoTexLocation, activationInt++);
-        material.normalTex->activate(normalTexLocation, activationInt++);
-        material.roughnessTex->activate(roughnessTexLocation, activationInt++);
+        material.albedoTex->activate(albedoTexLocation);
+        material.metallicTex->activate(metallicTexLocation);
+        material.aoTex->activate(aoTexLocation);
+        material.normalTex->activate(normalTexLocation);
+        material.roughnessTex->activate(roughnessTexLocation);
     }
 }
 

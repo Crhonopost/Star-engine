@@ -12,13 +12,18 @@ class Material;
 struct Texture {
     char *path;
     GLuint id;
-
+    
     Texture(): id(0){};
-
+    
     static Texture& loadTexture(char * path);
     static std::map<std::string, Texture> textures;
+    
+    void activate(GLuint textureLocation);
+    static int getAvailableActivationInt();
+    static void resetActivationInt();
 
-    void activate(GLuint textureLocation, int activationInt);
+    private:
+    static int activationInt;
 };
 
 
@@ -49,7 +54,7 @@ class Program {
     virtual void afterRender();
     
     void clear();
-    void renderTextures(int &activationInt);
+    void renderTextures();
     void initTexture(char *path, char *uniformName);
     virtual void updateGUI();
 
@@ -116,7 +121,7 @@ class PBR: public Program{
     public:
     PBR();
     void updateGUI() override;
-    void updateMaterial(Material &value,int &activationInt);
+    void updateMaterial(Material &value);
 
     void updateLightCount(int count);
     void updateLightPosition(int lightIndex, glm::vec3 position);
