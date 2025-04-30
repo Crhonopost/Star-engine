@@ -168,9 +168,11 @@ void afterSceneInit(){
 
 
     CubemapRender irradianceMapRender(64);
+    CubemapRender specularMapRender(64);
     // Render scene into a cubemap
     irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
     
+    ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
     Cubemap irradianceMap(32);
 
@@ -178,7 +180,19 @@ void afterSceneInit(){
     irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
 
+    ///////////////////////// diffuse irradiance END
 
+    ///////////////////////// specular IBL
+    auto prefilterShader = std::make_unique<PrefilterShader>();
+    auto brdfShader =  std::make_unique<BrdfShader>();
+
+    Cubemap prefilterMap(128);
+    specularMapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
+    GLuint brdfLUTTEXID = specularMapRender.TwoDLUT(brdfShader.get());
+
+    pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
+    pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
+    ///////////////////////// specular IBL END
 
     
     auto testCubemapRenderEntity = ecs.CreateEntity();

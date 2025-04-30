@@ -190,6 +190,10 @@ Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.
 } 
 IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
 
+PrefilterShader::PrefilterShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/prefilter.glsl"){}
+
+BrdfShader::BrdfShader():Program("shaders/skybox/BRDF_vs.glsl", "shaders/skybox/BRDF_fs.glsl"){}
+
 void Skybox::setSkybox(std::vector<std::string> faces)
 {
     unsigned int textureID;
