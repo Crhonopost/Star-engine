@@ -165,12 +165,13 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
     for (unsigned int mip = 0; mip < maxMip; ++mip) {
         unsigned int size = prefilterMap.resolution * std::pow(0.5f, mip);
         glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, prefilterMap.resolution, prefilterMap.resolution);
-        glViewport(0, 0, prefilterMap.resolution, prefilterMap.resolution);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
+        glViewport(0, 0, size, size);
 
         float rough = float(mip) / float(maxMip - 1);
         prefilterProg->setFloat("roughness", rough);
         prefilterProg->updateProjectionMatrix(projection);
+        prefilterProg->updateModelMatrix(glm::mat4(1));
 
         for (int face = 0; face < 6; ++face) {
             glFramebufferTexture2D(

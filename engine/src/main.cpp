@@ -339,7 +339,7 @@ int main( void )
         glfwPollEvents();
         glfwSetCursorPos(window, 1024/2, 768/2);
     
-        glClearColor(0.f, 1.f, 0.2f, 0.0f);
+        glClearColor(1.f, 0.f, 0.2f, 0.0f);
     
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
