@@ -99,7 +99,7 @@ void PhysicSystem::solver(){
         if(rbA.isStatic && !rbB.isStatic && overlapping.bSeeA){
             tB.translate(overlapping.normal * overlapping.correctionDepth);
         } else if(rbB.isStatic && !rbA.isStatic && overlapping.aSeeB){
-            tA.translate(-overlapping.normal * overlapping.correctionDepth);
+            tA.translate(overlapping.normal * overlapping.correctionDepth);
         } else if(!rbA.isStatic && !rbB.isStatic){
             tB.translate(overlapping.normal * overlapping.correctionDepth * 0.5f);
             tA.translate(-overlapping.normal * overlapping.correctionDepth * 0.5f);
