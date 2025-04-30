@@ -171,7 +171,10 @@ void PBR::updateLightColor(int lightIndex, glm::vec3 color){
 
 void Skybox::beforeRender(){
     glDepthMask(GL_FALSE);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+    GLint loc = glGetUniformLocation(programID, "skybox");
+    glUniform1i(loc, 0);
 }
 
 void Skybox::afterRender(){
@@ -189,6 +192,10 @@ Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.
         "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
 } 
 IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
+
+PrefilterShader::PrefilterShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/prefilter.glsl"){}
+
+BrdfShader::BrdfShader():Program("shaders/skybox/BRDF_vs.glsl", "shaders/skybox/BRDF_fs.glsl"){}
 
 void Skybox::setSkybox(std::vector<std::string> faces)
 {

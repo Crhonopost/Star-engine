@@ -17,6 +17,8 @@ uniform sampler2D metallicMap;
 uniform sampler2D roughnessMap;
 uniform sampler2D aoMap;
 uniform samplerCube irradianceMap;
+uniform samplerCube prefilterMap;
+uniform sampler2D  brdfLUTMap;
 
 // lights
 const int MAX_LIGHT = 20;
@@ -73,6 +75,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }  
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+} 
+
 vec3 getNormalFromNormalMap(){
     return -normalize(texture2D(normalMap,texCoords).rgb*2.0-1.0);
 }
@@ -98,6 +105,7 @@ void main(){
 
     vec3 N = normalize(normal);
     vec3 V = normalize(camPos - WorldPos);
+    vec3 R = reflect(-V, N); 
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, metallic);
@@ -117,27 +125,39 @@ void main(){
         // cook-torrance brdf
         float NDF = DistributionGGX(N, H, roughness);        
         float G   = GeometrySmith(N, V, L, roughness);      
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);  
+
+        vec3 numerator    = NDF * G * F;
+        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001; // + 0.0001 to prevent divide by zero
+        vec3 specular = numerator / denominator;     
         
         vec3 kS = F;
         vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;	  
-        
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-        vec3 specular     = numerator / denominator;  
+        kD *= 1.0 - metallic;	    
             
         // add to outgoing radiance Lo
         float NdotL = max(dot(N, L), 0.0);                
-        Lo += indensiteScaleLight * (kD * albedo / PI + specular) * radiance * NdotL*200.f; 
+        Lo += indensiteScaleLight * (kD * albedo / PI + specular) * radiance * NdotL*50.f; 
     }
     // vec3 ambient = vec3(0.03) * albedo * ao;
-    vec3 kS = fresnelSchlick(max(dot(N, V), 0.0), F0);
+
+    // ambient lighting (we now use IBL as the ambient term)
+    vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kS = F;
     vec3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;	  
     vec3 irradiance = texture(irradianceMap, N).rgb;
     vec3 diffuse      = irradiance * albedo;
-    vec3 ambient = (kD * diffuse) * ao;
+
+    // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
+    const float MAX_REFLECTION_LOD = 4.0;
+    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;  
+    vec2 brdf  = texture(brdfLUTMap, vec2(max(dot(N, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+
+
+    vec3 ambient = (kD * diffuse + specular) * ao;
     
     
     vec3 colorPBR = ambient + Lo;
