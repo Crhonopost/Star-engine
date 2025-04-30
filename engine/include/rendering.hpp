@@ -74,12 +74,13 @@ class Program {
 
 class Skybox: public Program{
     public:
-    GLuint skyboxID;
+    GLuint skyboxID, octaProjLoc;
     Skybox();
     
     void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
+    void setProjectionOcta(bool state);
 };
 
 class IrradianceShader:public Program{

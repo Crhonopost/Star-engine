@@ -13,7 +13,7 @@ class Render: public System {
     void update(glm::mat4 &view);
 
     static Drawable generateSphere(float radius);
-    static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
+    static Drawable generatePlane(float sideLength, int nbOfVerticesSide, bool front = false);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
     static Drawable loadMesh(char *filePath);
 };
@@ -47,6 +47,7 @@ class CubemapRender {
     CubemapRender(int res);
     void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
     void applyFilter(Program *filterProg, Cubemap target);
+    void unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr);
 };
 
 

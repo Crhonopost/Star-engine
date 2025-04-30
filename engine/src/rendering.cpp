@@ -193,6 +193,7 @@ void Skybox::afterRender(){
 
 Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.glsl")
 {
+    octaProjLoc = glGetUniformLocation(programID, "octahedralProjection");
     setSkybox({
         "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
         "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
@@ -200,8 +201,11 @@ Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.
         "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
         "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
         "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
-} 
-IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
+}
+
+void Skybox::setProjectionOcta(bool state){
+    glUniform1i(octaProjLoc, state);
+}
 
 void Skybox::setSkybox(std::vector<std::string> faces)
 {
@@ -234,6 +238,8 @@ void Skybox::setSkybox(std::vector<std::string> faces)
 
     skyboxID = textureID;
 }
+
+IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
 
 CubemapProg::CubemapProg(): Program("shaders/cubemap/vertex.glsl", "shaders/cubemap/fragment.glsl"){}
 

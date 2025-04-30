@@ -167,9 +167,12 @@ void afterSceneInit(){
     lightRenderSystem->update();
 
 
-    CubemapRender irradianceMapRender(32);
+    CubemapRender irradianceMapRender(512);
     // Render scene into a cubemap
     irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+
+    GLuint octa;
+    irradianceMapRender.unwrapOctaProj(octa, 512, (Skybox*) skyboxProg.programPtr);
     
     auto irradianceShader = std::make_unique<IrradianceShader>();        
     Cubemap irradianceMap(32);

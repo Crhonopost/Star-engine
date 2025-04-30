@@ -220,6 +220,83 @@ void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *
 }
 
 
+void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr){
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    GLuint depthBufffer;
+    glGenRenderbuffers(1, &depthBufffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBufffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, resolution, resolution);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBufffer);
+
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cerr << "Framebuffer not complete!" << std::endl;
+    }    
+
+    GLint m_viewport[4];
+    glGetIntegerv( GL_VIEWPORT, m_viewport );
+    glViewport(0,0, cubemap.resolution, cubemap.resolution);
+
+
+    skyboxProgPtr->use();
+    auto identity = glm::mat4(1);
+    skyboxProgPtr->setProjectionOcta(true);
+    skyboxProgPtr->updateModelMatrix(identity);
+    skyboxProgPtr->updateProjectionMatrix(identity);
+    // glm::mat4 view = glm::lookAt(glm::vec3(0), {0,0,1}, {0,1,0});
+    skyboxProgPtr->updateViewMatrix(identity);
+    skyboxProgPtr->beforeRender();
+
+    Drawable plane = Render::generatePlane(2, 2, true);
+
+    // Generate texture
+    glGenTextures(1, &textureID);
+    glActiveTexture(GL_TEXTURE0 + Texture::getAvailableActivationInt());
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,                    // ou GL_RGBA selon ton besoin
+        resolution,
+        resolution,
+        0,
+        GL_RGB,                    // même format ici
+        GL_UNSIGNED_BYTE,
+        nullptr                    // pas de données, juste allocation
+    );
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    plane.draw(-1);
+
+
+    glm::mat4 camProj = Camera::getInstance().getP();
+    skyboxProgPtr->updateProjectionMatrix(camProj);
+    skyboxProgPtr->setProjectionOcta(false);
+    skyboxProgPtr->afterRender();
+
+    save_PPM_file(resolution, resolution, "../pictures/octaProj.ppm");
+
+    glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
+    glDeleteRenderbuffers(1, &depthBufffer);
+    glDeleteFramebuffers(1, &fbo);
+}
+
+
 Drawable Render::generateSphere(float radius){
     Drawable res;
 
@@ -293,7 +370,7 @@ Drawable Render::generateSphere(float radius){
     return res;
 }
 
-Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
+Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide, bool front){
     Drawable res;
 
     std::vector<unsigned short> indices;
@@ -303,18 +380,16 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
 
     float edgeLength = sideLength / (nbOfVerticesSide - 1.);
 
-    glm::vec3 offset(sideLength / 2., 0, sideLength / 2.);
-
-    glm::vec3 min(999,999,999);
-    glm::vec3 max(-999,-999,-999);
+    glm::vec3 offsetNFront(sideLength / 2., 0, sideLength / 2.);
+    glm::vec3 offsetFront(sideLength / 2., sideLength / 2., 0);
 
     for(size_t i=0; i<nbOfVerticesSide; i++){
         for(size_t j=0; j<nbOfVerticesSide; j++){
-            glm::vec3 vertexPos = edgeLength * glm::vec3(i, 0, j) - offset;
-            
-            for(int i=0; i<3; i++){
-                if(min[i] > vertexPos[i]) min[i] = vertexPos[i];
-                if(max[i] < vertexPos[i]) max[i] = vertexPos[i];
+            glm::vec3 vertexPos;
+            if(!front){
+                vertexPos = edgeLength * glm::vec3(i, 0, j) - offsetNFront;
+            } else {
+                vertexPos = edgeLength * glm::vec3(i, j, 0) - offsetFront;
             }
 
             indexed_vertices.push_back(vertexPos);
