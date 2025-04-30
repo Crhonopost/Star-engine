@@ -163,10 +163,10 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
 
     unsigned int maxMip = 5;
     for (unsigned int mip = 0; mip < maxMip; ++mip) {
-        unsigned int size = 128 * std::pow(0.5f, mip);
+        unsigned int size = prefilterMap.resolution * std::pow(0.5f, mip);
         glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
-        glViewport(0, 0, size, size);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, prefilterMap.resolution, prefilterMap.resolution);
+        glViewport(0, 0, prefilterMap.resolution, prefilterMap.resolution);
 
         float rough = float(mip) / float(maxMip - 1);
         prefilterProg->setFloat("roughness", rough);
@@ -184,7 +184,9 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
 
             glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[face], ups[face]);
             prefilterProg->updateViewMatrix(view);
-            cubeMesh.draw(-1); // Utilisation du cube global
+            cubeMesh.draw(-1);
+
+            save_PPM_file(prefilterMap.resolution, prefilterMap.resolution, "../pictures/test.ppm");
         }
     }
     

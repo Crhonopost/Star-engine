@@ -103,8 +103,8 @@ void main()
     prefilteredColor = prefilteredColor / totalWeight;
 
 
-    FragColor = vec4(0.f,0.f,1.f, 1.0);
-    // FragColor = vec4(prefilteredColor, 1.0);
+    // FragColor = vec4(0.f,0.f,1.f, 1.0);
+    FragColor = vec4(prefilteredColor, 1.0);
 
 }
 

@@ -175,7 +175,7 @@ void afterSceneInit(){
 
     lightRenderSystem->update();
 
-    CubemapRender sceneCubemapRender(64);
+    CubemapRender sceneCubemapRender(128);
     // Render scene into a cubemap
     sceneCubemapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
     
@@ -188,17 +188,15 @@ void afterSceneInit(){
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
     
     ///////////////////////// diffuse irradiance END
-    
-    CubemapRender specularMapRender(64);
-    specularMapRender.cubemap.clear();
-    specularMapRender.cubemap = skyboxMap;
+
+
     ///////////////////////// specular IBL
     auto prefilterShader = std::make_unique<PrefilterShader>();
     auto brdfShader =  std::make_unique<BrdfShader>();
-
+    
     Cubemap prefilterMap(128);
-    specularMapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
-    GLuint brdfLUTTEXID = specularMapRender.TwoDLUT(brdfShader.get());
+    sceneCubemapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
+    GLuint brdfLUTTEXID = sceneCubemapRender.TwoDLUT(brdfShader.get());
 
     pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
     pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
