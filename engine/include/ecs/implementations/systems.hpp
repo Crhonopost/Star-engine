@@ -51,7 +51,7 @@ class CubemapRender {
     glm::mat4 projection;
     glm::vec3 orientations[6];
     glm::vec3 ups[6];
-    GLuint captureFBOSpe,captureRBOSpe;
+    Drawable cubeMesh;
     public:
     Cubemap cubemap;
     CubemapRender(int res);

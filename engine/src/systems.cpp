@@ -117,7 +117,7 @@ void LightRender::update(){
 }
 
 
-CubemapRender::CubemapRender(int res): cubemap(res){
+CubemapRender::CubemapRender(int res): cubemap(res), cubeMesh(Render::generateCube(10, 2, true)){
     orientations[0] = {1,0,0};
     orientations[1] = {-1,0,0};
     ups[0] = ups[1] = {0,-1,0};
@@ -135,63 +135,8 @@ CubemapRender::CubemapRender(int res): cubemap(res){
     
 }
 
-// void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap){
-//     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
-//     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-//     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
-//     glActiveTexture(GL_TEXTURE0);
-//     glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubemap.textureID); 
-//     prefilterProg->use();
-//     prefilterProg->setInt("environmentMap", 0);
-
-//     glBindFramebuffer(GL_FRAMEBUFFER, captureFBOSpe);
-
-//     GLint m_viewport[4];
-//     glGetIntegerv(GL_VIEWPORT, m_viewport);
-
-//     auto cube = Render::generateCube(10, 2, true);
-//     unsigned int maxMipLevels = 5;
-
-//     for (unsigned int mip = 0; mip < maxMipLevels; ++mip) {
-//         unsigned int mipSize = 128 * std::pow(0.5, mip);
-//         glBindRenderbuffer(GL_RENDERBUFFER, captureRBOSpe);
-//         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, mipSize, mipSize);
-//         glViewport(0, 0, mipSize, mipSize);
-
-//         float roughness = float(mip) / float(maxMipLevels - 1);
-
-//         prefilterProg->use();
-//         prefilterProg->setFloat("roughness", roughness);
-//         prefilterProg->updateProjectionMatrix(projection);
-
-//         for (int face = 0; face < 6; ++face) {
-//             glFramebufferTexture2D(
-//                 GL_FRAMEBUFFER,
-//                 GL_COLOR_ATTACHMENT0,
-//                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-//                 prefilterMap.textureID,
-//                 mip
-//             );
-
-//             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-//             glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[face], ups[face]);
-//             prefilterProg->updateViewMatrix(view);
-
-//             cube.draw(-1);
-//         }
-//     }
-
-//     glm::mat4 camProj = Camera::getInstance().getP();
-//     prefilterProg->updateProjectionMatrix(camProj);
-//     glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
-
-//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-// }
-
-void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap){
+void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -204,15 +149,20 @@ void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap)
     
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBOSpe);
-    GLint oldVp[4];  glGetIntegerv(GL_VIEWPORT, oldVp);
+    // Création locale du FBO et RBO
+    GLuint fbo, rbo;
+    glGenFramebuffers(1, &fbo);
+    glGenRenderbuffers(1, &rbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
 
-    auto cube = Render::generateCube(10, 2, true);
+    GLint oldVp[4];
+    glGetIntegerv(GL_VIEWPORT, oldVp);
+
     unsigned int maxMip = 5;
     for (unsigned int mip = 0; mip < maxMip; ++mip) {
         unsigned int size = 128 * std::pow(0.5f, mip);
-        glBindRenderbuffer(GL_RENDERBUFFER, captureRBOSpe);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
         glViewport(0, 0, size, size);
 
@@ -232,48 +182,56 @@ void CubemapRender::applyPrefilter(Program *prefilterProg, Cubemap prefilterMap)
 
             glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[face], ups[face]);
             prefilterProg->updateViewMatrix(view);
-            cube.draw(-1);
+            cubeMesh.draw(-1); // Utilisation du cube global
         }
     }
+    
+    // Nettoyage
     glViewport(oldVp[0], oldVp[1], oldVp[2], oldVp[3]);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteRenderbuffers(1, &rbo);
+    glDeleteFramebuffers(1, &fbo);
 }
 
-
-
-GLuint CubemapRender::TwoDLUT(Program *brdfProg){
-
-    // Save current viewport dimmensions and prepare it for cubemap faces
-    GLint m_viewport[4];
-    glGetIntegerv( GL_VIEWPORT, m_viewport );
-
+GLuint CubemapRender::TwoDLUT(Program* brdfProg) {
     GLuint brdfLUTTexture;
     glGenTextures(1, &brdfLUTTexture);
 
-    // pre-allocate enough memory for the LUT texture.
+    // Configuration de la texture
     glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, 512, 512, 0, GL_RG, GL_FLOAT, 0);
-    // be sure to set wrapping mode to GL_CLAMP_TO_EDGE
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // then re-configure capture framebuffer object and render screen-space quad with BRDF shader.
-    glBindFramebuffer(GL_FRAMEBUFFER, captureFBOSpe);
-    glBindRenderbuffer(GL_RENDERBUFFER, captureRBOSpe);
+    // Création locale du FBO/RBO
+    GLuint fbo, rbo;
+    glGenFramebuffers(1, &fbo);
+    glGenRenderbuffers(1, &rbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, 512, 512);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
 
+    // Rendu
+    GLint oldVp[4];
+    glGetIntegerv(GL_VIEWPORT, oldVp);
     glViewport(0, 0, 512, 512);
+    
     brdfProg->use();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     renderQuad();
 
-    glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
+    // Restauration
+    glViewport(oldVp[0], oldVp[1], oldVp[2], oldVp[3]);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteRenderbuffers(1, &rbo);
+    glDeleteFramebuffers(1, &fbo);
+
     return brdfLUTTexture;
 }
+
 
 
 void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
@@ -298,9 +256,6 @@ void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
     glGetIntegerv( GL_VIEWPORT, m_viewport );
     glViewport(0,0, target.resolution, target.resolution);
 
-    // Skybox cube (find a way to make it global)
-    auto cube = Render::generateCube(10, 2, true);
-
     filterProg->use();
 
     GLuint skyLoc = glGetUniformLocation(filterProg->programID, "skybox");
@@ -323,7 +278,7 @@ void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
         glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[i], ups[i]);
         filterProg->updateViewMatrix(view);
 
-        cube.draw(-1);
+        cubeMesh.draw(-1);
     }
 
     glm::mat4 camProj = Camera::getInstance().getP();

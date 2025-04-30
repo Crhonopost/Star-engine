@@ -26,7 +26,8 @@ struct Cubemap {
     GLuint textureID;
     int resolution;
     Cubemap(int resolution);
-    // void setTop(unsigned char *data);
+    Cubemap(std::vector<std::string> paths);
+    void clear();
 };
 
 class Program {
@@ -75,10 +76,9 @@ class Program {
 
 class Skybox: public Program{
     public:
-    GLuint skyboxID;
-    Skybox();
+    Cubemap cubemap;
+    Skybox(Cubemap sky);
     
-    void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
 };

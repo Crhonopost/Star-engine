@@ -152,7 +152,16 @@ void afterSceneInit(){
 
     Program *pbr = Program::programs.back().get();
 
-    Program::programs.push_back(std::make_unique<Skybox>());
+    Cubemap skyboxMap({
+        "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
+
+
+    Program::programs.push_back(std::make_unique<Skybox>(skyboxMap));
     Entity skyboxEntity = ecs.CreateEntity();
     ecs.SetEntityName(skyboxEntity, "Skybox");
     Drawable skyboxDraw = Render::generateCube(9999, 2, true);
@@ -166,22 +175,23 @@ void afterSceneInit(){
 
     lightRenderSystem->update();
 
-
-    CubemapRender irradianceMapRender(64);
-    CubemapRender specularMapRender(64);
+    CubemapRender sceneCubemapRender(64);
     // Render scene into a cubemap
-    irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+    sceneCubemapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
     
     ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
     Cubemap irradianceMap(32);
-
+    
     // Apply shader onto skybox
-    irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
+    sceneCubemapRender.applyFilter(irradianceShader.get(), irradianceMap);
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
-
+    
     ///////////////////////// diffuse irradiance END
-
+    
+    CubemapRender specularMapRender(64);
+    specularMapRender.cubemap.clear();
+    specularMapRender.cubemap = skyboxMap;
     ///////////////////////// specular IBL
     auto prefilterShader = std::make_unique<PrefilterShader>();
     auto brdfShader =  std::make_unique<BrdfShader>();

@@ -172,7 +172,7 @@ void PBR::updateLightColor(int lightIndex, glm::vec3 color){
 void Skybox::beforeRender(){
     glDepthMask(GL_FALSE);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
     GLint loc = glGetUniformLocation(programID, "skybox");
     glUniform1i(loc, 0);
 }
@@ -181,53 +181,13 @@ void Skybox::afterRender(){
     glDepthMask(GL_TRUE);
 }
 
-Skybox::Skybox():Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.glsl")
-{
-    setSkybox({
-        "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
-} 
+Skybox::Skybox(Cubemap sky):Program("shaders/skybox/vertex.glsl", "shaders/skybox/fragment.glsl"), cubemap(sky){}
+
 IrradianceShader::IrradianceShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/irradiance_convolution.glsl"){}
 
 PrefilterShader::PrefilterShader():Program("shaders/skybox/vertex.glsl", "shaders/skybox/prefilter.glsl"){}
 
 BrdfShader::BrdfShader():Program("shaders/skybox/BRDF_vs.glsl", "shaders/skybox/BRDF_fs.glsl"){}
-
-void Skybox::setSkybox(std::vector<std::string> faces)
-{
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
-
-    int width, height, nrChannels;
-    for (unsigned int i = 0; i < faces.size(); i++)
-    {
-        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
-        if (data)
-        {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
-            );
-            stbi_image_free(data);
-        }
-        else
-        {
-            std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data);
-        }
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    skyboxID = textureID;
-}
 
 CubemapProg::CubemapProg(): Program("shaders/cubemap/vertex.glsl", "shaders/cubemap/fragment.glsl"){}
 
@@ -264,6 +224,39 @@ Cubemap::Cubemap(int resolution){
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+}
+
+Cubemap::Cubemap(std::vector<std::string> paths){
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        unsigned char *data = stbi_load(paths[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap tex failed to load at path: " << paths[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    this->resolution = width;
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+}
+
+void Cubemap::clear(){
+    glDeleteTextures(1, &textureID);
 }
 
 // void Cubemap::setFace(int idx, unsigned char *data){
