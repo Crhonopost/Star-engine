@@ -54,13 +54,11 @@ void PBRrender::update(glm::mat4 &view){
     // pbrProg.setInt("prefilterMap", 1);
     // pbrProg.setInt("brdfLUTMap", 2);
     // ///////////
-<<<<<<< HEAD
+
     GLuint camLoc = glGetUniformLocation(pbrProg.programID, "camPos");
     glm::vec3 C = Camera::getInstance().getPosition();
     glUniform3f(camLoc, C.x, C.y, C.z);
-=======
-    
->>>>>>> cc6c90c8d200db0bcfddd2f9a5314ada73321dd7
+
     ////////// irradiance map
     GLuint irrLoc = glGetUniformLocation(pbrProg.programID, "irradianceMap");
     glActiveTexture(GL_TEXTURE0);
