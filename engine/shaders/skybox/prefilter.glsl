@@ -1,6 +1,6 @@
 #version 330 core
 out vec4 FragColor;
-in vec3 WorldPos;
+in vec3 TexCoords;
 
 uniform samplerCube environmentMap;
 uniform float roughness;
@@ -63,7 +63,7 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness)
 // ----------------------------------------------------------------------------
 void main()
 {		
-    vec3 N = normalize(WorldPos);
+    vec3 N = normalize(TexCoords);
     
     // make the simplifying assumption that V equals R equals the normal 
     vec3 R = N;
@@ -89,7 +89,7 @@ void main()
             float HdotV = max(dot(H, V), 0.0);
             float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
 
-            float resolution = 512.0; // resolution of source cubemap (per face)
+            float resolution = 128.0; // resolution of source cubemap (per face)
             float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
             float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
 
