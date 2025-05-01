@@ -37,7 +37,9 @@ Texture& Texture::loadTexture(char * path){
     texture.path = path;
 
     glGenTextures(1, &texture.id);
-    glBindTextureUnit(getAvailableActivationInt(), texture.id);
+    int current = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + current);
+    glBindTexture(GL_TEXTURE_2D, texture.id);
  
 
     GLint checkBinding;

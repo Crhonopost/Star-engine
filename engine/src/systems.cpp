@@ -145,6 +145,7 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
     GLuint skyLoc = glGetUniformLocation(prefilterProg->programID, "environmentMap");
+    prefilterProg->updateModelMatrix(glm::mat4(1));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
     glUniform1i(skyLoc, 0);
@@ -161,9 +162,13 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
     GLint oldVp[4];
     glGetIntegerv(GL_VIEWPORT, oldVp);
 
-    unsigned int maxMip = 5;
+    Cubemap save = cubemap;
+    Cubemap A = cubemap;
+    Cubemap B = prefilterMap;
+
+    unsigned int maxMip = 6;
     for (unsigned int mip = 0; mip < maxMip; ++mip) {
-        unsigned int size = prefilterMap.resolution * std::pow(0.5f, mip);
+        unsigned int size = B.resolution * std::pow(0.5f, mip);
         glBindRenderbuffer(GL_RENDERBUFFER, rbo);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
         glViewport(0, 0, size, size);
@@ -178,7 +183,7 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
                 GL_FRAMEBUFFER,
                 GL_COLOR_ATTACHMENT0,
                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-                prefilterMap.textureID,
+                A.textureID,
                 mip
             );
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -187,8 +192,12 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
             prefilterProg->updateViewMatrix(view);
             cubeMesh.draw(-1);
 
-            save_PPM_file(prefilterMap.resolution, prefilterMap.resolution, "../pictures/test.ppm");
+            save_PPM_file(size, size, "../pictures/test.ppm");
+            
         }
+        Cubemap C = A;
+        A = B;
+        B = C;
     }
     
     // Nettoyage
