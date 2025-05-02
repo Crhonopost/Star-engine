@@ -12,11 +12,11 @@ Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereDraw = Render::generateSphere(radius);
     auto sphereMaterial = Material();
 
-    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/rock/Albedo.jpg");
-    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/rock/Normal.jpg");
-    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/rock/Specular.jpg");
-    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/rock/Roughness.jpg");
-    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/rock/AO.jpg");
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Specular.jpg");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
 
     Transform sphereTransform;
     sphereTransform.translate(position);

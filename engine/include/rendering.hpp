@@ -31,7 +31,8 @@ struct Cubemap {
     GLuint textureID;
     int resolution;
     Cubemap(int resolution);
-    // void setTop(unsigned char *data);
+    Cubemap(std::vector<std::string> paths);
+    void clear();
 };
 
 class Program {
@@ -68,16 +69,22 @@ class Program {
     void use() {
         glUseProgram(programID);
     }
-
+    void setFloat(char* uniformName,float valeur){
+        glUniform1f(glGetUniformLocation(programID,uniformName),valeur);
+    }
+    void setInt(const std::string &name, int value) const
+    { 
+        glUniform1i(glGetUniformLocation(programID, name.c_str()), value); 
+    }
     static void destroyPrograms();
 };
 
 class Skybox: public Program{
     public:
-    GLuint skyboxID, octaProjLoc;
-    Skybox();
+    GLuint octaProjLoc;
+    Cubemap cubemap;
+    Skybox(Cubemap sky);
     
-    void setSkybox(std::vector<std::string> faces);
     void beforeRender() override;
     void afterRender() override;
     void setProjectionOcta(bool state);
@@ -88,7 +95,15 @@ class IrradianceShader:public Program{
     IrradianceShader();
     
 };
+class PrefilterShader:public Program{
+    public:
+    PrefilterShader();
+};
 
+class BrdfShader:public Program{
+    public:
+    BrdfShader();
+};
 
 class CubemapProg: public Program {
     public:

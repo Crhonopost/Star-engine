@@ -159,7 +159,16 @@ void afterSceneInit(){
 
     Program *pbr = Program::programs.back().get();
 
-    Program::programs.push_back(std::make_unique<Skybox>());
+    Cubemap skyboxMap({
+        "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
+        "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
+
+
+    Program::programs.push_back(std::make_unique<Skybox>(skyboxMap));
     Entity skyboxEntity = ecs.CreateEntity();
     ecs.SetEntityName(skyboxEntity, "Skybox");
     Drawable skyboxDraw = Render::generateCube(9999, 2, true);
@@ -173,22 +182,36 @@ void afterSceneInit(){
 
     lightRenderSystem->update();
 
-
-    CubemapRender irradianceMapRender(512);
+    CubemapRender sceneCubemapRender(512);
     // Render scene into a cubemap
-    irradianceMapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+    sceneCubemapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
 
     GLuint octa;
-    irradianceMapRender.unwrapOctaProj(octa, 512, (Skybox*) skyboxProg.programPtr);
+    sceneCubemapRender.unwrapOctaProj(octa, 512, (Skybox*) skyboxProg.programPtr);
+
     
+    ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
     Cubemap irradianceMap(32);
-
+    
     // Apply shader onto skybox
-    irradianceMapRender.applyFilter(irradianceShader.get(), irradianceMap);
+    sceneCubemapRender.applyFilter(irradianceShader.get(), irradianceMap);
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
+    
+    ///////////////////////// diffuse irradiance END
 
 
+    ///////////////////////// specular IBL
+    auto prefilterShader = std::make_unique<PrefilterShader>();
+    auto brdfShader =  std::make_unique<BrdfShader>();
+    
+    Cubemap prefilterMap(128);
+    sceneCubemapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
+    GLuint brdfLUTTEXID = sceneCubemapRender.TwoDLUT(brdfShader.get());
+
+    pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
+    pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
+    ///////////////////////// specular IBL END
 
     
     auto testCubemapRenderEntity = ecs.CreateEntity();
@@ -331,7 +354,7 @@ int main( void )
         glfwPollEvents();
         glfwSetCursorPos(window, 1024/2, 768/2);
     
-        glClearColor(0.f, 1.f, 0.2f, 0.0f);
+        glClearColor(1.f, 0.f, 0.2f, 0.0f);
     
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);

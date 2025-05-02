@@ -16,6 +16,10 @@ glm::mat4 Camera::getP(){
     return glm::perspective(glm::radians(45.f), 800.0f / 600.0f, 0.1f, 100.0f);
 }
 
+glm::vec3 Camera::getPosition(){
+    return camera_position;
+}
+
 glm::vec3 rotateY(glm::vec3 in, float angle){
     glm::vec3 out(in);
     out.x = cos(angle) * in.x - sin(angle) * in.z;

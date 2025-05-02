@@ -28,12 +28,21 @@ class PBRrender: public System {
     friend LightRender;
     static PBR* pbrProgPtr;
     GLuint mIrradianceMapID = 0; 
+    GLuint mPrefilterMapID = 0; 
+    GLuint mBrdfLUTID = 0; 
+
 
     public:
     static void initPBR();
     void update(glm::mat4 &view);
     void setIrradianceMap(GLuint cubemapTextureID) {
         mIrradianceMapID = cubemapTextureID;
+    }
+    void setPrefilterMap(GLuint cubemapTextureID) {
+        mPrefilterMapID = cubemapTextureID;
+    }
+    void setBrdfLUT(GLuint TextureID) {
+        mBrdfLUTID = TextureID;
     }
 };
 
@@ -53,12 +62,15 @@ class CubemapRender {
     glm::mat4 projection;
     glm::vec3 orientations[6];
     glm::vec3 ups[6];
+    Drawable cubeMesh;
     public:
     Cubemap cubemap;
     CubemapRender(int res);
     void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
     void applyFilter(Program *filterProg, Cubemap target);
     void unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr);
+    void applyPrefilter(Program *filterProg, Cubemap prefilterMap);
+    GLuint TwoDLUT(Program *brdfProg);
 };
 
 
