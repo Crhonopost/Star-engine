@@ -227,75 +227,6 @@ CubemapRender::CubemapRender(int res): cubemap(res), cubeMesh(Render::generateCu
 }
 
 
-// void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap) {
-//     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
-//     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-//     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-
-//     GLuint skyLoc = glGetUniformLocation(prefilterProg->programID, "environmentMap");
-//     prefilterProg->updateModelMatrix(glm::mat4(1));
-//     glActiveTexture(GL_TEXTURE0);
-//     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
-//     glUniform1i(skyLoc, 0);
-    
-//     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
-//     // Création locale du FBO et RBO
-//     GLuint fbo, rbo;
-//     glGenFramebuffers(1, &fbo);
-//     glGenRenderbuffers(1, &rbo);
-//     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-//     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-
-//     GLint oldVp[4];
-//     glGetIntegerv(GL_VIEWPORT, oldVp);
-
-//     Cubemap save = cubemap;
-//     Cubemap A = cubemap;
-//     Cubemap B = prefilterMap;
-
-//     unsigned int maxMip = 6;
-//     for (unsigned int mip = 0; mip < maxMip; ++mip) {
-//         unsigned int size = B.resolution * std::pow(0.5f, mip);
-//         glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-//         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, size, size);
-//         glViewport(0, 0, size, size);
-
-//         float rough = float(mip) / float(maxMip - 1);
-//         prefilterProg->setFloat("roughness", rough);
-//         prefilterProg->updateProjectionMatrix(projection);
-//         prefilterProg->updateModelMatrix(glm::mat4(1));
-
-//         for (int face = 0; face < 6; ++face) {
-//             glFramebufferTexture2D(
-//                 GL_FRAMEBUFFER,
-//                 GL_COLOR_ATTACHMENT0,
-//                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + face,
-//                 A.textureID,
-//                 mip
-//             );
-//             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-//             glm::mat4 view = glm::lookAt(glm::vec3(0), orientations[face], ups[face]);
-//             prefilterProg->updateViewMatrix(view);
-//             cubeMesh.draw(-1);
-
-//             save_PPM_file(size, size, "../pictures/test.ppm");
-            
-//         }
-//         Cubemap C = A;
-//         A = B;
-//         B = C;
-//     }
-    
-//     // Nettoyage
-//     glViewport(oldVp[0], oldVp[1], oldVp[2], oldVp[3]);
-//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-//     glDeleteRenderbuffers(1, &rbo);
-//     glDeleteFramebuffers(1, &fbo);
-// }
-
 
 void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
@@ -313,9 +244,6 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
 
     GLint oldViewport[4];
     glGetIntegerv(GL_VIEWPORT, oldViewport);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
 
     prefilterProg->use();
     GLuint skyLoc = glGetUniformLocation(prefilterProg->programID, "environmentMap");
@@ -336,7 +264,6 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
         glViewport(0, 0, mipSize, mipSize);
 
         float roughness = float(mip) / float(maxMipLevels - 1);
-        prefilterProg->use();
         prefilterProg->setFloat("roughness", roughness);
 
         
@@ -539,6 +466,8 @@ void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sk
     skyboxProgPtr->use();
     auto identity = glm::mat4(1);
     skyboxProgPtr->setProjectionOcta(true);
+    auto save = skyboxProgPtr->cubemap;
+    skyboxProgPtr->cubemap = cubemap;
     skyboxProgPtr->updateModelMatrix(identity);
     skyboxProgPtr->updateProjectionMatrix(identity);
     // glm::mat4 view = glm::lookAt(glm::vec3(0), {0,0,1}, {0,1,0});
@@ -581,6 +510,7 @@ void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sk
     skyboxProgPtr->updateProjectionMatrix(camProj);
     skyboxProgPtr->setProjectionOcta(false);
     skyboxProgPtr->afterRender();
+    skyboxProgPtr->cubemap = save;
 
     save_PPM_file(resolution, resolution, "../pictures/octaProj.ppm");
 

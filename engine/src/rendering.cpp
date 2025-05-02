@@ -98,7 +98,8 @@ Texture& Texture::loadTexture(char * path){
 }
 
 void Texture::activate(GLuint textureLocation){
-    glBindTextureUnit(activationInt, id);
+    glActiveTexture(GL_TEXTURE0 + activationInt);
+    glBindTexture(GL_TEXTURE_2D, id);
     glUniform1i(textureLocation, activationInt);
     activationInt ++;
 }
