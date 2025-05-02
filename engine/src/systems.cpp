@@ -225,8 +225,8 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
     GLint oldViewport[4];
     glGetIntegerv(GL_VIEWPORT, oldViewport);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.textureID);
 
     prefilterProg->use();
     GLuint skyLoc = glGetUniformLocation(prefilterProg->programID, "environmentMap");
