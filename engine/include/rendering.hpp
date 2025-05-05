@@ -131,4 +131,10 @@ class PBR: public Program{
     
 };
 
+class ProbeProg: public Program{
+    public:
+    GLuint probeCountsLoc, probeStartPositionLoc, probeStepLoc, lowResolutionDownsampleFactorLoc;
+    ProbeProg();
+};
+
 void save_PPM_file(int width, int height, const std::string& filename);

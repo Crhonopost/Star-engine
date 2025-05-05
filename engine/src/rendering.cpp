@@ -178,6 +178,14 @@ void PBR::updateLightColor(int lightIndex, glm::vec3 color){
     glUniform3f(lightLocation, color[0], color[1], color[2]);
 }
 
+
+ProbeProg::ProbeProg(): Program("shaders/pbr/vertex_shader.glsl","shaders/GI/solution.glsl"){
+    probeCountsLoc = glGetUniformLocation(programID, "probeCounts");
+    probeStartPositionLoc = glGetUniformLocation(programID, "probeStartPosition");
+    probeStepLoc = glGetUniformLocation(programID, "probeStep");
+    lowResolutionDownsampleFactorLoc = glGetUniformLocation(programID, "lowResolutionDownsampleFactor");
+};
+
 void Skybox::beforeRender(){
     glDepthMask(GL_FALSE);
 

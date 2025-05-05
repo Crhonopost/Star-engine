@@ -12,7 +12,41 @@ using namespace std;
 
 #include <GL/glew.h>
 
+#include <unordered_set>
+#include <filesystem>
+
 #include "shader.hpp"
+
+
+std::string preprocessGLSL(const std::string& path, std::unordered_set<std::string>& included) {
+	if (included.count(path)) return "";
+	included.insert(path);
+
+	std::ifstream file(path);
+	if (!file.is_open()) {
+		std::cerr << "Failed to open shader file: " << path << std::endl;
+		return "";
+	}
+
+	std::stringstream result;
+	std::string line;
+	std::string basePath = std::filesystem::path(path).parent_path().string();
+
+	while (std::getline(file, line)) {
+		if (line.find("#include") == 0) {
+			std::string includePath = line.substr(line.find_first_of("\"<") + 1);
+			includePath = includePath.substr(0, includePath.find_first_of("\">"));
+
+			std::string fullPath = (std::filesystem::path(basePath) / includePath).string();
+			result << preprocessGLSL(fullPath, included);
+		} else {
+			result << line << '\n';
+		}
+	}
+
+	return result.str();
+}
+
 
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path){
 
@@ -22,27 +56,15 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 
 	// Read the Vertex Shader code from the file
 	std::string VertexShaderCode;
-	std::ifstream VertexShaderStream(vertex_file_path, std::ios::in);
-	if(VertexShaderStream.is_open()){
-		std::stringstream sstr;
-		sstr << VertexShaderStream.rdbuf();
-		VertexShaderCode = sstr.str();
-		VertexShaderStream.close();
-	}else{
-		printf("Impossible to open %s. Are you in the right directory ? Don't forget to read the FAQ !\n", vertex_file_path);
-		getchar();
-		return 0;
-	}
+	std::unordered_set<std::string> includes;
+	VertexShaderCode = preprocessGLSL(vertex_file_path, includes);
+
 
 	// Read the Fragment Shader code from the file
 	std::string FragmentShaderCode;
-	std::ifstream FragmentShaderStream(fragment_file_path, std::ios::in);
-	if(FragmentShaderStream.is_open()){
-		std::stringstream sstr;
-		sstr << FragmentShaderStream.rdbuf();
-		FragmentShaderCode = sstr.str();
-		FragmentShaderStream.close();
-	}
+	includes.clear();
+	FragmentShaderCode = preprocessGLSL(fragment_file_path, includes);
+	
 
 	GLint Result = GL_FALSE;
 	int InfoLogLength;

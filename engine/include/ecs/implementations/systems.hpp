@@ -47,13 +47,24 @@ class PBRrender: public System {
 };
 
 
+class ProbeManager{
+    std::vector<GLuint> textureIDs;
+    ProbeProg prog;
+    public:
+    ProbeManager();
+    void initProbes(Render *render, PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr);
+    void clear();
+};
+
+
+
 class InfosRender: public System {
     private:
     Program infoProgram;
-    void update(glm::mat4 &view, glm::mat4 &projection, int mode=0);
     
     public:
     InfosRender();
+    void update(glm::mat4 &view, glm::mat4 &projection, int mode=0);
     GLuint renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int width, int height, int mode=0);
 };
 
@@ -67,8 +78,9 @@ class CubemapRender {
     Cubemap cubemap;
     CubemapRender(int res);
     void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
+    void renderInfosFromPoint(glm::vec3 point, InfosRender &infosRender, int mode);
     void applyFilter(Program *filterProg, Cubemap target);
-    void unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr);
+    int unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr);
     void applyPrefilter(Program *filterProg, Cubemap prefilterMap);
     GLuint TwoDLUT(Program *brdfProg);
 };

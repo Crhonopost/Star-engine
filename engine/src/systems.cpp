@@ -118,6 +118,78 @@ void LightRender::update(){
     PBRrender::pbrProgPtr->updateLightCount(associatedLight);
 }
 
+
+ProbeManager::ProbeManager(): prog(){}
+
+void ProbeManager::initProbes(Render *render, PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr){
+    prog.use();
+    prog.beforeRender();
+
+    CubemapRender sceneCubemapRender(512);
+
+    glm::vec3 startPos{0,0,0};
+    int width, height, depth;
+    width = height = depth = 2;
+    glm::vec3 gridSize{2.f};
+
+    glUniform3f(prog.probeStepLoc, gridSize.x, gridSize.y, gridSize.z);
+    glUniform3i(prog.probeCountsLoc, width, height, depth);
+    glUniform3f(prog.probeStartPositionLoc, startPos.x, startPos.y, startPos.z);
+    glUniform1f(prog.lowResolutionDownsampleFactorLoc, 2.f);
+
+    for(int x=0; x<width; x++){
+        for(int y=0; y<height; y++){
+            for(int z=0; z<depth; z++){
+                int index = x + y * width + z * width * height;
+                auto strIdx = "[" + std::to_string(index) + "]";
+
+                GLuint radianceProbeGridLoc = glGetUniformLocation(prog.programID, ("radianceProbeGrid" + strIdx).c_str());
+                GLuint normalProbeGridLoc = glGetUniformLocation(prog.programID, ("normalProbeGrid" + strIdx).c_str());
+                GLuint distanceProbeGridLoc = glGetUniformLocation(prog.programID, ("distanceProbeGrid" + strIdx).c_str());
+                GLuint lowResolutionDistanceProbeGridLoc = glGetUniformLocation(prog.programID, ("lowResolutionDistanceProbeGrid" + strIdx).c_str());
+                GLuint irradianceProbeGridLoc = glGetUniformLocation(prog.programID, ("irradianceProbeGrid" + strIdx).c_str());
+                
+
+                glm::vec3 position = glm::vec3(width * gridSize.x, height * gridSize.y, depth * gridSize.z) + startPos;
+                sceneCubemapRender.renderFromPoint(position, render, pbr);
+            
+                GLuint octa;
+                int activationInt = sceneCubemapRender.unwrapOctaProj(octa, 512, (Skybox*) skyboxProgPtr);
+                textureIDs.push_back(octa);
+                glUniform1i(radianceProbeGridLoc, activationInt);
+
+
+                GLuint normalOcta;
+                sceneCubemapRender.renderInfosFromPoint(position, infosRender, 0);
+                activationInt = sceneCubemapRender.unwrapOctaProj(normalOcta, 512, (Skybox*) skyboxProgPtr);
+                textureIDs.push_back(normalOcta);
+                glUniform1i(normalProbeGridLoc, activationInt);
+
+
+                GLuint depthOcta;
+                sceneCubemapRender.renderInfosFromPoint(position, infosRender, 1);
+                activationInt = sceneCubemapRender.unwrapOctaProj(depthOcta, 512, (Skybox*) skyboxProgPtr);
+                textureIDs.push_back(depthOcta);
+                glUniform1i(distanceProbeGridLoc, activationInt);
+
+
+                GLuint lowDepthOcta;
+                sceneCubemapRender.renderInfosFromPoint(position, infosRender, 1);
+                activationInt = sceneCubemapRender.unwrapOctaProj(lowDepthOcta, 256, (Skybox*) skyboxProgPtr);
+                textureIDs.push_back(lowDepthOcta);
+                glUniform1i(lowResolutionDistanceProbeGridLoc, activationInt);
+            }
+        }
+    }
+}
+
+void ProbeManager::clear(){
+    for(auto &texID : textureIDs){
+        glDeleteTextures(1, &texID);
+    }
+}
+
+
 InfosRender::InfosRender(): infoProgram("shaders/infos/vertex.glsl", "shaders/infos/fragment.glsl"){};
 
 
@@ -394,6 +466,41 @@ void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
 }
 
 
+void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRender, int mode){
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    GLuint depthBufffer;
+    glGenRenderbuffers(1, &depthBufffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthBufffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, cubemap.resolution, cubemap.resolution);
+
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBufffer);
+
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+        std::cerr << "Framebuffer not complete!" << std::endl;
+    }    
+
+    GLint m_viewport[4];
+    glGetIntegerv( GL_VIEWPORT, m_viewport );
+    glViewport(0,0, cubemap.resolution, cubemap.resolution);
+
+    for(int i=0; i<6; i++){
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap.textureID, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        auto dir = orientations[i];
+        
+        glm::mat4 view = glm::lookAt(point, point + dir, ups[i]);
+        infosRender.update(view, projection, mode);
+    }
+
+    glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
+    glDeleteRenderbuffers(1, &depthBufffer);
+    glDeleteFramebuffers(1, &fbo);
+}
+
 void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr){
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
@@ -440,7 +547,7 @@ void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *
 }
 
 
-void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr){
+int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *skyboxProgPtr){
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -478,7 +585,8 @@ void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sk
 
     // Generate texture
     glGenTextures(1, &textureID);
-    glActiveTexture(GL_TEXTURE0 + Texture::getAvailableActivationInt());
+    int current = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
     glTexImage2D(
@@ -517,6 +625,8 @@ void CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sk
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
     glDeleteRenderbuffers(1, &depthBufffer);
     glDeleteFramebuffers(1, &fbo);
+
+    return current;
 }
 
 
