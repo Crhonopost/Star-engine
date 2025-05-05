@@ -105,6 +105,11 @@ void Transform::setLocalPosition(glm::vec3 position){
 glm::vec3 Transform::getLocalPosition(){
     return pos;
 }
+glm::vec3 Transform::getGlobalPosition(){
+    glm::vec4 globalPos = modelMatrix * glm::vec4(pos, 1);
+    glm::vec3 res = {globalPos.x, globalPos.y, globalPos.z}; 
+    return res;
+}
     
 void Transform::setLocalRotation(glm::vec3 rotationAngles){
     eulerRot = rotationAngles;
@@ -197,3 +202,5 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
     return res;
 }
 
+uint16_t CollisionShape::ENV_LAYER = 1;
+uint16_t CollisionShape::PLAYER_LAYER = 2;

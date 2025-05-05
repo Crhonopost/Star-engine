@@ -127,6 +127,7 @@ class Transform: Component {
     void setLocalPosition(glm::vec3 position);
 
     glm::vec3 getLocalPosition();
+    glm::vec3 getGlobalPosition();
     
     void setLocalRotation(glm::vec3 rotationAngles);
 
@@ -194,6 +195,12 @@ struct CustomBehavior: Component {
     }
 };
 
+// Store any value (usefull for customBehavior lambdas)
+struct CustomVar: Component {
+    CustomVar() = default;
+    std::vector<bool> bools;
+};
+
 
 
 ////////////  Physic
@@ -204,6 +211,8 @@ struct RigidBody: Component {
     float weight=1.f;
     float restitutionCoef=0.5f;
     float frictionCoef=0.5f;
+
+    glm::vec3 gravityDirection = {0,-1,0};
 
     RigidBody() = default;
 
@@ -271,12 +280,15 @@ struct Plane {
 
 
 struct CollisionShape: Component{
+    static uint16_t ENV_LAYER, PLAYER_LAYER;
+    
     CollisionShapeTypeEnum shapeType;
     union {
         Ray ray;
         Sphere sphere;
         Plane plane;
     };
+    
     uint16_t layer = 1;
     uint16_t mask = 1;
 
@@ -300,6 +312,8 @@ struct CollisionShape: Component{
                 break;
         }
         other.isColliding = false;
+        layer = other.layer;
+        mask = other.mask;
     }
 
     CollisionShape& operator=(CollisionShape&& other) noexcept {
@@ -319,6 +333,8 @@ struct CollisionShape: Component{
                     break;
             }
             other.isColliding = false;
+            layer = other.layer;
+            mask = other.mask;
         }
         return *this;
     }

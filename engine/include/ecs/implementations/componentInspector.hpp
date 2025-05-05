@@ -92,6 +92,8 @@ inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transf
 
 template<>
 inline void ComponentInspector<CustomBehavior>::DisplayComponentGUI(CustomBehavior& customBehavior) {}
+template<>
+inline void ComponentInspector<CustomVar>::DisplayComponentGUI(CustomVar& var){}
 
 template<>
 inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidBody) {
@@ -157,6 +159,10 @@ inline json ComponentInspector<Transform>::GetComponentJson(Transform& transform
 template<>
 inline json ComponentInspector<CustomBehavior>::GetComponentJson(CustomBehavior& custom){
     return {{"name", "CustomBehavior"}};
+}
+template<>
+inline json ComponentInspector<CustomVar>::GetComponentJson(CustomVar& custom){
+    return {{"name", "CustomVar"}};
 }
 template<>
 inline json ComponentInspector<RigidBody>::GetComponentJson(RigidBody& rigidBody){

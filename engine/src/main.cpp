@@ -85,6 +85,7 @@ void initEcs(){
     ecs.RegisterComponent<Transform>("Transform");
     ecs.RegisterComponent<Drawable>("Drawable");
     ecs.RegisterComponent<CustomProgram>("CustomProgram");
+    ecs.RegisterComponent<CustomVar>("CustomVar");
     ecs.RegisterComponent<Material>("Material");
     ecs.RegisterComponent<Light>("Light");
     ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
@@ -354,7 +355,7 @@ int main( void )
         auto actions = InputManager::getInstance().getActions();
 
         // initScene(root, ecs);
-        pbrScene(root, ecs);
+        initScene(root, ecs);
     
         afterSceneInit();
 

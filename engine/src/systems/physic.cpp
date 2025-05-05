@@ -120,7 +120,7 @@ void PhysicSystem::update(float deltaTime){
             rigidBody.velocity = glm::vec3(0,0,0);
         } else {
             float acceleration = G * rigidBody.weight;
-            rigidBody.velocity.y -= acceleration * deltaTime;
+            rigidBody.velocity += acceleration * deltaTime * rigidBody.gravityDirection;
             transform.translate(rigidBody.velocity * deltaTime);
         }
     }
@@ -236,6 +236,7 @@ void PhysicDebugSystem::init() {
 
 void PhysicDebugSystem::update(){
     glUseProgram(program.programID);
+    GLuint scaleLocation = glGetUniformLocation(program.programID, "scale");
     
     glm::mat4 V = Camera::getInstance().getV();
     program.updateViewMatrix(V);
@@ -260,6 +261,8 @@ void PhysicDebugSystem::update(){
         int indexCount = 0;
         if(shape.shapeType == SPHERE){
             indexCount = sphereIndexCount;
+            float r = shape.sphere.radius;
+            glUniform3f(scaleLocation, r,r,r);
             glBindVertexArray(sphereVAO);
         } else if (shape.shapeType == PLANE){
            indexCount = quadIndexCount;
