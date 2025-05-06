@@ -82,8 +82,8 @@ class PhysicSystem: public System {
 class PhysicDebugSystem: public System {
     private:
     Program program;
-    GLuint sphereVAO, quadVAO, rayVAO;
-    int sphereIndexCount, quadIndexCount;
+    GLuint sphereVAO, quadVAO, rayVAO, boxVAO;
+    int sphereIndexCount, quadIndexCount, boxIndexCount;
 
     public:
     void init();

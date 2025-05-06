@@ -128,7 +128,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         if(normal.length() == 0.f){
             normal = glm::vec3(0,-1,0);
         }
-        const glm::vec3 left = glm::normalize(glm::cross(normal, glm::vec3(0,1,0)));
+        const glm::vec3 left = glm::normalize(glm::cross(normal, Camera::getInstance().camera_target));
         const glm::vec3 forward = glm::normalize(glm::cross(left, normal));
 
         const float speed = 10.0f;
@@ -210,6 +210,30 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
     mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
     mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
+
+
+    // OOBB collision test
+    auto b1Entity = ecs.CreateEntity();
+    ecs.SetEntityName(b1Entity, "b1");
+    auto b1Collision = CollisionShape();
+    b1Collision.shapeType = OOBB;
+    b1Collision.oobb = Oobb();
+    
+    auto b1Transform = Transform();
+    b1Transform.translate({0,20,0});
+    ecs.AddComponent<CollisionShape>(b1Entity, b1Collision);
+    ecs.AddComponent<Transform>(b1Entity, b1Transform);
+    
+    auto b2Entity = ecs.CreateEntity();
+    ecs.SetEntityName(b2Entity, "b2");
+    auto b2Collision = CollisionShape();
+    b2Collision.shapeType = OOBB;
+    b2Collision.oobb = Oobb();
+    
+    auto b2Transform = Transform();
+    b2Transform.translate({0,20,0});
+    ecs.AddComponent<CollisionShape>(b2Entity, b2Collision);
+    ecs.AddComponent<Transform>(b2Entity, b2Transform);
     
 
     
@@ -232,7 +256,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
         if(!Camera::getInstance().locked){
             glm::vec3 newPos = sunPos - newTarget * 10.f;
-            newPos += sunPos - sunRigid.gravityDirection * 5.f;
+            newPos = sunPos - sunRigid.gravityDirection * 5.f;
             Camera::getInstance().camera_position = glm::mix(Camera::getInstance().camera_position, newPos, deltaTime);
         }
         // Camera::getInstance().updateInput(deltaTime);
@@ -249,8 +273,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     
     std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
     std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+    std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
+    std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
     std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
-    // std::unique_ptr<SpatialNode> cabaneNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cabaneEntity));
     std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
     std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
 
@@ -258,6 +283,8 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     sunNode->AddChild(std::move(rayNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(otherNode));
+    root.AddChild(std::move(b1Node));
+    root.AddChild(std::move(b2Node));
     // root.AddChild(std::move(cabaneNode));
     planetNode->AddChild(std::move(planetGravityNode));
     root.AddChild(std::move(planetNode));

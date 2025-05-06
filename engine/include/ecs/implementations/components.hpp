@@ -259,7 +259,9 @@ struct OverlapingShape {
 enum CollisionShapeTypeEnum {
     RAY,
     SPHERE,
-    PLANE
+    PLANE,
+    AABB,
+    OOBB
 };
 
 struct Ray {
@@ -278,6 +280,16 @@ struct Plane {
     glm::vec3 normal;
 };
 
+struct Oobb {
+    Oobb() = default;
+    glm::vec3 halfExtents{1};
+};
+
+struct Aabb {
+    Aabb() = default;
+    glm::vec3 diag{1};
+};
+
 
 struct CollisionShape: Component{
     static uint16_t ENV_LAYER, PLAYER_LAYER;
@@ -287,6 +299,8 @@ struct CollisionShape: Component{
         Ray ray;
         Sphere sphere;
         Plane plane;
+        Aabb aabb;
+        Oobb oobb;
     };
     
     uint16_t layer = 1;
@@ -310,6 +324,12 @@ struct CollisionShape: Component{
             case PLANE:
                 new(&plane) Plane(std::move(other.plane));
                 break;
+            case AABB:
+                new(&aabb) Aabb(std::move(other.aabb));
+                break;
+            case OOBB:
+                new(&oobb) Oobb(std::move(other.oobb));
+                break;
         }
         other.isColliding = false;
         layer = other.layer;
@@ -331,6 +351,12 @@ struct CollisionShape: Component{
                 case PLANE:
                     new(&plane) Plane(std::move(other.plane));
                     break;
+                case AABB:
+                    new(&aabb) Aabb(std::move(other.aabb));
+                    break;
+                case OOBB:
+                    new(&oobb) Oobb(std::move(other.oobb));
+                    break;
             }
             other.isColliding = false;
             layer = other.layer;
@@ -349,6 +375,12 @@ struct CollisionShape: Component{
                 break;
             case PLANE:
                 plane.~Plane();
+                break;
+            case AABB:
+                aabb.~Aabb();
+                break;
+            case OOBB:
+                oobb.~Oobb();
                 break;
         }
     }
