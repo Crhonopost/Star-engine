@@ -120,7 +120,7 @@ void PhysicSystem::update(float deltaTime){
             rigidBody.velocity = glm::vec3(0,0,0);
         } else {
             float acceleration = G * rigidBody.weight;
-            rigidBody.velocity.y -= acceleration * deltaTime;
+            rigidBody.velocity += acceleration * deltaTime * rigidBody.gravityDirection;
             transform.translate(rigidBody.velocity * deltaTime);
         }
     }
@@ -228,6 +228,27 @@ void PhysicDebugSystem::init() {
     };
     std::vector<unsigned int> rayIndices = { 0, 1 };
     initBuffer(rayVAO, rayVertices, rayIndices);
+
+
+    std::vector<float> boxVertices = {
+        -1.0f, -1.0f, -1.0f,
+         1.0f, -1.0f, -1.0f,
+         1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+         1.0f, -1.0f,  1.0f,
+         1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+    };
+    
+    std::vector<unsigned int> boxIndices = {
+        0,1, 1,2, 2,3, 3,0, // bas
+        4,5, 5,6, 6,7, 7,4, // haut
+        0,4, 1,5, 2,6, 3,7  // verticales
+    };
+    
+    boxIndexCount = static_cast<unsigned int>(boxIndices.size());
+    initBuffer(boxVAO, boxVertices, boxIndices);
     
 
     glBindVertexArray(0);
@@ -236,6 +257,7 @@ void PhysicDebugSystem::init() {
 
 void PhysicDebugSystem::update(){
     glUseProgram(program.programID);
+    GLuint scaleLocation = glGetUniformLocation(program.programID, "scale");
     
     glm::mat4 V = Camera::getInstance().getV();
     program.updateViewMatrix(V);
@@ -252,18 +274,33 @@ void PhysicDebugSystem::update(){
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
 
-        glm::mat4 model = transform.getModelMatrix();
+        glm::mat4 model;
+        if(shape.shapeType != AABB){
+            model = transform.getModelMatrix();
+        }
+        else {
+            model = glm::mat4(1);
+            model = glm::translate(model, transform.getGlobalPosition());
+        }
         program.updateModelMatrix(model);
+
         if(shape.isColliding) glUniform4f(colorLocation, 1,0,0,1);
         else glUniform4f(colorLocation, 0,1,0,1);
 
         int indexCount = 0;
         if(shape.shapeType == SPHERE){
             indexCount = sphereIndexCount;
+            float r = shape.sphere.radius;
+            glUniform3f(scaleLocation, r,r,r);
             glBindVertexArray(sphereVAO);
         } else if (shape.shapeType == PLANE){
-           indexCount = quadIndexCount;
-           glBindVertexArray(quadVAO);
+            indexCount = quadIndexCount;
+            glBindVertexArray(quadVAO);
+        } else if(shape.shapeType == OOBB || shape.shapeType == AABB){
+            indexCount = boxIndexCount;
+            glm::vec3 scale = shape.oobb.halfExtents;
+            // glUniform3f(scaleLocation, scale.x, scale.y, scale.z);
+            glBindVertexArray(boxVAO);
         } else if (shape.shapeType == RAY){
             glm::vec3 points[2] = { glm::vec3(0), shape.ray.ray_direction * shape.ray.length };
             
