@@ -76,6 +76,11 @@ struct Drawable: Component {
     void draw(float renderDistance);
 };
 
+struct CameraComponent: Component {
+    bool activated = false;
+    bool needActivation = false;
+};
+
 struct CustomProgram: Component {
     Program *programPtr;
     CustomProgram():Component(){};
@@ -125,11 +130,14 @@ class Transform: Component {
     bool isDirty();
     
     void setLocalPosition(glm::vec3 position);
-
     glm::vec3 getLocalPosition();
     glm::vec3 getGlobalPosition();
     
+    glm::vec3 getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);
+    void setLocalRotation(glm::quat rotationQuat);
+
+    glm::vec3 applyRotation(glm::vec3 vector);
 
     void rotate(glm::vec3 rotations);
     void translate(glm::vec3);

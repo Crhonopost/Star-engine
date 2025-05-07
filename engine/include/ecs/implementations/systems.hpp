@@ -62,6 +62,13 @@ class CubemapRender {
 };
 
 
+class CameraSystem: public System {
+    private:
+        std::queue<Entity> cams;
+    public:
+        void update();
+};
+
 
 class CollisionDetectionSystem: public System {
     private:

@@ -53,6 +53,9 @@ template<>
 inline void ComponentInspector<CustomProgram>::DisplayComponentGUI(CustomProgram& prog){}
 
 template<>
+inline void ComponentInspector<CameraComponent>::DisplayComponentGUI(CameraComponent& cameraComponent) {}
+
+template<>
 inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material){
     ImGui::SeparatorText("Material");
     
@@ -126,6 +129,11 @@ inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
             {"switch_distance", drawable.switchDistance}}
         }
     };
+}
+
+template<>
+inline json ComponentInspector<CameraComponent>::GetComponentJson(CameraComponent& comp){
+    return {{"name", "CameraComponent"}};
 }
 
 template<>

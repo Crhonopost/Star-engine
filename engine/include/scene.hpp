@@ -126,9 +126,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
         glm::vec3 normal = -ecs.GetComponent<RigidBody>(sunEntity).gravityDirection;
         if(normal.length() == 0.f){
-            normal = glm::vec3(0,-1,0);
+            normal = glm::vec3(0,1,0);
         }
-        const glm::vec3 left = glm::normalize(glm::cross(normal, Camera::getInstance().camera_target));
+        const glm::vec3 left = glm::normalize(glm::cross(normal, {0,1,0}));
         const glm::vec3 forward = glm::normalize(glm::cross(left, normal));
 
         const float speed = 10.0f;
@@ -151,7 +151,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         }
 
         if (actions[InputManager::ActionEnum::ACTION_JUMP].pressed)
-            sunBody.velocity.y = jumpStrength;
+            sunBody.velocity = -sunBody.gravityDirection * jumpStrength;
     };
 
     Drawable lowerRes = Render::generatePlane(1, 2);
@@ -239,31 +239,27 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     
     ///////////////////////////// camera
     auto cameraEntity = ecs.CreateEntity();
+    ecs.SetEntityName(cameraEntity, "Camera player default");
     CustomBehavior cameraUpdate;
-    cameraUpdate.update = [sunEntity, &ecs](float deltaTime){
+    Transform cameraTransform;
+    CameraComponent cameraComponent;
+    cameraComponent.needActivation = true;
+    cameraUpdate.update = [sunEntity, cameraEntity, &ecs](float deltaTime){
         auto actions = InputManager::getInstance().getActions();
 
-        glm::vec3 sunPos = ecs.GetComponent<Transform>(sunEntity).getLocalPosition();
         RigidBody& sunRigid = ecs.GetComponent<RigidBody>(sunEntity);
-        glm::vec3 sunVelocity = sunRigid.velocity;
 
-        glm::vec3 newTarget = glm::normalize(sunPos + glm::vec3(sunVelocity.x, 0, sunVelocity.z) - Camera::getInstance().camera_position);
+        Transform &sunTransform = ecs.GetComponent<Transform>(sunEntity);
+        Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
 
-        Camera::getInstance().camera_target = glm::mix(Camera::getInstance().camera_target, newTarget, deltaTime);
-
-        if (actions[InputManager::ActionEnum::ACTION_LOCK_POSITION].clicked)
-            Camera::getInstance().locked = !Camera::getInstance().locked;
-
-        if(!Camera::getInstance().locked){
-            glm::vec3 newPos = sunPos - newTarget * 10.f;
-            newPos = sunPos - sunRigid.gravityDirection * 5.f;
-            Camera::getInstance().camera_position = glm::mix(Camera::getInstance().camera_position, newPos, deltaTime);
-        }
-        // Camera::getInstance().updateInput(deltaTime);
+        camTransform.setLocalPosition(-sunRigid.gravityDirection * 10.f);
+        glm::vec3 direction = sunTransform.getGlobalPosition() - camTransform.getGlobalPosition();
+        direction = glm::normalize(sunRigid.gravityDirection);
+        camTransform.setLocalRotation(Camera::lookAt(direction));
     };
     ecs.AddComponent(cameraEntity, cameraUpdate);
-    Camera::getInstance().locked = true;
-    Camera::getInstance().camera_position = glm::vec3(0,10,0);
+    ecs.AddComponent(cameraEntity, cameraTransform);
+    ecs.AddComponent(cameraEntity, cameraComponent);
 
 
     auto rootEntity = ecs.CreateEntity();
@@ -272,6 +268,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     root.transform = &ecs.GetComponent<Transform>(rootEntity);
     
     std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
+    std::unique_ptr<SpatialNode> sunCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
     std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
     std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
     std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
@@ -281,6 +278,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
     
     sunNode->AddChild(std::move(rayNode));
+    sunNode->AddChild(std::move(sunCameraNode));
     root.AddChild(std::move(sunNode));
     root.AddChild(std::move(otherNode));
     root.AddChild(std::move(b1Node));

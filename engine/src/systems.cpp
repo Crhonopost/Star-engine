@@ -3,6 +3,7 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/rendering.hpp>
 #include <engine/include/camera.hpp>
+#include <engine/include/geometryHelper.hpp>
 #include <iostream>
 
 #include <assimp/cimport.h>
@@ -686,6 +687,36 @@ Drawable Render::loadMesh(char *filePath){
 }
 
 
+void CameraSystem::update(){
+    for (const auto& entity : mEntities) {
+        auto& cam = ecs.GetComponent<CameraComponent>(entity);
+        if(cam.needActivation && !cam.activated){
+            cam.activated = true;
+            cams.push(entity);
+        }
+    }
+
+    while(!ecs.GetComponent<CameraComponent>(cams.front()).needActivation){
+        cams.pop();
+    }
+
+    if(cams.size() == 0){
+        std::cerr << "no valid camera detected!!";
+        return;
+    } else {
+        auto& cam = ecs.GetComponent<CameraComponent>(cams.front());        
+        auto& transform = ecs.GetComponent<Transform>(cams.front());
+        
+        Camera::getInstance().camera_position = transform.getGlobalPosition();
+        
+        glm::vec3 forward = glm::vec3(0,0,1);
+        forward = rotateX(forward,  glm::radians(transform.getLocalRotation().x));
+        forward = rotateY(forward, -glm::radians(transform.getLocalRotation().y));
+        Camera::getInstance().camera_target = transform.getGlobalPosition() + forward;// transform.getGlobalPosition() + glm::vec3(0,0,-1);
+    }
+}
+
+
 void CustomSystem::update(float deltaTime){
     for(auto const& entity: mEntities){
         auto& behavior = ecs.GetComponent<CustomBehavior>(entity);
@@ -694,8 +725,7 @@ void CustomSystem::update(float deltaTime){
     }
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
-// -----------------------------------------
+
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
 void renderQuad()

@@ -1,4 +1,5 @@
 #include <engine/include/spatial.hpp>
+#include <engine/include/geometryHelper.hpp>
 
 
 void SpatialNode::AddChild(std::unique_ptr<SpatialNode> child) {
@@ -50,4 +51,23 @@ void SpatialNode::forceUpdateSelfAndChild() {
     }
 }
 
+
+
+
+
+glm::vec3 rotateY(glm::vec3 in, float angle){
+    glm::vec3 out(in);
+    out.x = cos(angle) * in.x - sin(angle) * in.z;
+    out.z = sin(angle) * in.x + cos(angle) * in.z;
+
+    return out;
+}
+
+glm::vec3 rotateX(glm::vec3 in, float angle){
+    glm::vec3 out(in);
+    out.y = cos(angle) * in.y - sin(angle) * in.z;
+    out.z = sin(angle) * in.y + cos(angle) * in.z;
+
+    return out;
+}
 
