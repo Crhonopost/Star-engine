@@ -115,6 +115,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     // sunBody.velocity = glm::vec3(1,1,0) * 2.f;
     sunBody.restitutionCoef = 1.0f;
     sunBody.weight = 3.f;
+    sunBody.isStatic = true;
     CollisionShape sunShape;
     sunShape.shapeType = SPHERE;
     sunShape.sphere.radius = 1.f;

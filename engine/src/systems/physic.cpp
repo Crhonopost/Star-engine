@@ -116,9 +116,7 @@ void PhysicSystem::update(float deltaTime){
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
 
-        if(rigidBody.isStatic){
-            rigidBody.velocity = glm::vec3(0,0,0);
-        } else {
+        if(!rigidBody.isStatic){
             float acceleration = G * rigidBody.weight;
             rigidBody.velocity += acceleration * deltaTime * rigidBody.gravityDirection;
             transform.translate(rigidBody.velocity * deltaTime);
