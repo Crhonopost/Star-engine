@@ -194,9 +194,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     /////////////////////////////// collision debug
     auto otherEntity = ecs.CreateEntity();
     Transform otherTransform;
-    otherTransform.translate(glm::vec3(0,5,0));
+    otherTransform.translate(glm::vec3(5,10,0));
     Light lightSource;
-    lightSource.color = glm::vec3(0,1,0);
+    lightSource.color = glm::vec3(1,1,1);
     CollisionShape otherCollision;
     otherCollision.shapeType = SPHERE;
     otherCollision.sphere.radius = 1.2;
@@ -381,8 +381,9 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     ecs.SetEntityName(animationEntity, "Animation");
     Transform animationTransform;
     animationTransform.translate({0,0,0});
-    AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Walking.glb");
-    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Animation_test.glb");
+    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Mario-walk.glb");
+    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Walking.glb");
+    AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Animation_test.glb");
     Material animationMaterial;
     animationMaterial.albedo = {0.5f,0.5f,0.5f};
     ecs.AddComponent<Transform>(animationEntity, animationTransform);

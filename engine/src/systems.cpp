@@ -343,7 +343,7 @@ AnimatedDrawable AnimatedPBRrender::loadMesh(char *filePath){
 
         if( mesh->HasBones()){
             // TODO: find a better solution for left and right
-            ApplyMirroredRotationToBones(scene->mRootNode);
+            // ApplyMirroredRotationToBones(scene->mRootNode);
 
             std::unordered_map<std::string, int> boneNameToIdx;
             for (unsigned int j = 0; j < mesh->mNumBones; j++) {
@@ -801,13 +801,13 @@ Drawable Render::generateSphere(float radius){
             int first = (lat * (longitudeBands + 1)) + lon;
             int second = first + longitudeBands + 1;
 
+            indices.push_back(first + 1);
+            indices.push_back(second);
             indices.push_back(first);
-            indices.push_back(second);
-            indices.push_back(first + 1);
             
-            indices.push_back(second);
-            indices.push_back(second + 1);
             indices.push_back(first + 1);
+            indices.push_back(second + 1);
+            indices.push_back(second);
         }
     }
 
@@ -934,9 +934,9 @@ Drawable Render::generateCube(float sideLength, int verticesPerSide, bool inward
     // Faces with correct outward-pointing normals
     const std::vector<Face> faces = {
         // +Y (top)
-        {{-halfLength,  halfLength, -halfLength}, {edgeIncrement, 0, 0}, {0, 0, edgeIncrement}, {0, 1, 0}},
+        {{-halfLength,  halfLength,  halfLength}, {edgeIncrement, 0, 0}, {0, 0, -edgeIncrement}, {0, 1, 0}},
         // -Y (bottom)
-        {{-halfLength, -halfLength,  halfLength}, {edgeIncrement, 0, 0}, {0, 0, -edgeIncrement}, {0, -1, 0}},
+        {{-halfLength, -halfLength, -halfLength}, {edgeIncrement, 0, 0}, {0, 0, edgeIncrement}, {0, -1, 0}},
         // +X (right)
         {{ halfLength, -halfLength, -halfLength}, {0, edgeIncrement, 0}, {0, 0, edgeIncrement}, {1, 0, 0}},
         // -X (left)
@@ -976,7 +976,7 @@ Drawable Render::generateCube(float sideLength, int verticesPerSide, bool inward
                 const int c = a + verticesPerSide;
                 const int d = c + 1;
 
-                if (inward) {
+                if (!inward) {
                     // Clockwise winding
                     indices.insert(indices.end(), {a, c, b});
                     indices.insert(indices.end(), {b, c, d});

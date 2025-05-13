@@ -171,13 +171,21 @@ void afterSceneInit(){
 
     Program *pbr = Program::programs.back().get();
 
+    // Cubemap skyboxMap({
+    //     "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
+    //     "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
+    //     "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
+    //     "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
+    //     "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
+    //     "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
+
     Cubemap skyboxMap({
-        "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
-        "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
+    "../assets/images/cubemaps/galaxy_space/left.jpg",
+    "../assets/images/cubemaps/galaxy_space/right.jpg",
+    "../assets/images/cubemaps/galaxy_space/top.jpg",
+    "../assets/images/cubemaps/galaxy_space/bot.jpg",
+    "../assets/images/cubemaps/galaxy_space/back.jpg",
+    "../assets/images/cubemaps/galaxy_space/front.jpg"});
 
 
     Program::programs.push_back(std::make_unique<Skybox>(skyboxMap));
@@ -194,9 +202,9 @@ void afterSceneInit(){
 
     lightRenderSystem->update();
 
-    CubemapRender sceneCubemapRender(128);
+    CubemapRender sceneCubemapRender(256);
     // Render scene into a cubemap
-    sceneCubemapRender.renderFromPoint({0,5,0}, renderSystem.get(), pbrRenderSystem.get());
+    sceneCubemapRender.renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
     
     ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
@@ -365,7 +373,7 @@ int main( void )
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
     
-        //glEnable(GL_CULL_FACE);
+        glEnable(GL_CULL_FACE);
     
         // For speed computation
         int nbFrames = 0;
