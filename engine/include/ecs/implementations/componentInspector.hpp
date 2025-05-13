@@ -50,7 +50,18 @@ inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable
 }
 
 template<>
+inline void ComponentInspector<AnimatedDrawable>::DisplayComponentGUI(AnimatedDrawable& drawable){
+    ImGui::SeparatorText("Animated Drawable");
+    ImGui::DragFloat("Lod switch distance", &drawable.switchDistance);
+    if(ImGui::Checkbox("Playing", &drawable.playing));
+    ImGui::DragFloat("Animation time", &drawable.animation.currentTime, 0.01f, 0.0f, drawable.animation.duration / 1000.f);
+}
+
+template<>
 inline void ComponentInspector<CustomProgram>::DisplayComponentGUI(CustomProgram& prog){}
+
+template<>
+inline void ComponentInspector<CameraComponent>::DisplayComponentGUI(CameraComponent& cameraComponent) {}
 
 template<>
 inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material){
@@ -126,6 +137,19 @@ inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
             {"switch_distance", drawable.switchDistance}}
         }
     };
+}
+
+template<>
+inline json ComponentInspector<AnimatedDrawable>::GetComponentJson(AnimatedDrawable& drawable){
+    // TODO: store mesh path for drawable and reference lod lower
+    return {
+        {"name", "AnimatedDrawable"}
+    };
+}
+
+template<>
+inline json ComponentInspector<CameraComponent>::GetComponentJson(CameraComponent& comp){
+    return {{"name", "CameraComponent"}};
 }
 
 template<>

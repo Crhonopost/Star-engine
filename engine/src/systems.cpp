@@ -3,6 +3,9 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/rendering.hpp>
 #include <engine/include/camera.hpp>
+#include <engine/include/geometryHelper.hpp>
+#include <engine/include/animation.hpp>
+
 #include <iostream>
 
 #include <assimp/cimport.h>
@@ -43,17 +46,11 @@ void PBRrender::initPBR() {
     }
 }
 
-void PBRrender::update(glm::mat4 &view){
+void PBRrender::setupMaps(){
     int current = Texture::getAvailableActivationInt();
 
     PBR &pbrProg = *pbrProgPtr;
     glUseProgram(pbrProg.programID);
-    
-    // ///////////
-    // pbrProg.setInt("irradianceMap", 0);
-    // pbrProg.setInt("prefilterMap", 1);
-    // pbrProg.setInt("brdfLUTMap", 2);
-    // ///////////
 
     GLuint camLoc = glGetUniformLocation(pbrProg.programID, "camPos");
     glm::vec3 C = Camera::getInstance().getPosition();
@@ -77,9 +74,13 @@ void PBRrender::update(glm::mat4 &view){
     glActiveTexture(GL_TEXTURE0 + current);
     glBindTexture(GL_TEXTURE_2D, mBrdfLUTID);
     glUniform1i(brdfLoc, current);
+}
 
+void PBRrender::update(glm::mat4 &view){
+    setupMaps();
+
+    PBR &pbrProg = *pbrProgPtr;
     pbrProg.beforeRender();
-    
     pbrProg.updateViewMatrix(view);
 
     for (const auto& entity : mEntities) {
@@ -100,6 +101,415 @@ void PBRrender::update(glm::mat4 &view){
     }
     pbrProg.afterRender();
 }
+
+
+void AnimatedPBRrender::update(glm::mat4 &view, float deltaTime){
+    setupMaps();
+
+    PBR &pbrProg = *pbrProgPtr;
+    pbrProg.beforeRender();
+    pbrProg.updateViewMatrix(view);
+
+    for (const auto& entity : mEntities) {
+        auto& drawable = ecs.GetComponent<AnimatedDrawable>(entity);
+        auto& transform = ecs.GetComponent<Transform>(entity);
+        auto& material = ecs.GetComponent<Material>(entity);
+
+        pbrProg.updateMaterial(material);
+        
+        float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
+        
+        glm::mat4 model = transform.getModelMatrix();
+
+        pbrProg.renderTextures();
+        pbrProg.updateModelMatrix(model);
+
+        if(drawable.playing){
+            drawable.animation.addDeltaTime(deltaTime);
+        }
+        std::vector<glm::mat4> inMatrices, outMatrices;
+
+        drawable.animation.getPose(drawable.bones, inMatrices);
+        
+        CalculateAnimationPose(drawable.bones, inMatrices, outMatrices);
+        for (int i = 0; i < outMatrices.size(); i++) {
+            std::string uniformName = "bones[" + std::to_string(i) + "]";
+            GLuint mLoc = glGetUniformLocation(pbrProg.programID, uniformName.c_str());
+            glUniformMatrix4fv(mLoc, 1, GL_FALSE, &outMatrices[i][0][0]);
+        }
+
+        drawable.draw(distanceToCam);
+    }
+    pbrProg.afterRender();
+}
+
+void ExtractBoneHierarchy(aiNode* node, 
+    const std::unordered_map<std::string, int>& boneMap,
+    std::vector<Bone>& bones,
+    int parentIdx = -1) 
+{
+    std::string nodeName(node->mName.data);
+
+    if (boneMap.count(nodeName)) {
+        int boneIdx = boneMap.at(nodeName);
+        bones[boneIdx].parentIdx = parentIdx;
+        bones[boneIdx].localTransform = convertToGlm(node->mTransformation);
+    }
+
+    for (unsigned int i = 0; i < node->mNumChildren; i++) {
+        ExtractBoneHierarchy(node->mChildren[i], boneMap, bones, 
+            boneMap.count(nodeName) ? boneMap.at(nodeName) : parentIdx);
+    }
+}
+
+int reorganizeBones(std::vector<Bone>& bones, std::vector<int>& newIndices, int currentIdx) {
+    for (int i = 0; i < newIndices.size(); i++) {
+        if (newIndices[i] == currentIdx) {
+            return i;
+        }
+    }
+    
+    Bone& bone = bones[currentIdx];
+    if (bone.parentIdx != -1) {
+        bone.parentIdx = reorganizeBones(bones, newIndices, bone.parentIdx);
+    }
+    
+    newIndices.push_back(currentIdx);
+    return newIndices.size() - 1;
+}
+
+
+Drawable Render::loadSimpleMesh(char *filePath){
+    Drawable res;
+
+    std::vector<unsigned short> indices;
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
+
+    
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_SortByPType |
+        aiProcess_FlipUVs); // si besoin
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+        return res;
+    }
+    
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        aiMesh* mesh = scene->mMeshes[i];
+    
+        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
+                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
+            }
+        }
+    
+        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+            aiVector3D vertex = mesh->mVertices[j];
+            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
+        }
+    
+        if (mesh->HasNormals()) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D normal_vec = mesh->mNormals[j];
+                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
+            }
+        }
+    
+        if (mesh->HasTextureCoords(0)) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
+                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
+            }
+        }    
+    }
+
+
+    res.indexCount = indices.size();
+
+    std::vector<Vertex> vertex_buffer_data;
+    for (int i = 0; i < indexed_vertices.size(); ++i) {
+        Vertex v;
+        v.position = indexed_vertices[i];
+        v.normal = normal[i];
+        v.texCoord = tex_coords[i];
+        
+        v.boneWeights = glm::vec4(0.0f);
+        v.boneIndices = glm::ivec4(0);
+
+        vertex_buffer_data.push_back(v);
+    }
+
+    res.init(vertex_buffer_data, indices);
+
+    return res;
+}
+
+
+
+void ApplyMirroredRotationToBones(aiNode* node) {
+    if (node == nullptr) return;
+
+    bool hasLeft, hasRight;
+    hasLeft = hasRight = false;
+    for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+        aiNode* childNode = node->mChildren[i];
+
+        // Exemple de convention : Si le nom du nœud contient "left" ou "right"
+        bool isLeft = std::string(childNode->mName.C_Str()).find("Left") != std::string::npos;
+        bool isRight = std::string(childNode->mName.C_Str()).find("Right") != std::string::npos;
+        
+        hasLeft = hasLeft || isLeft;
+        hasRight = hasRight || isRight;
+
+        ApplyMirroredRotationToBones(childNode);
+    }
+
+    if(hasLeft && hasRight){
+        for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+            aiNode* childNode = node->mChildren[i];
+            
+            bool isLeft = std::string(childNode->mName.C_Str()).find("Left") != std::string::npos;
+            bool isRight = std::string(childNode->mName.C_Str()).find("Right") != std::string::npos;
+
+            if (isLeft || isRight) {
+                aiMatrix4x4 rotationMatrix;
+                aiMatrix4x4::RotationZ(AI_MATH_PI, rotationMatrix);
+
+                childNode->mTransformation = childNode->mTransformation * rotationMatrix;
+            }
+        }
+    }
+}
+
+AnimatedDrawable AnimatedPBRrender::loadMesh(char *filePath){
+    AnimatedDrawable res;
+
+    std::vector<unsigned short> indices;
+    std::vector<glm::vec3> indexed_vertices;
+    std::vector<glm::vec2> tex_coords;
+    std::vector<glm::vec3> normal;
+
+    std::vector<glm::vec4> bones_weights;
+    std::vector<glm::ivec4> bones_indices;
+    
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_SortByPType |
+        aiProcess_FlipUVs); // si besoin
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+        return res;
+    }
+    
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        aiMesh* mesh = scene->mMeshes[i];
+    
+        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
+                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
+            }
+        }
+    
+        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+            aiVector3D vertex = mesh->mVertices[j];
+            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
+        }
+    
+        if (mesh->HasNormals()) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D normal_vec = mesh->mNormals[j];
+                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
+            }
+        }
+    
+        if (mesh->HasTextureCoords(0)) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
+                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
+            }
+        }
+
+
+        if( mesh->HasBones()){
+            // TODO: find a better solution for left and right
+            ApplyMirroredRotationToBones(scene->mRootNode);
+
+            std::unordered_map<std::string, int> boneNameToIdx;
+            for (unsigned int j = 0; j < mesh->mNumBones; j++) {
+                aiBone* aiBone = mesh->mBones[j];
+                std::string boneName(aiBone->mName.data);
+                
+                if (boneNameToIdx.find(boneName) == boneNameToIdx.end()) {
+                    int idx = boneNameToIdx.size();
+                    boneNameToIdx[boneName] = idx;
+                    
+                    Bone b;
+                    b.name = boneName;
+                    res.bones.push_back(b);
+                }
+            }
+
+            std::vector<Bone> tempBones(res.bones.size());
+            ExtractBoneHierarchy(scene->mRootNode, boneNameToIdx, res.bones);
+
+            std::vector<std::vector<std::pair<int, float>>> vertexInfluences(mesh->mNumVertices);
+            
+            // res.bones[0].localTransform = glm::scale(res.bones[0].localTransform, glm::vec3(1.f/100.f));            
+            // res.bones[0].localTransform *= glm::mat4(
+            //     1, 0,  0, 0,
+            //     0, 0, 1, 0,
+            //     0, 1,  0, 0,
+            //     0, 0,  0, 1
+            // );
+
+            for (unsigned int j = 0; j < mesh->mNumBones; ++j) {
+                auto bone = mesh->mBones[j];
+                int boneIndex = boneNameToIdx[bone->mName.C_Str()];
+
+
+                res.bones[boneIndex].offsetMatrix = convertToGlm(bone->mOffsetMatrix);
+                for (unsigned int w = 0; w < bone->mNumWeights; ++w) {
+                    uint vertexId = bone->mWeights[w].mVertexId;
+                    float weight = bone->mWeights[w].mWeight;
+                    vertexInfluences[vertexId].emplace_back(boneIndex, weight);
+                }
+            }
+
+
+            // Vérification cohérence offsetMatrix <-> globalBindPoseMatrix⁻¹
+            std::map<std::string, aiMatrix4x4> globalTransforms;
+            std::function<void(aiNode*, aiMatrix4x4)> computeGlobalTransform;
+            computeGlobalTransform = [&](aiNode* node, aiMatrix4x4 parentTransform) {
+                aiMatrix4x4 global = parentTransform * node->mTransformation;
+                globalTransforms[node->mName.C_Str()] = global;
+                for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+                    computeGlobalTransform(node->mChildren[i], global);
+                }
+            };
+            computeGlobalTransform(scene->mRootNode, aiMatrix4x4());
+
+            for (unsigned int j = 0; j < mesh->mNumBones; ++j) {
+                aiBone* bone = mesh->mBones[j];
+                std::string boneName = bone->mName.C_Str();
+
+                auto it = globalTransforms.find(boneName);
+                if (it == globalTransforms.end()) {
+                    std::cerr << "Warning: Bone name " << boneName << " not found in node hierarchy.\n";
+                    continue;
+                }
+
+                aiMatrix4x4 globalBind = it->second;
+                aiMatrix4x4 inverseGlobalBind = globalBind;
+                inverseGlobalBind.Inverse();
+
+                aiMatrix4x4 offset = bone->mOffsetMatrix;
+
+                float epsilon = 1e-3f;
+                bool equal = true;
+                for (int row = 0; row < 4 && equal; ++row)
+                    for (int col = 0; col < 4 && equal; ++col)
+                        if (fabs(offset[row][col] - inverseGlobalBind[row][col]) > epsilon)
+                            equal = false;
+
+                if (!equal) {
+                    std::cerr << "Mismatch in offset matrix for bone: " << boneName << "\n";
+                }
+            }
+
+
+
+
+            for (auto& influences : vertexInfluences) {
+                std::sort(influences.begin(), influences.end(), [](auto& a, auto& b) {
+                    return a.second > b.second;
+                });
+            
+                glm::ivec4 bi(0);
+                glm::vec4 bw(0.0f);
+            
+                for (size_t c = 0; c < std::min<size_t>(4, influences.size()); ++c) {
+                    bi[c] = influences[c].first;
+                    bw[c] = influences[c].second;
+                }
+            
+                bones_indices.push_back(bi);
+                bones_weights.push_back(glm::normalize(bw));
+            }
+        }
+    }
+
+    Animation anim;
+    if(scene->HasAnimations()){
+        auto aiAnim = scene->mAnimations[0];
+        anim.duration = aiAnim->mDuration;
+        anim.ticksPerSecond = aiAnim->mTicksPerSecond;
+
+        for(uint channelIdx=0; channelIdx<aiAnim->mNumChannels; channelIdx ++){
+            auto aiBoneAnim = aiAnim->mChannels[channelIdx];
+            
+            BoneAnimation boneAnim;
+            boneAnim.nodeName = aiBoneAnim->mNodeName.C_Str();
+            for(int posIdx=0; posIdx<aiBoneAnim->mNumPositionKeys; posIdx++){
+                auto data  = aiBoneAnim->mPositionKeys[posIdx];
+                glm::vec3 position(data.mValue[0], data.mValue[1], data.mValue[2]);
+                // glm::vec3 position(data.mValue[0], data.mValue[2], -data.mValue[1]);
+                position /= 100.f;
+                boneAnim.positionKeys.push_back({data.mTime, position});
+
+            }
+
+            for(int rotIdx=0; rotIdx<aiBoneAnim->mNumRotationKeys; rotIdx++){
+                auto data  = aiBoneAnim->mRotationKeys[rotIdx];
+                boneAnim.rotationKeys.push_back({data.mTime, {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z}});
+            }
+
+            for(int scaleIdx=0; scaleIdx<aiBoneAnim->mNumScalingKeys; scaleIdx++){
+                auto data  = aiBoneAnim->mScalingKeys[scaleIdx];
+                boneAnim.scaleKeys.push_back({data.mTime, {data.mValue.x, data.mValue.y, data.mValue.z}});
+            }
+
+            anim.boneAnimations.insert({boneAnim.nodeName, boneAnim});
+        }
+    }
+    res.animation = anim;
+
+
+    res.indexCount = indices.size();
+
+    std::vector<Vertex> vertex_buffer_data;
+    for (int i = 0; i < indexed_vertices.size(); ++i) {
+        Vertex v;
+        v.position = indexed_vertices[i];
+        v.normal = normal[i];
+        v.texCoord = tex_coords[i];
+
+        if(scene->HasAnimations()){
+            v.boneWeights = bones_weights[i];
+            v.boneIndices = bones_indices[i];
+        } else {
+            v.boneWeights = glm::vec4(0.0f);
+            v.boneIndices = glm::ivec4(0);
+        }
+
+        vertex_buffer_data.push_back(v);
+    }
+
+    res.init(vertex_buffer_data, indices);
+
+    return res;
+}
+
 
 void LightRender::update(){
     //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
@@ -403,23 +813,20 @@ Drawable Render::generateSphere(float radius){
 
     res.indexCount = indices.size();
 
-    std::vector<float> vertex_buffer_data;
-    
+    std::vector<Vertex> vertex_buffer_data;
+
     for(int i=0; i<indexed_vertices.size(); i++){
-        glm::vec3 vertex = indexed_vertices[i];
-        glm::vec3 n = normal[i];
-
-        vertex_buffer_data.push_back(vertex.x);
-        vertex_buffer_data.push_back(vertex.y);
-        vertex_buffer_data.push_back(vertex.z);
+        Vertex v;
+        
+        v.position = indexed_vertices[i];
+        v.normal = normal[i];
+        v.texCoord = tex_coords[i];
     
-        vertex_buffer_data.push_back(tex_coords[i].x);
-        vertex_buffer_data.push_back(tex_coords[i].y);
 
-        vertex_buffer_data.push_back(n.x);
-        vertex_buffer_data.push_back(n.y);
-        vertex_buffer_data.push_back(n.z);
-
+        v.boneIndices = {0,0,0,0};
+        v.boneWeights = {0,0,0,0};
+        
+        vertex_buffer_data.push_back(v);
     }
 
     res.init(vertex_buffer_data, indices);
@@ -474,24 +881,20 @@ Drawable Render::generatePlane(float sideLength, int nbOfVerticesSide){
     }
 
     res.indexCount = indices.size();
-
-    std::vector<float> vertex_buffer_data;
+    std::vector<Vertex> vertex_buffer_data;
     
     for(int i=0; i<indexed_vertices.size(); i++){
-        glm::vec3 vertex = indexed_vertices[i];
-        glm::vec3 n = normal[i];
-
-        vertex_buffer_data.push_back(vertex.x);
-        vertex_buffer_data.push_back(vertex.y);
-        vertex_buffer_data.push_back(vertex.z);
+        Vertex v;
+        
+        v.position = indexed_vertices[i];
+        v.normal = normal[i];
+        v.texCoord = tex_coords[i];
     
-        vertex_buffer_data.push_back(tex_coords[i].x);
-        vertex_buffer_data.push_back(tex_coords[i].y);
 
-        vertex_buffer_data.push_back(n.x);
-        vertex_buffer_data.push_back(n.y);
-        vertex_buffer_data.push_back(n.z);
-
+        v.boneIndices = {0,0,0,0};
+        v.boneWeights = {0,0,0,0};
+        
+        vertex_buffer_data.push_back(v);
     }
 
     res.init(vertex_buffer_data, indices);
@@ -588,24 +991,19 @@ Drawable Render::generateCube(float sideLength, int verticesPerSide, bool inward
         vertexOffset += verticesPerFace;
     }
 
-    // Create interleaved vertex buffer
-    std::vector<float> vertexBuffer;
+    std::vector<Vertex> vertexBuffer;
     vertexBuffer.reserve(vertices.size() * 8);
     
     for (size_t i = 0; i < vertices.size(); ++i) {
-        // Position
-        vertexBuffer.push_back(vertices[i].x);
-        vertexBuffer.push_back(vertices[i].y);
-        vertexBuffer.push_back(vertices[i].z);
+        Vertex v;
+        v.position = {vertices[i].x, vertices[i].y, vertices[i].z};
+        v.texCoord = {texCoords[i].x, texCoords[i].y};
+        v.normal = {normals[i].x, normals[i].y, normals[i].z};
         
-        // Texture coordinates
-        vertexBuffer.push_back(texCoords[i].x);
-        vertexBuffer.push_back(texCoords[i].y);
-        
-        // Normal
-        vertexBuffer.push_back(normals[i].x);
-        vertexBuffer.push_back(normals[i].y);
-        vertexBuffer.push_back(normals[i].z);
+        v.boneIndices = {0,0,0,0};
+        v.boneWeights = {0,0,0,0};
+
+        vertexBuffer.push_back(v);
     }
 
     result.indexCount = static_cast<unsigned int>(indices.size());
@@ -615,74 +1013,33 @@ Drawable Render::generateCube(float sideLength, int verticesPerSide, bool inward
 }
 
 
-
-
-
-Drawable Render::loadMesh(char *filePath){
-    Drawable res;
-
-    std::vector<unsigned short> indices;
-    std::vector<glm::vec3> indexed_vertices;
-    std::vector<glm::vec2> tex_coords;
-    std::vector<glm::vec3> normal;
-    
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(filePath,
-        aiProcess_Triangulate |
-        aiProcess_JoinIdenticalVertices |
-        aiProcess_SortByPType |
-        aiProcess_FlipUVs); // si besoin
-
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
-        return res;
-    }
-    
-    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
-        aiMesh* mesh = scene->mMeshes[i];
-    
-        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
-            aiFace& face = mesh->mFaces[j];
-            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
-                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
-            }
-        }
-    
-        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-            aiVector3D vertex = mesh->mVertices[j];
-            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
-        }
-    
-        if (mesh->HasNormals()) {
-            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-                aiVector3D normal_vec = mesh->mNormals[j];
-                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
-            }
-        }
-    
-        if (mesh->HasTextureCoords(0)) {
-            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
-                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
-            }
+void CameraSystem::update(){
+    for (const auto& entity : mEntities) {
+        auto& cam = ecs.GetComponent<CameraComponent>(entity);
+        if(cam.needActivation && !cam.activated){
+            cam.activated = true;
+            cams.push(entity);
         }
     }
 
-
-    res.indexCount = indices.size();
-
-    std::vector<float> vertex_buffer_data;
-    for (int i = 0; i < indexed_vertices.size(); ++i) {
-        glm::vec3 v = indexed_vertices[i];
-        glm::vec3 n = normal[i];
-        glm::vec2 t = tex_coords[i];
-
-        vertex_buffer_data.insert(vertex_buffer_data.end(), {v.x, v.y, v.z, t.x, t.y, n.x, n.y, n.z});
+    while(!ecs.GetComponent<CameraComponent>(cams.front()).needActivation){
+        cams.pop();
     }
 
-    res.init(vertex_buffer_data, indices);
-
-    return res;
+    if(cams.size() == 0){
+        std::cerr << "no valid camera detected!!";
+        return;
+    } else {
+        auto& cam = ecs.GetComponent<CameraComponent>(cams.front());        
+        auto& transform = ecs.GetComponent<Transform>(cams.front());
+        
+        Camera::getInstance().camera_position = transform.getGlobalPosition();
+        
+        glm::vec3 forward = glm::vec3(0,0,1);
+        forward = rotateX(forward,  glm::radians(transform.getLocalRotation().x));
+        forward = rotateY(forward, -glm::radians(transform.getLocalRotation().y));
+        Camera::getInstance().camera_target = transform.getGlobalPosition() + forward;// transform.getGlobalPosition() + glm::vec3(0,0,-1);
+    }
 }
 
 
@@ -694,8 +1051,7 @@ void CustomSystem::update(float deltaTime){
     }
 }
 
-// renderQuad() renders a 1x1 XY quad in NDC
-// -----------------------------------------
+
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
 void renderQuad()
