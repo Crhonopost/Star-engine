@@ -23,7 +23,7 @@ public:
     float lastX, lastY;
     
     float mSpeed = 0.1f;
-    float cameraSpeed = 2.5f;
+    float cameraSpeed = 10.5f;
     float rotationSpeed = .5f;
     
     bool locked = false;

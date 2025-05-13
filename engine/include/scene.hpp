@@ -365,4 +365,28 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
         transfo.translate({0,direction * deltaTime * 10.f,0});
     };
     ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
+
+
+
+
+
+
+
+
+
+
+
+    auto animationEntity = ecs.CreateEntity();
+    ecs.SetEntityName(animationEntity, "Animation");
+    Transform animationTransform;
+    animationTransform.translate({0,0,0});
+    AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Walking.glb");
+    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Animation_test.glb");
+    Material animationMaterial;
+    animationMaterial.albedo = {0.5f,0.5f,0.5f};
+    ecs.AddComponent<Transform>(animationEntity, animationTransform);
+    ecs.AddComponent<AnimatedDrawable>(animationEntity, animationDraw);
+    ecs.AddComponent<Material>(animationEntity, animationMaterial);
+
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
 }

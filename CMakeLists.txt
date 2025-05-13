@@ -83,6 +83,7 @@ add_executable(main
     engine/src/camera.cpp
     engine/src/components.cpp
     engine/src/systems.cpp
+    engine/src/animation.cpp
 	
 	common/shader.cpp
 	common/shader.hpp

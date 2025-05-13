@@ -37,6 +37,7 @@ using namespace glm;
 #include <backend/imgui_impl_opengl3.h>
 #include <common/json.hpp>
 #include <engine/include/API/FileSystem.hpp>
+#include <bits/this_thread_sleep.h>
 
 
 void userInteractions(GLFWwindow *window);
@@ -72,6 +73,7 @@ SpatialNode root;
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
 std::shared_ptr<PBRrender> pbrRenderSystem;
+std::shared_ptr<AnimatedPBRrender> animatedPbrRenderSystem;
 std::shared_ptr<LightRender> lightRenderSystem;
 std::shared_ptr<CameraSystem> cameraSystem;
 std::shared_ptr<CustomSystem> customSystem;
@@ -85,6 +87,7 @@ void initEcs(){
     
     ecs.RegisterComponent<Transform>("Transform");
     ecs.RegisterComponent<Drawable>("Drawable");
+    ecs.RegisterComponent<AnimatedDrawable>("AnimatedDrawable");
     ecs.RegisterComponent<CameraComponent>("CameraComponent");
     ecs.RegisterComponent<CustomProgram>("CustomProgram");
     ecs.RegisterComponent<CustomVar>("CustomVar");
@@ -96,6 +99,7 @@ void initEcs(){
 
     renderSystem = ecs.RegisterSystem<Render>();
     pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
+    animatedPbrRenderSystem = ecs.RegisterSystem<AnimatedPBRrender>();
     lightRenderSystem = ecs.RegisterSystem<LightRender>();
     cameraSystem = ecs.RegisterSystem<CameraSystem>();
     customSystem = ecs.RegisterSystem<CustomSystem>();
@@ -115,6 +119,12 @@ void initEcs(){
     pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
     pbrRenderSignature.set(ecs.GetComponentType<Material>());
     ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
+
+    Signature animatedPbrSignature;
+    animatedPbrSignature.set(ecs.GetComponentType<Transform>());
+    animatedPbrSignature.set(ecs.GetComponentType<AnimatedDrawable>());
+    animatedPbrSignature.set(ecs.GetComponentType<Material>());
+    ecs.SetSystemSignature<AnimatedPBRrender>(animatedPbrSignature);
 
     Signature lightSignature;
     lightSignature.set(ecs.GetComponentType<Transform>());
@@ -287,6 +297,7 @@ void editorUpdate(float deltaTime){
     lightRenderSystem->update();
     renderSystem->update(view);
     pbrRenderSystem->update(view);
+    animatedPbrRenderSystem->update(view, deltaTime);
     
     physicDebugSystem->update();
 
@@ -371,6 +382,10 @@ int main( void )
         ImGui::CreateContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init();
+
+
+        const int targetFPS = 60;
+        const std::chrono::milliseconds frameDuration(1000 / targetFPS);
         
         
         do{
@@ -379,6 +394,7 @@ int main( void )
             ImGui::NewFrame();
             
             float currentFrame = glfwGetTime();
+            auto frameStart = std::chrono::high_resolution_clock::now();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
@@ -404,6 +420,11 @@ int main( void )
             // Swap buffers
             glfwSwapBuffers(window);
             glfwPollEvents();
+
+            auto frameEnd = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+            if (elapsed < frameDuration)
+                std::this_thread::sleep_for(frameDuration - elapsed);
 
     
         } // Check if the ESC key was pressed or the window was closed

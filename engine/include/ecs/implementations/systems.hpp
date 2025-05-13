@@ -15,7 +15,7 @@ class Render: public System {
     static Drawable generateSphere(float radius);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
-    static Drawable loadMesh(char *filePath);
+    static Drawable loadSimpleMesh(char *path);
 };
 
 class LightRender: public System {
@@ -24,7 +24,7 @@ class LightRender: public System {
 };
 
 class PBRrender: public System {
-    private:
+    protected:
     friend LightRender;
     static PBR* pbrProgPtr;
     GLuint mIrradianceMapID = 0; 
@@ -34,7 +34,8 @@ class PBRrender: public System {
 
     public:
     static void initPBR();
-    void update(glm::mat4 &view);
+    void setupMaps();
+    virtual void update(glm::mat4 &view);
     void setIrradianceMap(GLuint cubemapTextureID) {
         mIrradianceMapID = cubemapTextureID;
     }
@@ -44,6 +45,13 @@ class PBRrender: public System {
     void setBrdfLUT(GLuint TextureID) {
         mBrdfLUTID = TextureID;
     }
+};
+
+
+class AnimatedPBRrender: public PBRrender {
+    public:
+    void update(glm::mat4 &view, float deltaTime);
+    static AnimatedDrawable loadMesh(char *filePath);
 };
 
 class CubemapRender {
