@@ -1,4 +1,5 @@
 #include <engine/include/camera.hpp>
+#include <engine/include/geometryHelper.hpp>
 
 bool Camera::editor = true;
 
@@ -9,7 +10,7 @@ Camera& Camera::getInstance() {
 }
 
 glm::mat4 Camera::getV(){    
-    return glm::lookAt(camera_position, camera_position + camera_target, camera_up);
+    return glm::lookAt(camera_position, camera_target, camera_up);
 }
 
 glm::mat4 Camera::getP(){
@@ -18,22 +19,6 @@ glm::mat4 Camera::getP(){
 
 glm::vec3 Camera::getPosition(){
     return camera_position;
-}
-
-glm::vec3 rotateY(glm::vec3 in, float angle){
-    glm::vec3 out(in);
-    out.x = cos(angle) * in.x - sin(angle) * in.z;
-    out.z = sin(angle) * in.x + cos(angle) * in.z;
-
-    return out;
-}
-
-glm::vec3 rotateX(glm::vec3 in, float angle){
-    glm::vec3 out(in);
-    out.y = cos(angle) * in.y - sin(angle) * in.z;
-    out.z = sin(angle) * in.y + cos(angle) * in.z;
-
-    return out;
 }
 
 void Camera::updateInput(float deltaTime){
@@ -53,13 +38,14 @@ void Camera::updateInput(float deltaTime){
     // }
 
     float cameraDelta = cameraSpeed * deltaTime;
+    glm::vec3 forward = glm::normalize(camera_target - camera_position);
     
     if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
-        camera_position += cameraDelta * camera_target;
+        camera_position += cameraDelta * forward;
     if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
-        camera_position -= cameraDelta * camera_target;
+        camera_position -= cameraDelta * forward;
 
-    glm::vec3 left = glm::cross(camera_up, camera_target);
+    glm::vec3 left = glm::cross(camera_up, forward);
     if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
         camera_position += cameraDelta * left;
     if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
@@ -79,7 +65,9 @@ void Camera::updateInput(float deltaTime){
     if (actions[InputManager::ActionEnum::ACTION_LOOK_LEFT].pressed)
         vAngle -= deltaTime;
     
-    camera_target = glm::vec3(0,0,-1);
-    camera_target = rotateX(camera_target, hAngle);
-    camera_target = rotateY(camera_target, vAngle);
+    forward = glm::vec3(0,0,-1);
+    forward = rotateX(forward, hAngle);
+    forward = rotateY(forward, vAngle);
+
+    camera_target = camera_position + forward;
 }

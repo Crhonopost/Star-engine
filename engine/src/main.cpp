@@ -37,6 +37,7 @@ using namespace glm;
 #include <backend/imgui_impl_opengl3.h>
 #include <common/json.hpp>
 #include <engine/include/API/FileSystem.hpp>
+#include <bits/this_thread_sleep.h>
 
 
 void userInteractions(GLFWwindow *window);
@@ -72,8 +73,10 @@ SpatialNode root;
 ecsManager ecs;
 std::shared_ptr<Render> renderSystem;
 std::shared_ptr<PBRrender> pbrRenderSystem;
+std::shared_ptr<AnimatedPBRrender> animatedPbrRenderSystem;
 std::shared_ptr<InfosRender> infoRenderSystem;
 std::shared_ptr<LightRender> lightRenderSystem;
+std::shared_ptr<CameraSystem> cameraSystem;
 std::shared_ptr<CustomSystem> customSystem;
 std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
 std::shared_ptr<PhysicSystem> physicSystem;
@@ -85,7 +88,10 @@ void initEcs(){
     
     ecs.RegisterComponent<Transform>("Transform");
     ecs.RegisterComponent<Drawable>("Drawable");
+    ecs.RegisterComponent<AnimatedDrawable>("AnimatedDrawable");
+    ecs.RegisterComponent<CameraComponent>("CameraComponent");
     ecs.RegisterComponent<CustomProgram>("CustomProgram");
+    ecs.RegisterComponent<CustomVar>("CustomVar");
     ecs.RegisterComponent<Material>("Material");
     ecs.RegisterComponent<Light>("Light");
     ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
@@ -94,8 +100,10 @@ void initEcs(){
 
     renderSystem = ecs.RegisterSystem<Render>();
     pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
+    animatedPbrRenderSystem = ecs.RegisterSystem<AnimatedPBRrender>();
     infoRenderSystem = ecs.RegisterSystem<InfosRender>();
     lightRenderSystem = ecs.RegisterSystem<LightRender>();
+    cameraSystem = ecs.RegisterSystem<CameraSystem>();
     customSystem = ecs.RegisterSystem<CustomSystem>();
     collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
     physicSystem = ecs.RegisterSystem<PhysicSystem>();
@@ -114,6 +122,12 @@ void initEcs(){
     pbrRenderSignature.set(ecs.GetComponentType<Material>());
     ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
 
+    Signature animatedPbrSignature;
+    animatedPbrSignature.set(ecs.GetComponentType<Transform>());
+    animatedPbrSignature.set(ecs.GetComponentType<AnimatedDrawable>());
+    animatedPbrSignature.set(ecs.GetComponentType<Material>());
+    ecs.SetSystemSignature<AnimatedPBRrender>(animatedPbrSignature);
+
     Signature infoRenderSignature;
     infoRenderSignature.set(ecs.GetComponentType<Transform>());
     infoRenderSignature.set(ecs.GetComponentType<Drawable>());
@@ -123,6 +137,11 @@ void initEcs(){
     lightSignature.set(ecs.GetComponentType<Transform>());
     lightSignature.set(ecs.GetComponentType<Light>());
     ecs.SetSystemSignature<LightRender>(lightSignature);
+
+    Signature cameraSignature;
+    cameraSignature.set(ecs.GetComponentType<Transform>());
+    cameraSignature.set(ecs.GetComponentType<CameraComponent>());
+    ecs.SetSystemSignature<CameraSystem>(cameraSignature);
 
     Signature customSignature;
     customSignature.set(ecs.GetComponentType<CustomBehavior>());
@@ -290,6 +309,7 @@ void editorUpdate(float deltaTime){
     lightRenderSystem->update();
     renderSystem->update(view);
     pbrRenderSystem->update(view);
+    animatedPbrRenderSystem->update(view, deltaTime);
     
     physicDebugSystem->update();
 
@@ -300,6 +320,7 @@ void gameUpdate(float deltaTime){
     glm::mat4 view = Camera::getInstance().getV();
 
     customSystem->update(deltaTime);
+    cameraSystem->update();
     collisionDetectionSystem->update(deltaTime);
     physicSystem->update(deltaTime);
     lightRenderSystem->update();
@@ -366,13 +387,17 @@ int main( void )
         auto actions = InputManager::getInstance().getActions();
 
         // initScene(root, ecs);
-        pbrScene(root, ecs);
+        initScene(root, ecs);
     
         afterSceneInit();
 
         ImGui::CreateContext();
         ImGui_ImplGlfw_InitForOpenGL(window, true);
         ImGui_ImplOpenGL3_Init();
+
+
+        const int targetFPS = 60;
+        const std::chrono::milliseconds frameDuration(1000 / targetFPS);
         
         
         do{
@@ -381,6 +406,7 @@ int main( void )
             ImGui::NewFrame();
             
             float currentFrame = glfwGetTime();
+            auto frameStart = std::chrono::high_resolution_clock::now();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
 
@@ -407,6 +433,11 @@ int main( void )
             // Swap buffers
             glfwSwapBuffers(window);
             glfwPollEvents();
+
+            auto frameEnd = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+            if (elapsed < frameDuration)
+                std::this_thread::sleep_for(frameDuration - elapsed);
 
     
         } // Check if the ESC key was pressed or the window was closed

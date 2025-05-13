@@ -15,7 +15,7 @@ class Render: public System {
     static Drawable generateSphere(float radius);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide, bool front = false);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
-    static Drawable loadMesh(char *filePath);
+    static Drawable loadSimpleMesh(char *path);
 };
 
 class LightRender: public System {
@@ -24,7 +24,7 @@ class LightRender: public System {
 };
 
 class PBRrender: public System {
-    private:
+    protected:
     friend LightRender;
     static PBR* pbrProgPtr;
     GLuint mIrradianceMapID = 0; 
@@ -34,7 +34,8 @@ class PBRrender: public System {
 
     public:
     static void initPBR();
-    void update(glm::mat4 &view);
+    void setupMaps();
+    virtual void update(glm::mat4 &view);
     void setIrradianceMap(GLuint cubemapTextureID) {
         mIrradianceMapID = cubemapTextureID;
     }
@@ -47,16 +48,11 @@ class PBRrender: public System {
 };
 
 
-class ProbeManager{
-    std::vector<GLuint> textureIDs;
-    ProbeProg prog;
+class AnimatedPBRrender: public PBRrender {
     public:
-    ProbeManager();
-    void initProbes(Render *render, PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr);
-    void clear();
+    void update(glm::mat4 &view, float deltaTime);
+    static AnimatedDrawable loadMesh(char *filePath);
 };
-
-
 
 class InfosRender: public System {
     private:
@@ -67,6 +63,16 @@ class InfosRender: public System {
     void update(glm::mat4 &view, glm::mat4 &projection, int mode=0);
     GLuint renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int width, int height, int mode=0);
 };
+
+class ProbeManager{
+    std::vector<GLuint> textureIDs;
+    ProbeProg prog;
+    public:
+    ProbeManager();
+    void initProbes(Render *render, PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr);
+    void clear();
+};
+
 
 class CubemapRender {
     private:
@@ -85,6 +91,13 @@ class CubemapRender {
     GLuint TwoDLUT(Program *brdfProg);
 };
 
+
+class CameraSystem: public System {
+    private:
+        std::queue<Entity> cams;
+    public:
+        void update();
+};
 
 
 class CollisionDetectionSystem: public System {
@@ -106,8 +119,8 @@ class PhysicSystem: public System {
 class PhysicDebugSystem: public System {
     private:
     Program program;
-    GLuint sphereVAO, quadVAO, rayVAO;
-    int sphereIndexCount, quadIndexCount;
+    GLuint sphereVAO, quadVAO, rayVAO, boxVAO;
+    int sphereIndexCount, quadIndexCount, boxIndexCount;
 
     public:
     void init();

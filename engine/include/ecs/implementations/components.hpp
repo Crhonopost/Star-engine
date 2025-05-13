@@ -10,6 +10,7 @@
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
 #include <engine/include/rendering.hpp>
+#include <engine/include/animation.hpp>
 
 template<typename T>
 class ComponentInspector;
@@ -19,6 +20,15 @@ class Texture;
 struct Component{
     Component(const Component&) = delete;
     Component() {}
+};
+
+
+struct Vertex {
+    glm::vec3 position;
+    glm::vec2 texCoord;
+    glm::vec3 normal;
+    glm::vec4 boneWeights;
+    glm::ivec4 boneIndices;
 };
 
 struct Drawable: Component {
@@ -72,8 +82,19 @@ struct Drawable: Component {
         // Les textures seront automatiquement détruites grâce au destructeur de std::vector
     }
 
-    void init(std::vector<float>&, std::vector<short unsigned int>&);
+    void init(std::vector<Vertex>&, std::vector<short unsigned int>&);
     void draw(float renderDistance);
+};
+
+struct AnimatedDrawable: Drawable{
+    bool playing = false;
+    std::vector<Bone> bones;
+    Animation animation;
+};
+
+struct CameraComponent: Component {
+    bool activated = false;
+    bool needActivation = false;
 };
 
 struct CustomProgram: Component {
@@ -125,10 +146,14 @@ class Transform: Component {
     bool isDirty();
     
     void setLocalPosition(glm::vec3 position);
-
     glm::vec3 getLocalPosition();
+    glm::vec3 getGlobalPosition();
     
+    glm::vec3 getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);
+    void setLocalRotation(glm::quat rotationQuat);
+
+    glm::vec3 applyRotation(glm::vec3 vector);
 
     void rotate(glm::vec3 rotations);
     void translate(glm::vec3);
@@ -194,6 +219,11 @@ struct CustomBehavior: Component {
     }
 };
 
+// Store any value (usefull for customBehavior lambdas)
+struct CustomVar: Component {
+    CustomVar() = default;
+    std::vector<bool> bools;
+};
 
 
 ////////////  Physic
@@ -204,6 +234,8 @@ struct RigidBody: Component {
     float weight=1.f;
     float restitutionCoef=0.5f;
     float frictionCoef=0.5f;
+
+    glm::vec3 gravityDirection = {0,-1,0};
 
     RigidBody() = default;
 
@@ -250,7 +282,9 @@ struct OverlapingShape {
 enum CollisionShapeTypeEnum {
     RAY,
     SPHERE,
-    PLANE
+    PLANE,
+    AABB,
+    OOBB
 };
 
 struct Ray {
@@ -269,14 +303,29 @@ struct Plane {
     glm::vec3 normal;
 };
 
+struct Oobb {
+    Oobb() = default;
+    glm::vec3 halfExtents{1};
+};
+
+struct Aabb {
+    Aabb() = default;
+    glm::vec3 diag{1};
+};
+
 
 struct CollisionShape: Component{
+    static uint16_t ENV_LAYER, PLAYER_LAYER;
+    
     CollisionShapeTypeEnum shapeType;
     union {
         Ray ray;
         Sphere sphere;
         Plane plane;
+        Aabb aabb;
+        Oobb oobb;
     };
+    
     uint16_t layer = 1;
     uint16_t mask = 1;
 
@@ -298,8 +347,16 @@ struct CollisionShape: Component{
             case PLANE:
                 new(&plane) Plane(std::move(other.plane));
                 break;
+            case AABB:
+                new(&aabb) Aabb(std::move(other.aabb));
+                break;
+            case OOBB:
+                new(&oobb) Oobb(std::move(other.oobb));
+                break;
         }
         other.isColliding = false;
+        layer = other.layer;
+        mask = other.mask;
     }
 
     CollisionShape& operator=(CollisionShape&& other) noexcept {
@@ -317,8 +374,16 @@ struct CollisionShape: Component{
                 case PLANE:
                     new(&plane) Plane(std::move(other.plane));
                     break;
+                case AABB:
+                    new(&aabb) Aabb(std::move(other.aabb));
+                    break;
+                case OOBB:
+                    new(&oobb) Oobb(std::move(other.oobb));
+                    break;
             }
             other.isColliding = false;
+            layer = other.layer;
+            mask = other.mask;
         }
         return *this;
     }
@@ -333,6 +398,12 @@ struct CollisionShape: Component{
                 break;
             case PLANE:
                 plane.~Plane();
+                break;
+            case AABB:
+                aabb.~Aabb();
+                break;
+            case OOBB:
+                oobb.~Oobb();
                 break;
         }
     }

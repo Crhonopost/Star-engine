@@ -50,7 +50,18 @@ inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable
 }
 
 template<>
+inline void ComponentInspector<AnimatedDrawable>::DisplayComponentGUI(AnimatedDrawable& drawable){
+    ImGui::SeparatorText("Animated Drawable");
+    ImGui::DragFloat("Lod switch distance", &drawable.switchDistance);
+    if(ImGui::Checkbox("Playing", &drawable.playing));
+    ImGui::DragFloat("Animation time", &drawable.animation.currentTime, 0.01f, 0.0f, drawable.animation.duration / 1000.f);
+}
+
+template<>
 inline void ComponentInspector<CustomProgram>::DisplayComponentGUI(CustomProgram& prog){}
+
+template<>
+inline void ComponentInspector<CameraComponent>::DisplayComponentGUI(CameraComponent& cameraComponent) {}
 
 template<>
 inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material){
@@ -92,6 +103,8 @@ inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transf
 
 template<>
 inline void ComponentInspector<CustomBehavior>::DisplayComponentGUI(CustomBehavior& customBehavior) {}
+template<>
+inline void ComponentInspector<CustomVar>::DisplayComponentGUI(CustomVar& var){}
 
 template<>
 inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidBody) {
@@ -127,6 +140,19 @@ inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
 }
 
 template<>
+inline json ComponentInspector<AnimatedDrawable>::GetComponentJson(AnimatedDrawable& drawable){
+    // TODO: store mesh path for drawable and reference lod lower
+    return {
+        {"name", "AnimatedDrawable"}
+    };
+}
+
+template<>
+inline json ComponentInspector<CameraComponent>::GetComponentJson(CameraComponent& comp){
+    return {{"name", "CameraComponent"}};
+}
+
+template<>
 inline json ComponentInspector<CustomProgram>::GetComponentJson(CustomProgram& prog){
     return {{"name", "CustomProg"}};
 }
@@ -157,6 +183,10 @@ inline json ComponentInspector<Transform>::GetComponentJson(Transform& transform
 template<>
 inline json ComponentInspector<CustomBehavior>::GetComponentJson(CustomBehavior& custom){
     return {{"name", "CustomBehavior"}};
+}
+template<>
+inline json ComponentInspector<CustomVar>::GetComponentJson(CustomVar& custom){
+    return {{"name", "CustomVar"}};
 }
 template<>
 inline json ComponentInspector<RigidBody>::GetComponentJson(RigidBody& rigidBody){
