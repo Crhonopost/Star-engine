@@ -88,11 +88,19 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 
     collisionBehavior.update = [playerEntity, entity, &ecs](float deltaTime){
         if(ecs.GetComponent<CollisionShape>(entity).isColliding){
-            glm::vec3 gravDir = ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(playerEntity).getGlobalPosition();
-            ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::normalize(gravDir);
+            glm::vec3 gravDir = glm::normalize(ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(playerEntity).getGlobalPosition());
+            if (ecs.HasComponent<KinematicBody>(playerEntity)) {
+                ecs.GetComponent<KinematicBody>(playerEntity).gravityDirection = gravDir;
+            } else {
+                ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = gravDir;
+            }
             ecs.GetComponent<CustomVar>(entity).bools[0] = true;
         } else if(ecs.GetComponent<CustomVar>(entity).bools[0]){
-            ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0);
+            if (ecs.HasComponent<KinematicBody>(playerEntity)) {
+                ecs.GetComponent<KinematicBody>(playerEntity).gravityDirection = glm::vec3(0);
+            } else {
+                ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0);
+            }
             ecs.GetComponent<CustomVar>(entity).bools[0] = false;
         }
     };
@@ -106,79 +114,105 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 }
 
 void initScene(SpatialNode &root, ecsManager &ecs){
-    Program::programs.push_back(std::make_unique<PBR>());    
-    ///////////////////////////// sun
-    auto sunEntity = generateSpherePBR(ecs, 0.75f, {2, 1, 0});;
-    ecs.SetEntityName(sunEntity, "Sun");
-    auto &sunDraw = ecs.GetComponent<Drawable>(sunEntity);
-    RigidBody sunBody;
-    // sunBody.velocity = glm::vec3(1,1,0) * 2.f;
-    sunBody.restitutionCoef = 1.0f;
-    sunBody.weight = 3.f;
-    CollisionShape sunShape;
-    sunShape.shapeType = SPHERE;
-    sunShape.sphere.radius = 1.f;
-    sunShape.layer = CollisionShape::ENV_LAYER | CollisionShape::PLAYER_LAYER;
     
-    CustomBehavior sunBehavior;
-    sunBehavior.update = [sunEntity, &ecs](float deltaTime) {
-        auto actions = InputManager::getInstance().getActions();
+    Program::programs.push_back(std::make_unique<PBR>());
 
-        glm::vec3 normal = -ecs.GetComponent<RigidBody>(sunEntity).gravityDirection;
-        if(normal.length() == 0.f){
-            normal = glm::vec3(0,1,0);
-        }
-        const glm::vec3 left = glm::normalize(glm::cross(normal, {0,1,0}));
-        const glm::vec3 forward = glm::normalize(glm::cross(left, normal));
+    auto sunEntity = generateSpherePBR(ecs, 0.75f, {-2,1,0});
+    ecs.SetEntityName(sunEntity, "Sun");
 
-        const float speed = 10.0f;
-        const float jumpStrength = 15.0f;
-        auto &sunBody = ecs.GetComponent<RigidBody>(sunEntity);
-        glm::vec3 inputVelocity(0);
-        if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
-            inputVelocity += forward;
-        if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
-            inputVelocity -= forward;
-        if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
-            inputVelocity += left;
-        if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
-            inputVelocity -= left;
-        
-            
-        if(inputVelocity.x != 0.f || inputVelocity.y != 0.f || inputVelocity.x != 0.f){
-            inputVelocity = glm::normalize(inputVelocity) * speed;
-            sunBody.velocity = inputVelocity;//glm::vec3(inputVelocity.x, sunBody.velocity.y, inputVelocity.z);
-        }
-
-        if (actions[InputManager::ActionEnum::ACTION_JUMP].pressed)
-            sunBody.velocity = -sunBody.gravityDirection * jumpStrength;
-    };
-
+    auto &sunDraw = ecs.GetComponent<Drawable>(sunEntity);
     Drawable lowerRes = Render::generatePlane(1, 2);
     auto lowerResEntity = ecs.CreateEntity();
     ecs.AddComponent<Drawable>(lowerResEntity, lowerRes);
     sunDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
     sunDraw.switchDistance = 15;
 
-    ecs.AddComponent(sunEntity, sunBehavior);
-    ecs.AddComponent(sunEntity, sunBody);
-    ecs.AddComponent(sunEntity, sunShape);
+    KinematicBody sunKB{};
+    sunKB.gravityDirection = {0, -1, 0};
+    ecs.AddComponent<KinematicBody>(sunEntity, sunKB);
 
+    CollisionShape sunShape;
+    sunShape.shapeType = SPHERE;
+    sunShape.sphere.radius = 0.75f;
+    sunShape.layer = CollisionShape::PLAYER_LAYER;
+    sunShape.mask = CollisionShape::ENV_LAYER;
+    ecs.AddComponent<CollisionShape>(sunEntity, sunShape);
 
     auto rayTestEntity = ecs.CreateEntity();
     Transform rayTransform;
     CollisionShape rayShape;
     rayShape.shapeType = RAY;
-    rayShape.ray.length = 1.5;
-    rayShape.ray.ray_direction = glm::vec3(0,-1,0);
-    
+    rayShape.ray.length = 1.5f;
+    rayShape.layer = CollisionShape::PLAYER_LAYER;
+    rayShape.mask = CollisionShape::ENV_LAYER;
+
+    rayShape.ray.ray_direction    = {0, -1, 0};
     ecs.AddComponent(rayTestEntity, rayTransform);
     ecs.AddComponent(rayTestEntity, rayShape);
 
+    glm::vec3 planetCenter = {14, 0, 14};
+    auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
+    auto planetGravity = generateGravityArea(ecs, planetCenter, 60.f, sunEntity);
 
-    auto planetEntity = generatePlanet(ecs, {14,0,14}, 20.f);
-    auto planetGravity = generateGravityArea(ecs, glm::vec3(0), 60.f, sunEntity);
+    auto &planetShape = ecs.GetComponent<CollisionShape>(planetEntity);
+    planetShape.layer = CollisionShape::ENV_LAYER;
+    planetShape.mask = CollisionShape::PLAYER_LAYER;
 
+    CustomBehavior sunBehavior;
+    sunBehavior.update = [sunEntity, rayTestEntity, planetEntity, &ecs](float dt){
+        auto &tr = ecs.GetComponent<Transform>(sunEntity);
+        auto &kb = ecs.GetComponent<KinematicBody>(sunEntity);
+        auto &rayTr = ecs.GetComponent<Transform>(rayTestEntity);
+        auto &raySh = ecs.GetComponent<CollisionShape>(rayTestEntity);
+        auto &planetTr = ecs.GetComponent<Transform>(planetEntity);
+        auto &planetSh = ecs.GetComponent<CollisionShape>(planetEntity);
+
+        glm::vec3 pos = tr.getLocalPosition();
+        glm::vec3 toCenter = planetTr.getGlobalPosition() - pos;
+        if(glm::length2(toCenter) > 1e-6f)
+            kb.gravityDirection = glm::normalize(toCenter);
+
+        glm::vec3 up = -kb.gravityDirection;
+        if(glm::length2(up) < 1e-6f) up = {0,1,0};
+        glm::vec3 left = glm::normalize(glm::cross(up, {0,1,0}));
+        glm::vec3 forward = glm::normalize(glm::cross(left, up));
+
+        auto actions = InputManager::getInstance().getActions();
+        glm::vec3 inputDir(0.0f);
+        if(actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)  
+            inputDir += forward;
+        if(actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed) 
+            inputDir -= forward;
+        if(actions[InputManager::ActionEnum::ACTION_LEFT].pressed)     
+            inputDir += left;
+        if(actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)    
+            inputDir -= left;
+        if(glm::length2(inputDir) > 1e-6f)  inputDir = glm::normalize(inputDir);
+        float speed = 10.0f;
+        glm::vec3 horizontalVel = inputDir * speed;
+
+        rayTr.setLocalPosition(pos - kb.gravityDirection * 0.1f);
+        raySh.ray.ray_direction = kb.gravityDirection;
+        raySh.ray.length        = 25.f;
+        bool grounded = CollisionShape::intersectionExist(raySh, rayTr,
+                           ecs.GetComponent<CollisionShape>(planetEntity),
+                           planetTr).exist;
+
+        float verticalSpeed = glm::dot(kb.velocity, kb.gravityDirection);
+        const float jumpStrength = 15.0f;
+        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && grounded) {
+            verticalSpeed = -jumpStrength;
+        } else if(!grounded) {
+            std::cout<<"not grounded"<<std::endl;
+            const float G = 9.81f;
+            verticalSpeed += G * dt;
+        } else {
+            verticalSpeed = 0.0f;
+        }
+        kb.velocity = horizontalVel + kb.gravityDirection * verticalSpeed;
+        tr.translate(kb.velocity*dt);
+    };
+    ecs.AddComponent(sunEntity, sunBehavior);
 
     // auto cabaneEntity = ecs.CreateEntity();
     // Transform cabaneTransform;
@@ -247,14 +281,15 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     cameraUpdate.update = [sunEntity, cameraEntity, &ecs](float deltaTime){
         auto actions = InputManager::getInstance().getActions();
 
-        RigidBody& sunRigid = ecs.GetComponent<RigidBody>(sunEntity);
+        // RigidBody& sunRigid = ecs.GetComponent<RigidBody>(sunEntity);
+        KinematicBody& sunKB = ecs.GetComponent<KinematicBody>(sunEntity);
 
         Transform &sunTransform = ecs.GetComponent<Transform>(sunEntity);
         Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
 
-        camTransform.setLocalPosition(-sunRigid.gravityDirection * 10.f);
+        camTransform.setLocalPosition(-sunKB.gravityDirection * 10.f);
         glm::vec3 direction = sunTransform.getGlobalPosition() - camTransform.getGlobalPosition();
-        direction = glm::normalize(sunRigid.gravityDirection);
+        direction = glm::normalize(sunKB.gravityDirection);
         camTransform.setLocalRotation(Camera::lookAt(direction));
     };
     ecs.AddComponent(cameraEntity, cameraUpdate);

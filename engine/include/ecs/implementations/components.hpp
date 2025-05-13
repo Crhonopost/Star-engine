@@ -254,6 +254,12 @@ struct RigidBody: Component {
     }
 };
 
+struct KinematicBody: Component {
+    glm::vec3 velocity     = glm::vec3(0.0f);
+    glm::vec3 gravityDirection   = glm::vec3(0,-1,0);
+
+    KinematicBody() = default;
+};
 
 
 struct OverlapingShape {

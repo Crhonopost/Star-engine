@@ -1,0 +1,859 @@
+#include <engine/include/ecs/implementations/components.hpp>
+#include <iostream>
+#include <glm/gtx/norm.hpp>
+
+
+void Drawable::draw(float renderDistance){
+    if (switchDistance > 0 && renderDistance > switchDistance) {
+        lodLower->draw(renderDistance);
+        return;
+    }
+
+
+    glBindVertexArray(VAO);
+    
+    glDrawElements(
+                GL_TRIANGLES,      // mode
+                indexCount,
+                GL_UNSIGNED_SHORT,   // type
+                (void*)0           // element array buffer offset
+                );
+
+    glBindVertexArray(0);
+}
+
+void Drawable::init(std::vector<float> &vertex_buffer_data, std::vector<short unsigned int> &indices){
+    glGenVertexArrays(1,&VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_data.size() * sizeof(float), &vertex_buffer_data[0], GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+
+
+    glBindVertexArray(0);
+}
+
+CustomProgram::CustomProgram(Program *progPtr): Component(){
+    programPtr = progPtr;
+}
+
+glm::mat4 Transform::getLocalModelMatrix(){
+    const glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.x),
+    glm::vec3(1.0f, 0.0f, 0.0f));
+    const glm::mat4 transformY = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.y),
+    glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 transformZ = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.z),
+    glm::vec3(0.0f, 0.0f, 1.0f));
+    
+    // Y * X * Z
+    glm::mat4 rotationMatrix;
+    switch (rotationOrder)
+    {
+        case YXZ:
+        rotationMatrix = transformY * transformX * transformZ;
+        break;
+        case XYZ:
+        rotationMatrix = transformX * transformY * transformZ;
+        break;
+        case ZYX:
+        rotationMatrix = transformZ * transformY * transformX;
+        break;
+    }
+    
+    // translation * rotation * scale (also know as TRS matrix)
+    return glm::translate(glm::mat4(1.0f), pos) *
+           rotationMatrix *
+           glm::scale(glm::mat4(1.0f), scale);
+}
+
+
+void Transform::computeModelMatrix(){
+    modelMatrix = getLocalModelMatrix();
+    dirty = false;
+}
+    
+void Transform::computeModelMatrix(const glm::mat4& parentGlobalModelMatrix){
+    modelMatrix = parentGlobalModelMatrix * getLocalModelMatrix();
+    dirty = false;
+}
+
+
+bool Transform::isDirty(){return dirty;}
+    
+void Transform::setLocalPosition(glm::vec3 position){
+    pos = position;
+    dirty = true;
+}
+
+glm::vec3 Transform::getLocalPosition(){
+    return pos;
+}
+glm::vec3 Transform::getGlobalPosition(){
+    glm::vec4 globalPos = modelMatrix * glm::vec4(pos, 1);
+    glm::vec3 res = {globalPos.x, globalPos.y, globalPos.z}; 
+    return res;
+}
+    
+void Transform::setLocalRotation(glm::vec3 rotationAngles){
+    eulerRot = rotationAngles;
+    dirty = true;
+}
+
+void Transform::setLocalRotation(glm::quat rotationQuat){
+    eulerRot = glm::degrees(glm::eulerAngles(rotationQuat)); // conversion radians → degrés
+    dirty = true;
+}
+
+glm::vec3 Transform::getLocalRotation(){
+    return eulerRot;
+}
+
+void Transform::rotate(glm::vec3 rotations){
+    eulerRot += rotations;
+    dirty = true;
+}
+
+glm::vec3 Transform::applyRotation(glm::vec3 vector){
+    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.x), glm::vec3(1, 0, 0));
+    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.y), glm::vec3(0, 1, 0));
+    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.z), glm::vec3(0, 0, 1));
+
+    glm::mat4 rotationMatrix;
+    if(rotationOrder == YXZ){
+        rotationMatrix = rotY * rotX * rotZ;
+    } else if(rotationOrder == XYZ){
+        rotationMatrix = rotX * rotY * rotZ;
+    } else {
+        rotationMatrix = rotZ * rotY * rotX;
+    }
+
+    glm::vec4 result = rotationMatrix * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
+    return glm::vec3(result);
+}
+
+glm::mat4 Transform::getModelMatrix(){
+    return modelMatrix;
+}
+
+void Transform::translate(glm::vec3 translation){
+    pos += translation;
+    dirty = true;
+}
+
+
+
+bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
+    return (checker.mask & checked.layer) != 0;
+}
+
+OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
+    OverlapingShape res;
+    glm::vec3 planeToSphere = transformA.getLocalPosition() - transformB.getLocalPosition();
+    
+    float distToPlane = glm::dot(planeToSphere, planeB.normal);
+
+    if(distToPlane < sphereA.radius){
+        res.exist = true;
+        res.correctionDepth = abs(distToPlane - sphereA.radius);
+        res.normal = planeB.normal;
+        res.position = transformA.getLocalPosition() - sphereA.radius * res.normal;
+    }
+
+    return res;
+}
+
+OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
+    OverlapingShape res;
+
+    glm::vec3 difference = transformB.getLocalPosition() - transformA.getLocalPosition();
+
+    float rSq = sphereB.radius * sphereB.radius;
+    float eSq = glm::length(difference);
+    eSq *= eSq;
+
+    float a = glm::dot(difference, rayA.ray_direction);
+
+    float bSq = eSq - (a*a);
+    if(rSq - (eSq - (a*a)) < 0.0f) return res;
+
+    float f = sqrt(rSq - bSq);
+
+    float t1 = a - f;
+
+    if (t1 < 0.0f || t1 > rayA.length)
+        return res;
+
+    res.exist = true;
+    res.correctionDepth = 0;
+    res.normal = glm::normalize(-difference);
+    res.position = transformA.getLocalPosition() + (a-f) * rayA.ray_direction;
+    return res;
+}
+
+OverlapingShape rayPlaneIntersection(Ray &rayA, Transform &transformA, Plane &planeB, Transform &transformB){
+    OverlapingShape res;
+
+    glm::vec3 globalPosA = transformA.getGlobalPosition();
+    glm::vec3 globalPosB = transformB.getGlobalPosition();
+
+    glm::vec3 planeNormal(glm::normalize(transformB.getModelMatrix() * glm::vec4(planeB.normal, 1)));
+    glm::vec3 rayDirection(glm::normalize(transformA.getModelMatrix() * glm::vec4(rayA.ray_direction, 1)));
+
+    float t = glm::dot(globalPosB - globalPosA, planeNormal) / glm::dot(rayDirection, planeNormal);
+
+    if(t <= rayA.length){
+        res.exist = true;
+        res.position = globalPosA + t * rayDirection;
+        res.normal = glm::normalize(globalPosB - globalPosA);
+        res.correctionDepth = t;
+    }
+
+
+    return res;
+}
+
+OverlapingShape aabbIntersection(Aabb &aabbA, Transform &transformA, Aabb &aabbB, Transform &transformB){
+    OverlapingShape res;
+
+
+    glm::vec3 globalPosA = transformA.getGlobalPosition();
+    glm::vec3 globalPosB = transformB.getGlobalPosition();
+
+    glm::vec3 minA = globalPosA - aabbA.diag ;
+    glm::vec3 minB = globalPosB - aabbB.diag ;
+    glm::vec3 maxA = globalPosA + aabbA.diag ;
+    glm::vec3 maxB = globalPosB + aabbB.diag ;
+
+    if( minA.x <= maxB.x &&
+        maxA.x >= minB.x &&
+        minA.y <= maxB.y &&
+        maxA.y >= minB.y &&
+        minA.z <= maxB.z &&
+        maxA.z >= minB.z
+    ){
+        res.exist = true;
+        res.normal = glm::normalize(globalPosA - globalPosB);
+        res.correctionDepth = 0;
+        res.position = transformA.getLocalPosition() + (globalPosA - globalPosB) / 2.f;
+    }
+
+    return res;
+}
+
+OverlapingShape aabbSphereIntersection(Aabb &aabbA, Transform &transformA, Sphere &sphereB, Transform &transformB){
+    OverlapingShape res;
+
+    glm::vec3 globalPosA = transformA.getGlobalPosition();
+    glm::vec3 globalPosB = transformB.getGlobalPosition();
+
+    glm::vec3 minA = globalPosA - aabbA.diag ;
+    glm::vec3 maxA = globalPosA + aabbA.diag ;
+
+
+    float x = std::max(minA.x, std::min(globalPosB.x, maxA.x));
+    float y = std::max(minA.y, std::min(globalPosB.y, maxA.y));
+    float z = std::max(minA.z, std::min(globalPosB.z, maxA.z));
+
+    float distance = glm::distance({x,y,z}, globalPosB);
+
+    if(distance < sphereB.radius){
+        res.exist = true;
+        glm::vec3 direction = glm::normalize(globalPosA - globalPosB); 
+        res.normal = direction;
+        res.correctionDepth = sphereB.radius - distance;
+        res.position = globalPosA + direction * res.correctionDepth;
+    }
+
+    return res;
+}
+
+bool testAxis(const glm::vec3& axis, 
+    const glm::vec3& centerA, const glm::vec3 axesA[3], const glm::vec3& halfExtentsA,
+    const glm::vec3& centerB, const glm::vec3 axesB[3], const glm::vec3& halfExtentsB) {
+    if (glm::length2(axis) < 1e-6f) return true; // ignorer axe nul
+
+    glm::vec3 normalizedAxis = glm::normalize(axis);
+
+    // Projeter les demi-tailles sur l'axe
+    float rA = std::abs(glm::dot(axesA[0], normalizedAxis)) * halfExtentsA.x +
+        std::abs(glm::dot(axesA[1], normalizedAxis)) * halfExtentsA.y +
+        std::abs(glm::dot(axesA[2], normalizedAxis)) * halfExtentsA.z;
+
+    float rB = std::abs(glm::dot(axesB[0], normalizedAxis)) * halfExtentsB.x +
+        std::abs(glm::dot(axesB[1], normalizedAxis)) * halfExtentsB.y +
+        std::abs(glm::dot(axesB[2], normalizedAxis)) * halfExtentsB.z;
+
+    // Distance entre centres projetée sur l'axe
+    float distance = std::abs(glm::dot(centerB - centerA, normalizedAxis));
+
+    return distance <= (rA + rB);
+}
+
+OverlapingShape oobbIntersection(Oobb &oobbA, Transform &transformA, Oobb &oobbB, Transform &transformB) {
+    OverlapingShape res;
+
+    glm::mat4 modelA = transformA.getModelMatrix();
+    glm::mat4 modelB = transformB.getModelMatrix();
+
+    glm::vec3 axesA[3] = {
+        glm::normalize(glm::vec3(modelA * glm::vec4(1, 0, 0, 0))),
+        glm::normalize(glm::vec3(modelA * glm::vec4(0, 1, 0, 0))),
+        glm::normalize(glm::vec3(modelA * glm::vec4(0, 0, 1, 0)))
+    };
+
+    glm::vec3 axesB[3] = {
+        glm::normalize(glm::vec3(modelB * glm::vec4(1, 0, 0, 0))),
+        glm::normalize(glm::vec3(modelB * glm::vec4(0, 1, 0, 0))),
+        glm::normalize(glm::vec3(modelB * glm::vec4(0, 0, 1, 0)))
+    };
+
+    glm::vec3 centerA = glm::vec3(modelA[3]);
+    glm::vec3 centerB = glm::vec3(modelB[3]);
+
+    glm::vec3 halfExtentsA = oobbA.halfExtents;
+    glm::vec3 halfExtentsB = oobbB.halfExtents;
+
+    // Liste des 15 axes de séparation
+    glm::vec3 axesToTest[15];
+    int index = 0;
+
+    for (int i = 0; i < 3; ++i) axesToTest[index++] = axesA[i];
+    for (int i = 0; i < 3; ++i) axesToTest[index++] = axesB[i];
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            axesToTest[index++] = glm::cross(axesA[i], axesB[j]);
+
+    for (int i = 0; i < 15; ++i) {
+        if (!testAxis(axesToTest[i], centerA, axesA, halfExtentsA, centerB, axesB, halfExtentsB)) {
+            return res; // Axe séparateur trouvé
+        }
+    }
+
+    res.exist = true;
+    res.normal = glm::normalize(centerA - centerB);
+    res.correctionDepth = 0;
+    res.position = transformA.getLocalPosition() + (centerA - centerB) / 2.f;
+
+    return res;
+}
+
+OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Sphere &sphereB, Transform &transformB){
+    OverlapingShape res;
+
+    glm::mat4 model = transformA.getModelMatrix();
+    glm::mat4 invModel = glm::inverse(model);
+
+    glm::vec3 sphereCenterLocal = transformB.getLocalPosition();
+
+    glm::vec3 closestPointLocal = glm::clamp(transformB.getLocalPosition(), -oobbA.halfExtents, oobbA.halfExtents);
+
+    glm::vec3 closestPointWorld = glm::vec3(model * glm::vec4(closestPointLocal, 1.0f));
+
+    glm::vec3 direction = transformB.getGlobalPosition() - closestPointWorld;
+    float distance = glm::length(direction);
+
+    if (distance > sphereB.radius) return res;
+
+    res.exist = true;
+    if (distance > 0.0001f)
+        res.normal = glm::normalize(direction);
+    else
+        res.normal = glm::vec3(0, 1, 0); // Valeur arbitraire si centre exactement dedans
+
+    res.correctionDepth = sphereB.radius - distance;
+    res.position = closestPointWorld;
+
+    return res;
+}
+
+OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
+    OverlapingShape res;
+
+    // SPHERE
+    if(shapeA.shapeType == SPHERE && shapeB.shapeType == SPHERE){
+        float radiusSum = shapeA.sphere.radius + shapeB.sphere.radius;
+        float distance = glm::length(transformA.getLocalPosition() - transformB.getLocalPosition());
+        
+        float dist = distance - radiusSum;
+        if(dist < 0){
+            res.exist = true;
+            res.correctionDepth = -dist;
+            res.normal = glm::normalize(transformA.getLocalPosition() - transformB.getLocalPosition());
+            res.position = transformA.getLocalPosition() - shapeA.sphere.radius * res.normal;
+        }
+    } 
+    
+    // PLANE
+    else if(shapeA.shapeType == PLANE && shapeB.shapeType == SPHERE){
+        return spherePlaneIntersection(shapeB.sphere, transformB, shapeA.plane, transformA);
+    } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == PLANE){
+        return spherePlaneIntersection(shapeA.sphere, transformA, shapeB.plane, transformB);
+    } 
+    
+    // RAY
+    else if(shapeA.shapeType == RAY && shapeB.shapeType == SPHERE){
+        return raySphereIntersection(shapeA.ray, transformA, shapeB.sphere, transformB);
+    } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == RAY){
+        return raySphereIntersection(shapeB.ray, transformB, shapeA.sphere, transformA);
+    } else if(shapeA.shapeType == RAY && shapeB.shapeType == PLANE){
+        return rayPlaneIntersection(shapeA.ray, transformA, shapeB.plane, transformB);
+    } else if(shapeA.shapeType == PLANE && shapeB.shapeType == RAY){
+        return rayPlaneIntersection(shapeB.ray, transformB, shapeA.plane, transformA);
+    }
+    
+    // AABB
+    else if(shapeA.shapeType == AABB && shapeB.shapeType == AABB){
+        return aabbIntersection(shapeA.aabb, transformA, shapeB.aabb, transformB);
+    } else if(shapeA.shapeType == AABB && shapeB.shapeType == SPHERE){
+        return aabbSphereIntersection(shapeA.aabb, transformA, shapeB.sphere, transformB);
+    } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == AABB){
+        return aabbSphereIntersection(shapeB.aabb, transformB, shapeA.sphere, transformA);
+    } 
+    
+    // OOBB
+    else if(shapeA.shapeType == OOBB && shapeB.shapeType == OOBB){
+        return oobbIntersection(shapeA.oobb, transformA, shapeB.oobb, transformB);
+    } else if(shapeA.shapeType == OOBB && shapeB.shapeType == SPHERE){
+        return oobbSphereIntersection(shapeA.oobb, transformA, shapeB.sphere, transformB);
+    } else  if(shapeA.shapeType == SPHERE && shapeB.shapeType == OOBB){
+        return oobbSphereIntersection(shapeB.oobb, transformB, shapeA.sphere, transformA);
+    }
+
+    return res;
+}
+
+uint16_t CollisionShape::ENV_LAYER = 1;
+uint16_t CollisionShape::PLAYER_LAYER = 2;
+
+
+#include <engine/include/spatial.hpp>
+#include <engine/include/rendering.hpp>
+#include <engine/include/input.hpp>
+#include <engine/include/ecs/ecsManager.hpp>
+#include <engine/include/ecs/implementations/systems.hpp>
+
+
+#include <iostream>
+
+Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
+    auto sphereEntity = ecs.CreateEntity();
+    auto sphereDraw = Render::generateSphere(radius);
+    auto sphereMaterial = Material();
+
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Specular.jpg");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
+
+    Transform sphereTransform;
+    sphereTransform.translate(position);
+
+    ecs.AddComponent(sphereEntity, sphereDraw);
+    ecs.AddComponent(sphereEntity, sphereMaterial);
+    ecs.AddComponent(sphereEntity, sphereTransform);
+
+    return sphereEntity;
+}
+
+Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
+    auto otherEntity = ecs.CreateEntity();
+    Transform otherTransform;
+    otherTransform.translate(position);
+    Light lightSource;
+    lightSource.color = color;
+    
+    ecs.AddComponent<Transform>(otherEntity, otherTransform);
+    ecs.AddComponent<Light>(otherEntity, lightSource);
+
+    return otherEntity;
+}
+
+Entity generatePlanet(ecsManager &ecs, glm::vec3 position, float radius){
+    auto sphereEntity = ecs.CreateEntity();
+    auto sphereDraw = Render::generateSphere(radius);
+    auto sphereMaterial = Material();
+
+    auto sphereRigidBody = RigidBody();
+    sphereRigidBody.isStatic = true;
+    auto sphereCollisionShape = CollisionShape();
+    sphereCollisionShape.shapeType = SPHERE;
+    sphereCollisionShape.sphere.radius = radius;
+
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Specular.jpg");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
+
+    Transform sphereTransform;
+    sphereTransform.translate(position);
+
+    ecs.AddComponent(sphereEntity, sphereDraw);
+    ecs.AddComponent(sphereEntity, sphereMaterial);
+    ecs.AddComponent(sphereEntity, sphereTransform);
+    ecs.AddComponent(sphereEntity, sphereRigidBody);
+    ecs.AddComponent(sphereEntity, sphereCollisionShape);
+
+    return sphereEntity;
+}
+
+Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, Entity playerEntity){
+    auto entity = ecs.CreateEntity();
+    auto collisionShape = CollisionShape();
+    auto collisionBehavior = CustomBehavior();
+    auto areaStorage = CustomVar();
+
+    areaStorage.bools.push_back(false); // If player is in gravity range
+
+    Transform sphereTransform;
+    sphereTransform.translate(position);
+
+    collisionShape.shapeType = SPHERE;
+    collisionShape.sphere.radius = radius;
+    collisionShape.layer = 0;
+    collisionShape.mask = CollisionShape::PLAYER_LAYER;
+
+    collisionBehavior.update = [playerEntity, entity, &ecs](float deltaTime){
+        if(ecs.GetComponent<CollisionShape>(entity).isColliding){
+            glm::vec3 gravDir = glm::normalize(ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(playerEntity).getGlobalPosition());
+            if (ecs.HasComponent<KinematicBody>(playerEntity)) {
+                ecs.GetComponent<KinematicBody>(playerEntity).gravityDirection = gravDir;
+            } else {
+                ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = gravDir;
+            }
+            ecs.GetComponent<CustomVar>(entity).bools[0] = true;
+        } else if(ecs.GetComponent<CustomVar>(entity).bools[0]){
+            if (ecs.HasComponent<KinematicBody>(playerEntity)) {
+                ecs.GetComponent<KinematicBody>(playerEntity).gravityDirection = glm::vec3(0);
+            } else {
+                ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0);
+            }
+            ecs.GetComponent<CustomVar>(entity).bools[0] = false;
+        }
+    };
+
+    ecs.AddComponent(entity, collisionShape);
+    ecs.AddComponent(entity, collisionBehavior);
+    ecs.AddComponent(entity, areaStorage);
+    ecs.AddComponent(entity, sphereTransform);
+
+    return entity;
+}
+
+void initScene(SpatialNode &root, ecsManager &ecs){
+    
+    Program::programs.push_back(std::make_unique<PBR>());
+
+    ///////////////////////////// sun (作为 Kinematic Body)
+    auto sunEntity = generateSpherePBR(ecs, 0.75f, {-2,1,0});
+    ecs.SetEntityName(sunEntity, "Sun");
+
+    // Drawable LOD 设置
+    auto &sunDraw = ecs.GetComponent<Drawable>(sunEntity);
+    Drawable lowerRes = Render::generatePlane(1, 2);
+    auto lowerResEntity = ecs.CreateEntity();
+    ecs.AddComponent<Drawable>(lowerResEntity, lowerRes);
+    sunDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
+    sunDraw.switchDistance = 15;
+
+    // 1) 添加 KinematicBody（替代刚体）
+    KinematicBody sunKB{};
+    sunKB.gravityDirection = {0, -1, 0};
+    ecs.AddComponent<KinematicBody>(sunEntity, sunKB);
+
+    // 2) 添加碰撞形状，只用于检测地面
+    CollisionShape sunShape;
+    sunShape.shapeType      = SPHERE;
+    sunShape.sphere.radius  = 0.75f;
+    sunShape.layer          = CollisionShape::PLAYER_LAYER;
+    sunShape.mask           = CollisionShape::ENV_LAYER;
+    ecs.AddComponent<CollisionShape>(sunEntity, sunShape);
+
+    // 3) 准备向下的射线，用于地面检测
+    auto rayTestEntity = ecs.CreateEntity();
+    Transform rayTransform;
+    CollisionShape rayShape;
+    rayShape.shapeType            = RAY;
+    rayShape.ray.length           = 1.5f; // 将在运行时更新
+    rayShape.layer                = CollisionShape::PLAYER_LAYER;
+    rayShape.mask                 = CollisionShape::ENV_LAYER;
+    // 初始方向向下，之后每帧会根据重力方向更新
+    rayShape.ray.ray_direction    = {0, -1, 0};
+    ecs.AddComponent(rayTestEntity, rayTransform);
+    ecs.AddComponent(rayTestEntity, rayShape);
+
+    // 4) 地球 & 重力区（重力区中心与星球中心保持一致）
+    glm::vec3 planetCenter = {14, 0, 14};
+    auto planetEntity      = generatePlanet(ecs, planetCenter, 20.f);
+    auto planetGravity     = generateGravityArea(ecs, planetCenter, 60.f, sunEntity);
+    // 确保星球的碰撞层是 ENV_LAYER
+    auto &planetShape = ecs.GetComponent<CollisionShape>(planetEntity);
+    planetShape.layer = CollisionShape::ENV_LAYER;
+    planetShape.mask  = CollisionShape::PLAYER_LAYER;
+
+    // 5) 自定义逻辑：使用射线检测和手动 velocity 控制 kinematic
+    CustomBehavior sunBehavior;
+    sunBehavior.update = [sunEntity, rayTestEntity, planetEntity, &ecs](float dt){
+        // 获取组件
+        auto &tr       = ecs.GetComponent<Transform>(sunEntity);
+        auto &kb       = ecs.GetComponent<KinematicBody>(sunEntity);
+        auto &rayTr    = ecs.GetComponent<Transform>(rayTestEntity);
+        auto &raySh    = ecs.GetComponent<CollisionShape>(rayTestEntity);
+        auto &planetTr = ecs.GetComponent<Transform>(planetEntity);
+        auto &planetSh = ecs.GetComponent<CollisionShape>(planetEntity);
+
+        // 更新重力方向，指向星球中心
+        glm::vec3 pos       = tr.getLocalPosition();
+        glm::vec3 toCenter  = planetTr.getGlobalPosition() - pos;
+        if(glm::length2(toCenter) > 1e-6f)
+            kb.gravityDirection = glm::normalize(toCenter);
+
+        // 计算切线平面基向量
+        glm::vec3 up       = -kb.gravityDirection;
+        if(glm::length2(up) < 1e-6f) up = {0,1,0};
+        glm::vec3 left    = glm::normalize(glm::cross(up, {0,1,0}));
+        glm::vec3 forward  = glm::normalize(glm::cross(left, up));
+
+        // 处理输入 —— 切线平面内移动
+        auto actions = InputManager::getInstance().getActions();
+        glm::vec3 inputDir(0.0f);
+        if(actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)  inputDir += forward;
+        if(actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed) inputDir -= forward;
+        if(actions[InputManager::ActionEnum::ACTION_LEFT].pressed)     inputDir += left;
+        if(actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)    inputDir -= left;
+        if(glm::length2(inputDir) > 1e-6f) inputDir = glm::normalize(inputDir);
+        float speed = 10.0f;
+        glm::vec3 horizontalVel = inputDir * speed;
+
+        // 保留垂直速度分量
+        rayTr.setLocalPosition(pos - kb.gravityDirection * 0.1f);
+        raySh.ray.ray_direction = kb.gravityDirection;
+        raySh.ray.length        = 0.2f;
+        bool grounded = CollisionShape::intersectionExist(raySh, rayTr,
+                           ecs.GetComponent<CollisionShape>(planetEntity),
+                           planetTr).exist;
+
+        // 6. 垂直速度更新：跳跃或自由下落
+        float verticalSpeed = glm::dot(kb.velocity, kb.gravityDirection);
+        const float jumpStrength = 15.0f;
+        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && grounded) {
+            verticalSpeed = -jumpStrength;
+        } else if(!grounded) {
+            std::cout<<"not grounded"<<std::endl;
+            const float G = 9.81f;
+            verticalSpeed += G * dt;
+        } else {
+            verticalSpeed = 0.0f;
+        }
+        // 8. 更新存储速度
+        kb.velocity = horizontalVel + kb.gravityDirection * verticalSpeed;
+        tr.translate(kb.velocity*dt);
+    };
+    ecs.AddComponent(sunEntity, sunBehavior);
+
+    // auto cabaneEntity = ecs.CreateEntity();
+    // Transform cabaneTransform;
+    // Drawable cabaneDraw = Render::loadMesh("../assets/meshes/cabane.glb");
+    // Material cabaneMaterial;
+    // cabaneMaterial.albedo = {0.5f,0.5f,0.5f};
+    // ecs.AddComponent<Transform>(cabaneEntity, cabaneTransform);
+    // ecs.AddComponent<Drawable>(cabaneEntity, cabaneDraw);
+    // ecs.AddComponent<Material>(cabaneEntity, cabaneMaterial);
+
+
+    /////////////////////////////// collision debug
+    auto otherEntity = ecs.CreateEntity();
+    Transform otherTransform;
+    otherTransform.translate(glm::vec3(0,5,0));
+    Light lightSource;
+    lightSource.color = glm::vec3(0,1,0);
+    CollisionShape otherCollision;
+    otherCollision.shapeType = SPHERE;
+    otherCollision.sphere.radius = 1.2;
+    ecs.AddComponent(otherEntity, otherTransform);
+    ecs.AddComponent(otherEntity, lightSource);
+    ecs.AddComponent(otherEntity, otherCollision);
+
+
+    // TODO: fix custom programs, when adding mountain: pbr rendering not working ....
+    ///////////////////////////// programs
+    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader_mountain.glsl", "shaders/fragment_shader_mountain.glsl");
+    mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
+    mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
+    mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
+
+
+    // OOBB collision test
+    auto b1Entity = ecs.CreateEntity();
+    ecs.SetEntityName(b1Entity, "b1");
+    auto b1Collision = CollisionShape();
+    b1Collision.shapeType = OOBB;
+    b1Collision.oobb = Oobb();
+    
+    auto b1Transform = Transform();
+    b1Transform.translate({0,20,0});
+    ecs.AddComponent<CollisionShape>(b1Entity, b1Collision);
+    ecs.AddComponent<Transform>(b1Entity, b1Transform);
+    
+    auto b2Entity = ecs.CreateEntity();
+    ecs.SetEntityName(b2Entity, "b2");
+    auto b2Collision = CollisionShape();
+    b2Collision.shapeType = OOBB;
+    b2Collision.oobb = Oobb();
+    
+    auto b2Transform = Transform();
+    b2Transform.translate({0,20,0});
+    ecs.AddComponent<CollisionShape>(b2Entity, b2Collision);
+    ecs.AddComponent<Transform>(b2Entity, b2Transform);
+    
+
+    
+    ///////////////////////////// camera
+    auto cameraEntity = ecs.CreateEntity();
+    ecs.SetEntityName(cameraEntity, "Camera player default");
+    CustomBehavior cameraUpdate;
+    Transform cameraTransform;
+    CameraComponent cameraComponent;
+    cameraComponent.needActivation = true;
+    cameraUpdate.update = [sunEntity, cameraEntity, &ecs](float deltaTime){
+        auto actions = InputManager::getInstance().getActions();
+
+        // RigidBody& sunRigid = ecs.GetComponent<RigidBody>(sunEntity);
+        KinematicBody& sunKB = ecs.GetComponent<KinematicBody>(sunEntity);
+
+        Transform &sunTransform = ecs.GetComponent<Transform>(sunEntity);
+        Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
+
+        camTransform.setLocalPosition(-sunKB.gravityDirection * 10.f);
+        glm::vec3 direction = sunTransform.getGlobalPosition() - camTransform.getGlobalPosition();
+        direction = glm::normalize(sunKB.gravityDirection);
+        camTransform.setLocalRotation(Camera::lookAt(direction));
+    };
+    ecs.AddComponent(cameraEntity, cameraUpdate);
+    ecs.AddComponent(cameraEntity, cameraTransform);
+    ecs.AddComponent(cameraEntity, cameraComponent);
+
+
+    auto rootEntity = ecs.CreateEntity();
+    Transform rootTransform;
+    ecs.AddComponent(rootEntity, rootTransform);
+    root.transform = &ecs.GetComponent<Transform>(rootEntity);
+    
+    std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
+    std::unique_ptr<SpatialNode> sunCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
+    std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+    std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
+    std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
+    std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+    std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
+    std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
+
+    
+    sunNode->AddChild(std::move(rayNode));
+    sunNode->AddChild(std::move(sunCameraNode));
+    root.AddChild(std::move(sunNode));
+    root.AddChild(std::move(otherNode));
+    root.AddChild(std::move(b1Node));
+    root.AddChild(std::move(b2Node));
+    // root.AddChild(std::move(cabaneNode));
+    planetNode->AddChild(std::move(planetGravityNode));
+    root.AddChild(std::move(planetNode));
+}
+
+
+
+
+float totalTime = 0;
+void pbrScene(SpatialNode &root, ecsManager &ecs){
+    auto cameraEntity = ecs.CreateEntity();
+    CustomBehavior cameraUpdate;
+    cameraUpdate.update = [](float deltaTime){
+        auto actions = InputManager::getInstance().getActions();
+
+        const glm::vec3 left = glm::normalize(glm::cross(glm::vec3(0,1,0), Camera::getInstance().camera_target));
+        const glm::vec3 forward = glm::normalize(glm::cross(left, glm::vec3(0,1,0)));
+
+        const float speed = 10.0f;
+        // glm::vec3 inputVelocity(0);
+        // if (actions[InputManager::ActionEnum::ACTION_FORWARD].pressed)
+        //     inputVelocity += forward;
+        // if (actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)
+        //     inputVelocity -= forward;
+        // if (actions[InputManager::ActionEnum::ACTION_LEFT].pressed)
+        //     inputVelocity += left;
+        // if (actions[InputManager::ActionEnum::ACTION_RIGHT].pressed)
+        //     inputVelocity -= left;
+
+        // if(inputVelocity.length() != 0)
+        //     Camera::getInstance().camera_position += glm::normalize(inputVelocity) * deltaTime * speed;
+    };
+    ecs.AddComponent(cameraEntity, cameraUpdate);
+    Camera::editor = false;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);
+    Camera::editor = true;
+    Camera::getInstance().camera_position = glm::vec3(0,1,10);   
+    
+    auto rootEntity = ecs.CreateEntity();
+    Transform rootTransform;
+    ecs.AddComponent(rootEntity, rootTransform);
+    root.transform = &ecs.GetComponent<Transform>(rootEntity);
+
+    CustomBehavior continuousRotation;
+    continuousRotation.update = [&root](float deltaTime){
+        root.transform->rotate(glm::vec3(0, deltaTime * 10.f, 0));
+    };
+    ecs.AddComponent<CustomBehavior>(rootEntity, continuousRotation);
+
+    Program::programs.push_back(std::make_unique<PBR>());
+    for(int i=0; i<5; i++){
+        auto ent = generateSpherePBR(ecs, 0.75f, glm::vec3(-5 + i*2, 0, 0));
+        std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(ent));
+        root.AddChild(std::move(sphereNode));
+    }
+    
+    // auto light1 = createLightSource(ecs, glm::vec3(1,5,-6), glm::vec3(1));
+    // ecs.SetEntityName(light1, "Center top light");
+    std::vector<Entity> staticLights;
+    std::vector<glm::vec3> lightPositions = {
+        {-3, 3, -5},
+        {-3, 3, 3},
+        {0, 1,  5},
+        {3, -3,  -2}
+    };
+
+    for (int i = 0; i < lightPositions.size(); ++i) {
+        auto light = createLightSource(ecs, lightPositions[i], glm::vec3(1));
+        ecs.SetEntityName(light, "Static Light " + std::to_string(i + 1));
+        staticLights.push_back(light);
+    }
+
+    auto movingLight = createLightSource(ecs, glm::vec3(5,0,2), glm::vec3(1));
+    ecs.SetEntityName(movingLight, "Y moving light");
+    CustomBehavior oscilatingLight;
+    oscilatingLight.update = [movingLight, &ecs](float deltaTime){
+        totalTime += deltaTime;
+        auto &transfo = ecs.GetComponent<Transform>(movingLight);
+        float direction = cos(totalTime); 
+        transfo.translate({0,direction * deltaTime * 10.f,0});
+    };
+    ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
+}

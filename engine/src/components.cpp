@@ -183,7 +183,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
 OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
 
-    glm::vec3 difference = transformB.getLocalPosition() - transformA.getLocalPosition();
+    glm::vec3 difference = transformB.getGlobalPosition() - transformA.getGlobalPosition();
 
     float rSq = sphereB.radius * sphereB.radius;
     float eSq = glm::length(difference);
@@ -192,14 +192,19 @@ OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &
     float a = glm::dot(difference, rayA.ray_direction);
 
     float bSq = eSq - (a*a);
+    if(rSq - (eSq - (a*a)) < 0.0f) return res;
+
     float f = sqrt(rSq - bSq);
 
-    if(rSq - (eSq - (a*a)) < 0.0f) return res;
+    float t1 = a - f;
+
+    if (t1 < 0.0f || t1 > rayA.length)
+        return res;
 
     res.exist = true;
     res.correctionDepth = 0;
     res.normal = glm::normalize(-difference);
-    res.position = transformA.getLocalPosition() + (a-f) * rayA.ray_direction;
+    res.position = transformA.getGlobalPosition() + (a-f) * rayA.ray_direction;
     return res;
 }
 

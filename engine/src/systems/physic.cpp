@@ -112,9 +112,13 @@ void PhysicSystem::update(float deltaTime){
     solver();
 
     for(auto &entity: mEntities){
+
+        if(ecs.HasComponent<KinematicBody>(entity))     continue;
+        
         auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
+
 
         if(rigidBody.isStatic){
             rigidBody.velocity = glm::vec3(0,0,0);

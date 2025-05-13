@@ -110,6 +110,10 @@ inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidB
 template<>
 inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {}
 
+template<>
+inline void ComponentInspector<KinematicBody>::DisplayComponentGUI(KinematicBody& kinematicbody) {}
+
+
 
 // Json serialization
 // json serializeVec3(glm::vec3 &vec){
@@ -175,6 +179,10 @@ inline json ComponentInspector<CustomVar>::GetComponentJson(CustomVar& custom){
 template<>
 inline json ComponentInspector<RigidBody>::GetComponentJson(RigidBody& rigidBody){
     return {{"name", "RigidBody"}};
+}
+template<>
+inline json ComponentInspector<KinematicBody>::GetComponentJson(KinematicBody& kinematicbody){
+    return {{"name", "KinematicBody"}};
 }
 template<>
 inline json ComponentInspector<CollisionShape>::GetComponentJson(CollisionShape& collisionShape){

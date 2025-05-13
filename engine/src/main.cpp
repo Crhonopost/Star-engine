@@ -92,6 +92,7 @@ void initEcs(){
     ecs.RegisterComponent<Light>("Light");
     ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
     ecs.RegisterComponent<RigidBody>("RigidBody");
+    ecs.RegisterComponent<KinematicBody>("KinematicBody");
     ecs.RegisterComponent<CollisionShape>("CollisionShape");
 
     renderSystem = ecs.RegisterSystem<Render>();
