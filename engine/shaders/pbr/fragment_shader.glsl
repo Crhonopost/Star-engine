@@ -20,6 +20,12 @@ uniform samplerCube irradianceMap;
 uniform samplerCube prefilterMap;
 uniform sampler2D  brdfLUTMap;
 
+uniform bool hasAlbedoMap = false;
+uniform bool hasNormalMap = false;
+uniform bool hasMetallicMap = false;
+uniform bool hasRoughnessMap = false;
+uniform bool hasAoMap = false;
+
 // lights
 const int MAX_LIGHT = 20;
 uniform int lightCount = 0;
@@ -89,19 +95,12 @@ void main(){
     vec3 albedo,normal;
     float metallic,roughness,ao;
 
-    if(hasTexture){
-        albedo      = pow(texture(albedoMap, texCoords).rgb, vec3(2.2f));
-        normal      = getNormalFromNormalMap();
-        metallic   = texture(metallicMap, texCoords).r;
-        roughness  = texture(roughnessMap, texCoords).r ;
-        ao         = texture(aoMap, texCoords).r;
-    }else{
-        albedo = pow(albedoVal,vec3(2.2f));
-        normal = normalVal;
-        metallic = metallicVal;
-        roughness = roughnessVal;
-        ao = aoVal;
-    }
+    albedo    = hasAlbedoMap    ? pow(texture(albedoMap, texCoords).rgb, vec3(2.2)) : pow(albedoVal, vec3(2.2));
+    normal    = hasNormalMap    ? getNormalFromNormalMap()                          : normalVal;
+    metallic  = hasMetallicMap  ? texture(metallicMap, texCoords).r                : metallicVal;
+    roughness = hasRoughnessMap ? texture(roughnessMap, texCoords).r               : roughnessVal;
+    ao        = hasAoMap        ? texture(aoMap, texCoords).r                      : aoVal;
+
 
     vec3 N = normalize(normal);
     vec3 V = normalize(camPos - WorldPos);

@@ -51,7 +51,7 @@ class PBRrender: public System {
 class AnimatedPBRrender: public PBRrender {
     public:
     void update(glm::mat4 &view, float deltaTime);
-    static AnimatedDrawable loadMesh(char *filePath);
+    static void loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat);
 };
 
 class CubemapRender {

@@ -20,7 +20,60 @@ void Texture::resetActivationInt(){
     activationInt = 0;
 }
 
-Texture& Texture::loadTexture(char * path){
+
+Texture Texture::emptyTexture;
+
+Texture& Texture::loadTextureFromMemory(const unsigned char* data,
+                                         size_t size,
+                                         int width,
+                                         int height,
+                                         int channels,
+                                         const std::string& key)
+{
+    auto it = textures.find(key);
+    if (it != textures.end())
+        return it->second;
+
+    Texture tex;
+    tex.path = key.c_str();
+    glGenTextures(1, &tex.id);
+    int unit = Texture::getAvailableActivationInt();
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_2D, tex.id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    unsigned char* imageData = nullptr;
+    int imgWidth = width;
+    int imgHeight = height;
+    int imgChannels = channels;
+
+    if (size > 0 && height == 0) {
+        // compressed
+        imageData = stbi_load_from_memory(data, static_cast<int>(size), &imgWidth, &imgHeight, &imgChannels, 0);
+        if (!imageData) {
+            std::cerr << "Failed to load embedded texture from memory: " << key << std::endl;
+        }
+    } else {
+        imageData = const_cast<unsigned char*>(data);
+    }
+
+    GLenum format = (imgChannels == 4 ? GL_RGBA : (imgChannels == 3 ? GL_RGB : GL_RED));
+    glTexImage2D(GL_TEXTURE_2D, 0, format, imgWidth, imgHeight, 0, format, GL_UNSIGNED_BYTE, imageData);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (size > 0 && height == 0 && imageData)
+        stbi_image_free(imageData);
+
+    auto inserted = textures.emplace(key, tex);
+    return inserted.first->second;
+}
+
+Texture& Texture::loadTexture(const char * path){
     std::string key(path);
     auto it = textures.find(key);
     if (it != textures.end()) {
@@ -293,6 +346,12 @@ PBR::PBR(): Program("shaders/pbr/vertex_shader.glsl", "shaders/pbr/fragment_shad
     roughnessTexLocation = glGetUniformLocation(programID, "roughnessMap");
 
     indensiteScaleLightLocation = glGetUniformLocation(programID,"indensiteScaleLight");
+
+    hasAlbedoMapLocation = glGetUniformLocation(programID, "hasAlbedoMap");
+    hasNormalMapLocation = glGetUniformLocation(programID, "hasNormalMap");
+    hasMetallicMapLocation = glGetUniformLocation(programID, "hasMetallicMap");
+    hasRoughnessMapLocation = glGetUniformLocation(programID, "hasRoughnessMap");
+    hasAoMapLocation = glGetUniformLocation(programID, "hasAoMap");
 }
 
 void PBR::updateMaterial(Material &material){
@@ -300,14 +359,40 @@ void PBR::updateMaterial(Material &material){
     glUniform1f(roughnessLocation, material.roughness);
     glUniform1f(aoLocation, material.ao);
     glUniform3f(albedoLocation, material.albedo[0], material.albedo[1], material.albedo[2]);
-    glUniform1i(hasTextureLocation, material.hasTexture);
-
-    if(material.hasTexture){
+    
+    if (material.albedoTex->visible){
         material.albedoTex->activate(albedoTexLocation);
+        glUniform1i(hasAlbedoMapLocation, 1);
+    } else {
+        glUniform1i(hasAlbedoMapLocation, 0);
+    }
+    
+    if (material.metallicTex->visible){
         material.metallicTex->activate(metallicTexLocation);
+        glUniform1i(hasMetallicMapLocation, 1);
+    } else {
+        glUniform1i(hasMetallicMapLocation, 0);
+    }
+    
+    if (material.aoTex->visible){
         material.aoTex->activate(aoTexLocation);
+        glUniform1i(hasAoMapLocation, 1);
+    } else {
+        glUniform1i(hasAoMapLocation, 0);
+    }
+    
+    if (material.normalTex->visible){
         material.normalTex->activate(normalTexLocation);
+        glUniform1i(hasNormalMapLocation, 1);
+    } else {
+        glUniform1i(hasNormalMapLocation, 0);
+    }
+    
+    if (material.roughnessTex->visible){
         material.roughnessTex->activate(roughnessTexLocation);
+        glUniform1i(hasRoughnessMapLocation, 1);
+    } else {
+        glUniform1i(hasRoughnessMapLocation, 0);
     }
 }
 

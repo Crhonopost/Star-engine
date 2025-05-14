@@ -12,11 +12,11 @@ Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereDraw = Render::generateSphere(radius);
     auto sphereMaterial = Material();
 
-    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
-    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
-    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Specular.jpg");
-    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
-    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
+    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Normal.png");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Roughness.png");
+    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/AO.png");
 
     Transform sphereTransform;
     sphereTransform.translate(position);
@@ -54,7 +54,7 @@ Entity generatePlanet(ecsManager &ecs, glm::vec3 position, float radius){
 
     sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
     sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
-    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Specular.jpg");
+    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
     sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
     sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
 
@@ -383,12 +383,22 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     animationTransform.translate({0,0,0});
     // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Mario-walk.glb");
     // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Walking.glb");
-    AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Animation_test.glb");
+    AnimatedDrawable animationDraw;
     Material animationMaterial;
     animationMaterial.albedo = {0.5f,0.5f,0.5f};
+    AnimatedPBRrender::loadMesh("../assets/meshes", "/Animation_test.glb", animationDraw, animationMaterial);
     ecs.AddComponent<Transform>(animationEntity, animationTransform);
     ecs.AddComponent<AnimatedDrawable>(animationEntity, animationDraw);
     ecs.AddComponent<Material>(animationEntity, animationMaterial);
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
+
+
+
+    auto materialVisuEntity = generateSpherePBR(ecs, 0.75f, glm::vec3(0, -5, 0));
+    ecs.GetComponent<Material>(materialVisuEntity).albedoTex = animationMaterial.albedoTex;
+    ecs.GetComponent<Material>(materialVisuEntity).albedoTex->visible = true;
+    std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(materialVisuEntity));
+    root.AddChild(std::move(sphereNode));
+
 }

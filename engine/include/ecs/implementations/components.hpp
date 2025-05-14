@@ -108,7 +108,6 @@ struct Material: Component {
     float metallic = 0.5f;
     float roughness = 0.5f;
     float ao = 1.0f;
-    bool hasTexture = false;
 
     Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
 };
