@@ -114,21 +114,21 @@ void AnimatedPBRrender::update(glm::mat4 &view, float deltaTime){
         auto& drawable = ecs.GetComponent<AnimatedDrawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& material = ecs.GetComponent<Material>(entity);
-
+        
         pbrProg.updateMaterial(material);
         
         float distanceToCam = glm::length(Camera::getInstance().camera_position - transform.getLocalPosition());
         
         glm::mat4 model = transform.getModelMatrix();
-
+        
         pbrProg.renderTextures();
         pbrProg.updateModelMatrix(model);
-
+        
         if(drawable.playing){
             drawable.animation.addDeltaTime(deltaTime);
         }
         std::vector<glm::mat4> inMatrices, outMatrices;
-
+        
         drawable.animation.getPose(drawable.bones, inMatrices);
         
         CalculateAnimationPose(drawable.bones, inMatrices, outMatrices);
@@ -179,9 +179,106 @@ int reorganizeBones(std::vector<Bone>& bones, std::vector<int>& newIndices, int 
 }
 
 
-Drawable Render::loadSimpleMesh(char *filePath){
-    Drawable res;
+std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
+                                           aiTextureType type,
+                                           const char* directory,
+                                           const aiScene* scene)
+{
+    std::vector<Texture*> texturesOut;
+    std::string dirStr = directory ? directory : "";
+    if (!dirStr.empty() && dirStr.back() != '/' && dirStr.back() != '\\')
+        dirStr += '/';
 
+    for (unsigned int i = 0; i < material->GetTextureCount(type); ++i) {
+        aiString str;
+        material->GetTexture(type, i, &str);
+        std::string texKey;
+        Texture* texPtr = nullptr;
+
+        if (str.C_Str()[0] == '*') {
+            int texIndex = std::atoi(str.C_Str() + 1);
+            if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures)) {
+                aiTexture* atex = scene->mTextures[texIndex];
+                texKey = std::string(scene->mMeshes[0]->mName.C_Str()) + std::string("embedded_") + std::to_string(texIndex);
+
+                if (atex->mHeight) {
+                    texPtr = &Texture::loadTextureFromMemory(
+                        reinterpret_cast<unsigned char*>(atex->pcData),
+                        0,
+                        atex->mWidth,
+                        atex->mHeight,
+                        4,
+                        texKey
+                    );
+                } else {
+                    texPtr = &Texture::loadTextureFromMemory(
+                        reinterpret_cast<unsigned char*>(atex->pcData),
+                        atex->mWidth,
+                        0,
+                        0,
+                        0,
+                        texKey
+                    );
+                }
+            }
+        } else {
+            std::string fullPath = dirStr + str.C_Str();
+            texKey = fullPath;
+            texPtr = &Texture::loadTexture(fullPath.c_str());
+        }
+
+        if (texPtr) {
+            texturesOut.push_back(texPtr);
+        }
+    }
+    return texturesOut;
+}
+
+
+void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene, const char *directory){
+    if (mesh->mMaterialIndex >= 0){
+        aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+
+        std::vector<Texture*> albedoMap = loadMaterialTextures(material, aiTextureType_BASE_COLOR, directory, scene);
+        if (!albedoMap.empty()){
+            mat.albedoTex = albedoMap[0];
+            mat.albedoTex->visible = true;
+        } 
+        else mat.albedoTex = &Texture::emptyTexture;
+        
+        std::vector<Texture*> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, directory, scene);
+        if (!specularMaps.empty()) {
+            mat.metallicTex = specularMaps[0];
+            mat.metallicTex->visible = true;
+        }
+        else mat.metallicTex = &Texture::emptyTexture;
+        
+        std::vector<Texture*> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, directory, scene);
+        if (normalMaps.empty()) normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, directory, scene);
+        if (!normalMaps.empty()){
+            mat.normalTex = normalMaps[0];
+            mat.normalTex->visible = true;
+        }
+        else mat.normalTex = &Texture::emptyTexture;
+        
+        std::vector<Texture*> roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, directory, scene);
+        if (!roughnessMaps.empty()){
+            mat.roughnessTex = roughnessMaps[0];
+            mat.roughnessTex->visible = true;
+        }
+        else mat.roughnessTex = &Texture::emptyTexture;
+        
+        std::vector<Texture*> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, directory, scene);
+        if (!aoMaps.empty()){
+            mat.aoTex = aoMaps[0];
+            mat.aoTex->visible = true;
+        } 
+        else mat.aoTex = &Texture::emptyTexture;
+    }
+}
+
+
+void Render::loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat){
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
     std::vector<glm::vec2> tex_coords;
@@ -189,6 +286,7 @@ Drawable Render::loadSimpleMesh(char *filePath){
 
     
     Assimp::Importer importer;
+    std::string filePath = std::string(directory) + fileName;
     const aiScene* scene = importer.ReadFile(filePath,
         aiProcess_Triangulate |
         aiProcess_JoinIdenticalVertices |
@@ -197,7 +295,6 @@ Drawable Render::loadSimpleMesh(char *filePath){
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
-        return res;
     }
     
     for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
@@ -227,7 +324,9 @@ Drawable Render::loadSimpleMesh(char *filePath){
                 aiVector3D tex_coord = mesh->mTextureCoords[0][j];
                 tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
             }
-        }    
+        }
+
+        extractMaterial(mat, mesh, scene, directory);
     }
 
 
@@ -247,8 +346,6 @@ Drawable Render::loadSimpleMesh(char *filePath){
     }
 
     res.init(vertex_buffer_data, indices);
-
-    return res;
 }
 
 
@@ -286,62 +383,6 @@ void ApplyMirroredRotationToBones(aiNode* node) {
             }
         }
     }
-}
-
-
-std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
-                                           aiTextureType type,
-                                           const char* directory,
-                                           const aiScene* scene)
-{
-    std::vector<Texture*> texturesOut;
-    std::string dirStr = directory ? directory : "";
-    if (!dirStr.empty() && dirStr.back() != '/' && dirStr.back() != '\\')
-        dirStr += '/';
-
-    for (unsigned int i = 0; i < material->GetTextureCount(type); ++i) {
-        aiString str;
-        material->GetTexture(type, i, &str);
-        std::string texKey;
-        Texture* texPtr = nullptr;
-
-        if (str.C_Str()[0] == '*') {
-            int texIndex = std::atoi(str.C_Str() + 1);
-            if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures)) {
-                aiTexture* atex = scene->mTextures[texIndex];
-                texKey = std::string("embedded_") + std::to_string(texIndex);
-
-                if (atex->mHeight) {
-                    texPtr = &Texture::loadTextureFromMemory(
-                        reinterpret_cast<unsigned char*>(atex->pcData),
-                        0,
-                        atex->mWidth,
-                        atex->mHeight,
-                        4,
-                        texKey
-                    );
-                } else {
-                    texPtr = &Texture::loadTextureFromMemory(
-                        reinterpret_cast<unsigned char*>(atex->pcData),
-                        atex->mWidth,
-                        0,
-                        0,
-                        0,
-                        texKey
-                    );
-                }
-            }
-        } else {
-            std::string fullPath = dirStr + str.C_Str();
-            texKey = fullPath;
-            texPtr = &Texture::loadTexture(fullPath.c_str());
-        }
-
-        if (texPtr) {
-            texturesOut.push_back(texPtr);
-        }
-    }
-    return texturesOut;
 }
 
 void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat){
@@ -394,48 +435,7 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
             }
         }
 
-        if (mesh->mMaterialIndex >= 0)
-        {
-            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-
-            std::vector<Texture*> albedoMap = loadMaterialTextures(material, aiTextureType_BASE_COLOR, directory, scene);
-            if (!albedoMap.empty()){
-                mat.albedoTex = albedoMap[0];
-                mat.albedoTex->visible = true;
-            } 
-            else mat.albedoTex = &Texture::emptyTexture;
-            
-            std::vector<Texture*> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, directory, scene);
-            if (!specularMaps.empty()) {
-                mat.metallicTex = specularMaps[0];
-                mat.metallicTex->visible = true;
-            }
-            else mat.metallicTex = &Texture::emptyTexture;
-            
-            std::vector<Texture*> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, directory, scene);
-            if (normalMaps.empty()) normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, directory, scene);
-            if (!normalMaps.empty()){
-                mat.normalTex = normalMaps[0];
-                mat.normalTex->visible = true;
-            }
-            else mat.normalTex = &Texture::emptyTexture;
-            
-            std::vector<Texture*> roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, directory, scene);
-            if (!roughnessMaps.empty()){
-                mat.roughnessTex = roughnessMaps[0];
-                mat.roughnessTex->visible = true;
-            }
-            else mat.roughnessTex = &Texture::emptyTexture;
-            
-            std::vector<Texture*> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, directory, scene);
-            if (!aoMaps.empty()){
-                mat.aoTex = aoMaps[0];
-                mat.aoTex->visible = true;
-            } 
-            else mat.aoTex = &Texture::emptyTexture;
-        }
-
-
+        extractMaterial(mat, mesh, scene, directory);
 
 
         if( mesh->HasBones()){

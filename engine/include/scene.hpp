@@ -105,6 +105,29 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
     return entity;
 }
 
+Entity generateCrate(ecsManager &ecs, glm::vec3 position){
+    auto crateEntity = ecs.CreateEntity();
+    ecs.SetEntityName(crateEntity, "crate");
+    Material crateMat;
+    Drawable crateDrawable;
+    Render::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
+    
+    CollisionShape crateShape;
+    crateShape.shapeType = OOBB;
+    crateShape.oobb.halfExtents = vec3(1.f);
+    RigidBody crateBody;
+    
+    Transform crateTransform;
+    crateTransform.translate({0,-5,0});
+    ecs.AddComponent<Transform>(crateEntity, crateTransform);
+    ecs.AddComponent<CollisionShape>(crateEntity, crateShape);
+    ecs.AddComponent<RigidBody>(crateEntity, crateBody);
+    ecs.AddComponent<Drawable>(crateEntity, crateDrawable);
+    ecs.AddComponent<Material>(crateEntity, crateMat);
+
+    return crateEntity;
+}
+
 void initScene(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
     ///////////////////////////// sun
@@ -235,6 +258,11 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     b2Transform.translate({0,20,0});
     ecs.AddComponent<CollisionShape>(b2Entity, b2Collision);
     ecs.AddComponent<Transform>(b2Entity, b2Transform);
+
+
+
+    auto crateEntity = generateCrate(ecs, {0,-15, 5});
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
     
 
     
@@ -392,13 +420,4 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent<Material>(animationEntity, animationMaterial);
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
-
-
-
-    auto materialVisuEntity = generateSpherePBR(ecs, 0.75f, glm::vec3(0, -5, 0));
-    ecs.GetComponent<Material>(materialVisuEntity).albedoTex = animationMaterial.albedoTex;
-    ecs.GetComponent<Material>(materialVisuEntity).albedoTex->visible = true;
-    std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(materialVisuEntity));
-    root.AddChild(std::move(sphereNode));
-
 }

@@ -297,7 +297,7 @@ void PhysicDebugSystem::update(){
         } else if(shape.shapeType == OOBB || shape.shapeType == AABB){
             indexCount = boxIndexCount;
             glm::vec3 scale = shape.oobb.halfExtents;
-            // glUniform3f(scaleLocation, scale.x, scale.y, scale.z);
+            glUniform3f(scaleLocation, scale.x, scale.y, scale.z);
             glBindVertexArray(boxVAO);
         } else if (shape.shapeType == RAY){
             glm::vec3 points[2] = { glm::vec3(0), shape.ray.ray_direction * shape.ray.length };

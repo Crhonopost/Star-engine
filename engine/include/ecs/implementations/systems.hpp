@@ -16,6 +16,7 @@ class Render: public System {
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
     static Drawable loadSimpleMesh(char *path);
+    static void loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat);
 };
 
 class LightRender: public System {

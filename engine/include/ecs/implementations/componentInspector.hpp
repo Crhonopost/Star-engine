@@ -117,7 +117,28 @@ inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidB
 }
 
 template<>
-inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {}
+inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionShape& collisionShape) {
+    ImGui::SeparatorText("Collision shape");
+    if(ImGui::BeginMenu("Type")){
+        if(ImGui::MenuItem("Sphere")) collisionShape.shapeType = SPHERE;
+        if(ImGui::MenuItem("Ray")) collisionShape.shapeType = RAY;
+        if(ImGui::MenuItem("Plane")) collisionShape.shapeType = PLANE;
+        if(ImGui::MenuItem("AABB")) collisionShape.shapeType = AABB;
+        if(ImGui::MenuItem("OOBB")) collisionShape.shapeType = OOBB;
+        ImGui::EndMenu();
+    }
+
+    if(collisionShape.shapeType == RAY){
+        ImGui::DragFloat("Length", &collisionShape.ray.length);
+    } else if(collisionShape.shapeType == SPHERE){
+        ImGui::DragFloat("Radius", &collisionShape.sphere.radius);
+    } else if(collisionShape.shapeType == AABB){
+        ImGui::DragFloat3("Half", &collisionShape.aabb.diag[0]);
+    } else if(collisionShape.shapeType == OOBB){
+        ImGui::DragFloat3("Half", &collisionShape.oobb.halfExtents[0], 0.2f, 0.01f);
+    }
+
+}
 
 
 // Json serialization

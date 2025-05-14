@@ -360,16 +360,16 @@ OverlapingShape oobbIntersection(Oobb &oobbA, Transform &transformA, Oobb &oobbB
 OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
 
-    glm::mat4 model = transformA.getModelMatrix();
-    glm::mat4 invModel = glm::inverse(model);
+    glm::mat4 invTransfoA = glm::inverse(transformA.getModelMatrix());
+    glm::vec4 localSphereCenter = invTransfoA * glm::vec4(transformB.getGlobalPosition(), 1.f);
 
-    glm::vec3 sphereCenterLocal = transformB.getLocalPosition();
+    glm::vec3 closest;
+    closest.x = std::max(-oobbA.halfExtents.x, std::min(localSphereCenter.x, oobbA.halfExtents.x));
+    closest.y = std::max(-oobbA.halfExtents.y, std::min(localSphereCenter.y, oobbA.halfExtents.y));
+    closest.z = std::max(-oobbA.halfExtents.z, std::min(localSphereCenter.z, oobbA.halfExtents.z));
 
-    glm::vec3 closestPointLocal = glm::clamp(transformB.getLocalPosition(), -oobbA.halfExtents, oobbA.halfExtents);
-
-    glm::vec3 closestPointWorld = glm::vec3(model * glm::vec4(closestPointLocal, 1.0f));
-
-    glm::vec3 direction = transformB.getGlobalPosition() - closestPointWorld;
+    glm::vec3 closestGlobal = glm::vec3(transformA.getModelMatrix() * glm::vec4(closest, 1.f));
+    glm::vec3 direction = transformB.getGlobalPosition() - closestGlobal;
     float distance = glm::length(direction);
 
     if (distance > sphereB.radius) return res;
@@ -378,13 +378,14 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
     if (distance > 0.0001f)
         res.normal = glm::normalize(direction);
     else
-        res.normal = glm::vec3(0, 1, 0); // Valeur arbitraire si centre exactement dedans
+        res.normal = glm::vec3(0, 1, 0);
 
     res.correctionDepth = sphereB.radius - distance;
-    res.position = closestPointWorld;
+    res.position = closestGlobal;
 
     return res;
 }
+
 
 OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
     OverlapingShape res;
