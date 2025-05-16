@@ -14,7 +14,7 @@ void CollisionDetectionSystem::update(float deltaTime){
 void CollisionDetectionSystem::narrowPhase(){
     detectedCollisions.clear();
     for(auto &entity: mEntities){
-        ecs.GetComponent<CollisionShape>(entity).isColliding = false;
+        ecs.GetComponent<CollisionShape>(entity).collidingEntities.clear();
     }
 
     for(auto itA=mEntities.begin(); itA != mEntities.end(); itA++){
@@ -37,8 +37,9 @@ void CollisionDetectionSystem::narrowPhase(){
             OverlapingShape collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
 
             if(collision.exist){
-                shapeA.isColliding = true;
-                shapeB.isColliding = true;
+                if(collision.aSeeB) shapeA.collidingEntities.emplace(entityB);
+                if(collision.bSeeA) shapeB.collidingEntities.emplace(entityA);
+                
                 collision.aSeeB = aSeeB;
                 collision.bSeeA = bSeeA;
                 collision.entityA = entityA;
@@ -300,7 +301,7 @@ void PhysicDebugSystem::update(){
         }
         program.updateModelMatrix(model);
 
-        if(shape.isColliding) glUniform4f(colorLocation, 1,0,0,1);
+        if(shape.isAnythingColliding()) glUniform4f(colorLocation, 1,0,0,1);
         else glUniform4f(colorLocation, 0,1,0,1);
 
         int indexCount = 0;

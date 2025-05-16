@@ -369,14 +369,15 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
     closest.z = std::max(-oobbA.halfExtents.z, std::min(localSphereCenter.z, oobbA.halfExtents.z));
 
     glm::vec3 closestGlobal = glm::vec3(transformA.getModelMatrix() * glm::vec4(closest, 1.f));
-    glm::vec3 direction = transformB.getGlobalPosition() - closestGlobal;
+    // TODO : fix getGlobalPosition !!
+    glm::vec3 direction = transformB.getLocalPosition() - closestGlobal;
     float distance = glm::length(direction);
 
     if (distance > sphereB.radius) return res;
 
     res.exist = true;
     if (distance > 0.0001f)
-        res.normal = glm::normalize(direction);
+        res.normal = -glm::normalize(direction);
     else
         res.normal = glm::vec3(0, 1, 0);
 
@@ -443,5 +444,6 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
     return res;
 }
 
-uint16_t CollisionShape::ENV_LAYER = 1;
-uint16_t CollisionShape::PLAYER_LAYER = 2;
+uint16_t CollisionShape::ENV_LAYER = 1 << 0;
+uint16_t CollisionShape::PLAYER_LAYER = 1 << 1;
+uint16_t CollisionShape::GRAVITY_SENSITIVE_LAYER = 1 << 2;

@@ -74,9 +74,6 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
     auto entity = ecs.CreateEntity();
     auto collisionShape = CollisionShape();
     auto collisionBehavior = CustomBehavior();
-    auto areaStorage = CustomVar();
-
-    areaStorage.bools.push_back(false); // If player is in gravity range
 
     Transform sphereTransform;
     sphereTransform.translate(position);
@@ -84,22 +81,17 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
     collisionShape.shapeType = SPHERE;
     collisionShape.sphere.radius = radius;
     collisionShape.layer = 0;
-    collisionShape.mask = CollisionShape::PLAYER_LAYER;
+    collisionShape.mask = CollisionShape::PLAYER_LAYER | CollisionShape::GRAVITY_SENSITIVE_LAYER;
 
-    collisionBehavior.update = [playerEntity, entity, &ecs](float deltaTime){
-        if(ecs.GetComponent<CollisionShape>(entity).isColliding){
-            glm::vec3 gravDir = ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(playerEntity).getGlobalPosition();
-            ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::normalize(gravDir);
-            ecs.GetComponent<CustomVar>(entity).bools[0] = true;
-        } else if(ecs.GetComponent<CustomVar>(entity).bools[0]){
-            ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0);
-            ecs.GetComponent<CustomVar>(entity).bools[0] = false;
+    collisionBehavior.update = [entity, &ecs](float deltaTime){
+        for(auto &collidingEntity: ecs.GetComponent<CollisionShape>(entity).collidingEntities){
+            glm::vec3 gravDir = ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(collidingEntity).getGlobalPosition();
+            ecs.GetComponent<RigidBody>(collidingEntity).gravityDirection = glm::normalize(gravDir);
         }
     };
 
     ecs.AddComponent(entity, collisionShape);
     ecs.AddComponent(entity, collisionBehavior);
-    ecs.AddComponent(entity, areaStorage);
     ecs.AddComponent(entity, sphereTransform);
 
     return entity;
@@ -115,6 +107,7 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     CollisionShape crateShape;
     crateShape.shapeType = OOBB;
     crateShape.oobb.halfExtents = vec3(1.f);
+    crateShape.layer |= CollisionShape::GRAVITY_SENSITIVE_LAYER;
     RigidBody crateBody;
     
     Transform crateTransform;

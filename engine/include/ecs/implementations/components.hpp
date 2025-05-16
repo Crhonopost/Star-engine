@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <unordered_set>
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
 #include <engine/include/rendering.hpp>
@@ -324,7 +325,7 @@ struct Aabb {
 
 
 struct CollisionShape: Component{
-    static uint16_t ENV_LAYER, PLAYER_LAYER;
+    static uint16_t ENV_LAYER, PLAYER_LAYER, GRAVITY_SENSITIVE_LAYER;
     
     CollisionShapeTypeEnum shapeType;
     union {
@@ -338,14 +339,26 @@ struct CollisionShape: Component{
     uint16_t layer = 1;
     uint16_t mask = 1;
 
-    bool isColliding=false;
+    std::unordered_set<Entity> collidingEntities;
+    bool isColliding(Entity entity) {
+        return collidingEntities.find(entity) != collidingEntities.end();
+    }
+    void addCollision(Entity entity) {
+        collidingEntities.insert(entity);
+    }
+    void removeCollision(Entity entity) {
+        collidingEntities.erase(entity);
+    }
+    bool isAnythingColliding() {
+        return !collidingEntities.empty();
+    }
 
-    CollisionShape() : shapeType(PLANE), isColliding(false) {
+    CollisionShape() : shapeType(PLANE) {
         new(&plane) Plane();
     }
 
     CollisionShape(CollisionShape&& other) noexcept 
-        : shapeType(other.shapeType), isColliding(other.isColliding) {
+        : shapeType(other.shapeType), collidingEntities(other.collidingEntities) {
         switch (other.shapeType) {
             case RAY:
                 new(&ray) Ray(std::move(other.ray));
@@ -363,7 +376,7 @@ struct CollisionShape: Component{
                 new(&oobb) Oobb(std::move(other.oobb));
                 break;
         }
-        other.isColliding = false;
+        other.collidingEntities.clear();
         layer = other.layer;
         mask = other.mask;
     }
@@ -371,7 +384,7 @@ struct CollisionShape: Component{
     CollisionShape& operator=(CollisionShape&& other) noexcept {
         if (this != &other) {
             shapeType = other.shapeType;
-            isColliding = other.isColliding;
+            collidingEntities = other.collidingEntities;
 
             switch (other.shapeType) {
                 case RAY:
@@ -390,7 +403,7 @@ struct CollisionShape: Component{
                     new(&oobb) Oobb(std::move(other.oobb));
                     break;
             }
-            other.isColliding = false;
+            other.collidingEntities.clear();
             layer = other.layer;
             mask = other.mask;
         }
