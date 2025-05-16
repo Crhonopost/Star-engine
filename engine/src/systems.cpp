@@ -566,9 +566,18 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
 
             }
 
+            
+            auto firstRot = aiBoneAnim->mRotationKeys[0];
+            glm::quat firstRotGLM = {firstRot.mValue.w, firstRot.mValue.x, firstRot.mValue.y, firstRot.mValue.z};
+
+            glm::quat tPoseInverse = glm::conjugate(firstRotGLM);
+
             for(int rotIdx=0; rotIdx<aiBoneAnim->mNumRotationKeys; rotIdx++){
                 auto data  = aiBoneAnim->mRotationKeys[rotIdx];
-                boneAnim.rotationKeys.push_back({data.mTime, {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z}});
+                // boneAnim.rotationKeys.push_back({data.mTime, {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z}});
+                
+                glm::quat rotGLM = {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z};
+                boneAnim.rotationKeys.push_back({data.mTime, tPoseInverse * rotGLM});
             }
 
             for(int scaleIdx=0; scaleIdx<aiBoneAnim->mNumScalingKeys; scaleIdx++){

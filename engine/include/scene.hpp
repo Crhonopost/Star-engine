@@ -414,7 +414,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     AnimatedDrawable animationDraw;
     Material animationMaterial;
     animationMaterial.albedo = {0.5f,0.5f,0.5f};
-    AnimatedPBRrender::loadMesh("../assets/meshes", "/Animation_test.glb", animationDraw, animationMaterial);
+    AnimatedPBRrender::loadMesh("../assets/meshes", "/Walking.glb", animationDraw, animationMaterial);
     ecs.AddComponent<Transform>(animationEntity, animationTransform);
     ecs.AddComponent<AnimatedDrawable>(animationEntity, animationDraw);
     ecs.AddComponent<Material>(animationEntity, animationMaterial);
