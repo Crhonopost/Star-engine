@@ -131,7 +131,8 @@ class Transform: Component {
     friend class ComponentInspector<Transform>;
 
     glm::vec3 pos = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
+    glm::quat rot = {1.0f, 0.f, 0.f, 0.f};
+    // glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 modelMatrix = glm::mat4(1.f);
     bool dirty = true;
@@ -139,7 +140,6 @@ class Transform: Component {
     glm::mat4 getLocalModelMatrix();
 
     public:
-    RotationOrderEnum rotationOrder = YXZ;
     
     void computeModelMatrix();
     
@@ -151,7 +151,7 @@ class Transform: Component {
     glm::vec3 getLocalPosition();
     glm::vec3 getGlobalPosition();
     
-    glm::vec3 getLocalRotation();
+    glm::quat getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);
     void setLocalRotation(glm::quat rotationQuat);
 
@@ -164,15 +164,14 @@ class Transform: Component {
 
 
     Transform()
-    : modelMatrix(1.f), pos(0.0f), scale(1.0f), eulerRot(0.0f), rotationOrder(XYZ), dirty(true){}
+    : modelMatrix(1.f), pos(0.0f), scale(1.0f), rot(1.0f, 0.0f, 0.0f, 0.0f), dirty(true){}
 
     Transform(Transform&& other) noexcept
         : pos(std::move(other.pos)), 
-          eulerRot(std::move(other.eulerRot)),
+          rot(std::move(other.rot)),
           scale(std::move(other.scale)),
           modelMatrix(std::move(other.modelMatrix)),
-          dirty(other.dirty),
-          rotationOrder(other.rotationOrder)
+          dirty(other.dirty)
     {
         other.dirty = true;
     }
@@ -180,11 +179,10 @@ class Transform: Component {
     Transform& operator=(Transform&& other) noexcept {
         if (this != &other) {
             pos = std::move(other.pos);
-            eulerRot = std::move(other.eulerRot);
+            rot = std::move(other.rot);
             scale = std::move(other.scale);
             modelMatrix = std::move(other.modelMatrix);
             dirty = other.dirty;
-            rotationOrder = other.rotationOrder;
 
             other.dirty = true;
         }
@@ -193,13 +191,7 @@ class Transform: Component {
 
     void updateInterface(){
         if(ImGui::DragFloat3("Position", &pos[0])) dirty = true;
-        if(ImGui::DragFloat3("Rotation", &eulerRot[0])) dirty = true;
-        if(ImGui::BeginMenu("Rotation order")){
-            if(ImGui::MenuItem("XYZ")) rotationOrder = XYZ;
-            if(ImGui::MenuItem("YXZ")) rotationOrder = YXZ;
-            if(ImGui::MenuItem("ZYX")) rotationOrder = ZYX;
-            ImGui::EndMenu();
-        }
+        if(ImGui::DragFloat4("Rotation", &rot[0])) dirty = true;
         if(ImGui::DragFloat3("Scale", &scale[0])) dirty = true;
     }
 };

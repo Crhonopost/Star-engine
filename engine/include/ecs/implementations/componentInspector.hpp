@@ -98,7 +98,7 @@ template<>
 inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transform) {
     ImGui::SeparatorText("Transform");
     if(ImGui::DragFloat3("Position", &transform.pos.x)) transform.dirty = true;
-    if(ImGui::DragFloat3("Rotation", &transform.eulerRot.x)) transform.dirty = true;
+    if(ImGui::DragFloat4("Rotation", &transform.rot[0])) transform.dirty = true;
     if(ImGui::DragFloat3("Scale", &transform.scale.x)) transform.dirty = true;
 }
 
