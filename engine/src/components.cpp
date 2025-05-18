@@ -56,6 +56,15 @@ void Drawable::init(std::vector<Vertex> &vertices, std::vector<short unsigned in
     glBindVertexArray(0);
 }
 
+
+Material::Material(){
+    albedoTex = &Texture::emptyTexture;
+    normalTex = &Texture::emptyTexture;
+    metallicTex = &Texture::emptyTexture;
+    roughnessTex = &Texture::emptyTexture;
+    aoTex = &Texture::emptyTexture;
+}
+
 CustomProgram::CustomProgram(Program *progPtr): Component(){
     programPtr = progPtr;
 }
@@ -180,7 +189,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     if(distToPlane < sphereA.radius){
         res.exist = true;
         res.correctionDepth = abs(distToPlane - sphereA.radius);
-        res.normal = planeB.normal;
+        res.normal = -planeB.normal;
         res.position = transformA.getLocalPosition() - sphereA.radius * res.normal;
     }
 
@@ -287,75 +296,154 @@ OverlapingShape aabbSphereIntersection(Aabb &aabbA, Transform &transformA, Spher
     return res;
 }
 
-bool testAxis(const glm::vec3& axis, 
-    const glm::vec3& centerA, const glm::vec3 axesA[3], const glm::vec3& halfExtentsA,
-    const glm::vec3& centerB, const glm::vec3 axesB[3], const glm::vec3& halfExtentsB) {
-    if (glm::length2(axis) < 1e-6f) return true; // ignorer axe nul
+bool testOverlap(float minA, float maxA, float minB, float maxB, float& overlap) {
+    if (maxA < minB || maxB < minA) {
+        return false;
+    }
+    
+    overlap = std::min(maxA, maxB) - std::max(minA, minB);
+    return true;
+}
 
-    glm::vec3 normalizedAxis = glm::normalize(axis);
 
-    // Projeter les demi-tailles sur l'axe
-    float rA = std::abs(glm::dot(axesA[0], normalizedAxis)) * halfExtentsA.x +
-        std::abs(glm::dot(axesA[1], normalizedAxis)) * halfExtentsA.y +
-        std::abs(glm::dot(axesA[2], normalizedAxis)) * halfExtentsA.z;
-
-    float rB = std::abs(glm::dot(axesB[0], normalizedAxis)) * halfExtentsB.x +
-        std::abs(glm::dot(axesB[1], normalizedAxis)) * halfExtentsB.y +
-        std::abs(glm::dot(axesB[2], normalizedAxis)) * halfExtentsB.z;
-
-    // Distance entre centres projetée sur l'axe
-    float distance = std::abs(glm::dot(centerB - centerA, normalizedAxis));
-
-    return distance <= (rA + rB);
+void projectObb(const Oobb& oobb, const glm::mat4& modelMatrix, const glm::vec3& axis, float& min, float& max) {
+    glm::vec3 axes[3] = {
+        glm::vec3(modelMatrix[0]),
+        glm::vec3(modelMatrix[1]),
+        glm::vec3(modelMatrix[2])
+    };
+    
+    glm::vec3 center = glm::vec3(modelMatrix[3]);
+    
+    // Calcule le rayon projeté (théorème de Pythagore généralisé)
+    float radius = 0.0f;
+    for (int i = 0; i < 3; i++) {
+        radius += fabs(glm::dot(axis, axes[i])) * oobb.halfExtents[i];
+    }
+    
+    float centerProj = glm::dot(center, axis);
+    
+    min = centerProj - radius;
+    max = centerProj + radius;
 }
 
 OverlapingShape oobbIntersection(Oobb &oobbA, Transform &transformA, Oobb &oobbB, Transform &transformB) {
     OverlapingShape res;
-
+    
     glm::mat4 modelA = transformA.getModelMatrix();
     glm::mat4 modelB = transformB.getModelMatrix();
-
+    
     glm::vec3 axesA[3] = {
-        glm::normalize(glm::vec3(modelA * glm::vec4(1, 0, 0, 0))),
-        glm::normalize(glm::vec3(modelA * glm::vec4(0, 1, 0, 0))),
-        glm::normalize(glm::vec3(modelA * glm::vec4(0, 0, 1, 0)))
+        glm::normalize(glm::vec3(modelA[0])),
+        glm::normalize(glm::vec3(modelA[1])),
+        glm::normalize(glm::vec3(modelA[2]))
     };
-
+    
     glm::vec3 axesB[3] = {
-        glm::normalize(glm::vec3(modelB * glm::vec4(1, 0, 0, 0))),
-        glm::normalize(glm::vec3(modelB * glm::vec4(0, 1, 0, 0))),
-        glm::normalize(glm::vec3(modelB * glm::vec4(0, 0, 1, 0)))
+        glm::normalize(glm::vec3(modelB[0])),
+        glm::normalize(glm::vec3(modelB[1])),
+        glm::normalize(glm::vec3(modelB[2]))
     };
-
-    glm::vec3 centerA = glm::vec3(modelA[3]);
-    glm::vec3 centerB = glm::vec3(modelB[3]);
-
-    glm::vec3 halfExtentsA = oobbA.halfExtents;
-    glm::vec3 halfExtentsB = oobbB.halfExtents;
-
-    // Liste des 15 axes de séparation
-    glm::vec3 axesToTest[15];
-    int index = 0;
-
-    for (int i = 0; i < 3; ++i) axesToTest[index++] = axesA[i];
-    for (int i = 0; i < 3; ++i) axesToTest[index++] = axesB[i];
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            axesToTest[index++] = glm::cross(axesA[i], axesB[j]);
-
-    for (int i = 0; i < 15; ++i) {
-        if (!testAxis(axesToTest[i], centerA, axesA, halfExtentsA, centerB, axesB, halfExtentsB)) {
-            return res; // Axe séparateur trouvé
+    
+    std::vector<glm::vec3> testAxes;
+    
+    for (int i = 0; i < 3; i++) {
+        testAxes.push_back(axesA[i]);
+    }
+    for (int i = 0; i < 3; i++) {
+        testAxes.push_back(axesB[i]);
+    }
+    
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            glm::vec3 crossAxis = glm::cross(axesA[i], axesB[j]);
+            if (glm::length(crossAxis) > 0.0001f) { // Évite les axes nuls
+                testAxes.push_back(glm::normalize(crossAxis));
+            }
         }
     }
-
+    
+    for (const glm::vec3& axis : testAxes) {
+        if (glm::length(axis) < 0.0001f) continue; // Ignore les axes nuls
+        
+        float minA, maxA, minB, maxB;
+        projectObb(oobbA, modelA, axis, minA, maxA);
+        projectObb(oobbB, modelB, axis, minB, maxB);
+        
+        float overlap;
+        if (!testOverlap(minA, maxA, minB, maxB, overlap)) {
+            return res;
+        }
+        
+        // Garde la plus petite pénétration
+        if (overlap < res.correctionDepth) {
+            res.correctionDepth = overlap;
+            res.normal = axis;
+        }
+    }
+    
     res.exist = true;
-    res.normal = glm::normalize(centerA - centerB);
-    res.correctionDepth = 0;
-    res.position = transformA.getLocalPosition() + (centerA - centerB) / 2.f;
+    
+    glm::vec3 centerA = glm::vec3(modelA[3]);
+    glm::vec3 centerB = glm::vec3(modelB[3]);
+    glm::vec3 dir = centerB - centerA;
+    
+    if (glm::dot(dir, res.normal) < 0.0f) {
+        res.normal = -res.normal;
+    }
 
+    res.position = transformA.getLocalPosition() + res.normal * res.correctionDepth;
+    
     return res;
 }
+
+// OverlapingShape oobbIntersection(Oobb &oobbA, Transform &transformA, Oobb &oobbB, Transform &transformB) {
+//     OverlapingShape res;
+
+//     glm::mat4 modelA = transformA.getModelMatrix();
+//     glm::mat4 modelB = transformB.getModelMatrix();
+
+//     glm::vec3 axesA[3] = {
+//         glm::normalize(glm::vec3(modelA * glm::vec4(1, 0, 0, 0))),
+//         glm::normalize(glm::vec3(modelA * glm::vec4(0, 1, 0, 0))),
+//         glm::normalize(glm::vec3(modelA * glm::vec4(0, 0, 1, 0)))
+//     };
+
+//     glm::vec3 axesB[3] = {
+//         glm::normalize(glm::vec3(modelB * glm::vec4(1, 0, 0, 0))),
+//         glm::normalize(glm::vec3(modelB * glm::vec4(0, 1, 0, 0))),
+//         glm::normalize(glm::vec3(modelB * glm::vec4(0, 0, 1, 0)))
+//     };
+
+//     glm::vec3 centerA = glm::vec3(modelA[3]);
+//     glm::vec3 centerB = glm::vec3(modelB[3]);
+
+//     glm::vec3 halfExtentsA = oobbA.halfExtents;
+//     glm::vec3 halfExtentsB = oobbB.halfExtents;
+
+//     // Liste des 15 axes de séparation
+//     glm::vec3 axesToTest[15];
+//     int index = 0;
+
+//     for (int i = 0; i < 3; ++i) axesToTest[index++] = axesA[i];
+//     for (int i = 0; i < 3; ++i) axesToTest[index++] = axesB[i];
+//     for (int i = 0; i < 3; ++i)
+//         for (int j = 0; j < 3; ++j)
+//             axesToTest[index++] = glm::cross(axesA[i], axesB[j]);
+
+//     for (int i = 0; i < 15; ++i) {
+//         if (!testAxis(axesToTest[i], centerA, axesA, halfExtentsA, centerB, axesB, halfExtentsB)) {
+//             return res; // Axe séparateur trouvé
+//         }
+//     }
+
+//     res.exist = true;
+//     res.normal = glm::normalize(centerA - centerB );
+//     res.correctionDepth = 0;
+//     res.position = transformA.getLocalPosition() + (centerB - centerA) / 2.f;
+
+//     return res;
+// }
 
 OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
@@ -386,7 +474,6 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
 
     return res;
 }
-
 
 OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transform &transformA, CollisionShape &shapeB, Transform &transformB){
     OverlapingShape res;

@@ -110,10 +110,19 @@ inline void ComponentInspector<CustomVar>::DisplayComponentGUI(CustomVar& var){}
 template<>
 inline void ComponentInspector<RigidBody>::DisplayComponentGUI(RigidBody& rigidBody) {
     ImGui::SeparatorText("Rigid body");
-    ImGui::DragFloat("Weight", &rigidBody.weight);
+    if(ImGui::BeginMenu("Body type")){
+        if(ImGui::MenuItem("Rigid")) rigidBody.type = RigidBody::RIGID;
+        if(ImGui::MenuItem("Static")) rigidBody.type = RigidBody::STATIC;
+        if(ImGui::MenuItem("Kinematic")) rigidBody.type = RigidBody::KINEMATIC;
+        ImGui::EndMenu();
+    }
+    // TODO: chaging shape doesn't force rigid body invert inertia to be recalculated
+    if(ImGui::DragFloat("Mass", &rigidBody.mass)) rigidBody.dirty = true;
     ImGui::DragFloat("Friction coef", &rigidBody.frictionCoef);
     ImGui::DragFloat("Restitution coef", &rigidBody.restitutionCoef);
-    ImGui::Checkbox("Static", &rigidBody.isStatic);
+    ImGui::DragFloat3("Velocity", &rigidBody.velocity[0]);
+    ImGui::DragFloat3("Angular velocity", &rigidBody.angularVelocity[0]);
+
 }
 
 template<>

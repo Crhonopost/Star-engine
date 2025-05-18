@@ -47,7 +47,7 @@ Entity generatePlanet(ecsManager &ecs, glm::vec3 position, float radius){
     auto sphereMaterial = Material();
 
     auto sphereRigidBody = RigidBody();
-    sphereRigidBody.isStatic = true;
+    sphereRigidBody.type = RigidBody::STATIC;
     auto sphereCollisionShape = CollisionShape();
     sphereCollisionShape.shapeType = SPHERE;
     sphereCollisionShape.sphere.radius = radius;
@@ -99,7 +99,6 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 
 Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     auto crateEntity = ecs.CreateEntity();
-    ecs.SetEntityName(crateEntity, "crate");
     Material crateMat;
     Drawable crateDrawable;
     Render::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
@@ -111,7 +110,7 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     RigidBody crateBody;
     
     Transform crateTransform;
-    crateTransform.translate({0,-5,0});
+    crateTransform.translate(position);
     ecs.AddComponent<Transform>(crateEntity, crateTransform);
     ecs.AddComponent<CollisionShape>(crateEntity, crateShape);
     ecs.AddComponent<RigidBody>(crateEntity, crateBody);
@@ -121,38 +120,26 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     return crateEntity;
 }
 
-void initScene(SpatialNode &root, ecsManager &ecs){
-    Program::programs.push_back(std::make_unique<PBR>());    
-    ///////////////////////////// sun
-    auto sunEntity = generateSpherePBR(ecs, 0.75f, {2, 1, 0});;
-    ecs.SetEntityName(sunEntity, "Sun");
-    auto &sunDraw = ecs.GetComponent<Drawable>(sunEntity);
-    RigidBody sunBody;
-    // sunBody.velocity = glm::vec3(1,1,0) * 2.f;
-    sunBody.restitutionCoef = 1.0f;
-    sunBody.weight = 3.f;
-    sunBody.isKinematic = true;
-    CollisionShape sunShape;
-    sunShape.shapeType = SPHERE;
-    sunShape.sphere.radius = 1.f;
-    sunShape.layer = CollisionShape::ENV_LAYER | CollisionShape::PLAYER_LAYER;
 
-    glm::vec3 planetCenter = {14, 0, 14};
-    auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
-    auto planetGravity = generateGravityArea(ecs, planetCenter, 60.f, sunEntity);
+Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
+    auto playerEntity = generateSpherePBR(ecs, 0.75f, {2, 1, 0});;
+    ecs.SetEntityName(playerEntity, "Player");
+    auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
+    RigidBody playerBody;
+    // playerBody.velocity = glm::vec3(1,1,0) * 2.f;
+    playerBody.restitutionCoef = 1.0f;
+    playerBody.mass = 3.f;
+    playerBody.type = RigidBody::BodyTypeEnum::KINEMATIC;
+    CollisionShape playerShape;
+    playerShape.shapeType = SPHERE;
+    playerShape.sphere.radius = 1.f;
+    playerShape.layer = CollisionShape::ENV_LAYER | CollisionShape::PLAYER_LAYER;
     
-    CustomBehavior sunBehavior;
-    sunBehavior.update = [sunEntity, planetEntity, &ecs](float dt){
-        auto& tr    = ecs.GetComponent<Transform>(sunEntity);
-        auto& rb    = ecs.GetComponent<RigidBody>(sunEntity);
-        auto& shape = ecs.GetComponent<CollisionShape>(sunEntity);
-
-        glm::vec3 pos        = tr.getGlobalPosition();
-        glm::vec3 center     = ecs.GetComponent<Transform>(planetEntity).getGlobalPosition();
-        glm::vec3 toCenter   = center - pos;
-        if(glm::length2(toCenter) > 1e-6f) {
-            rb.gravityDirection = glm::normalize(toCenter);
-        }
+    CustomBehavior playerBehavior;
+    playerBehavior.update = [playerEntity, &ecs](float dt){
+        auto& tr    = ecs.GetComponent<Transform>(playerEntity);
+        auto& rb    = ecs.GetComponent<RigidBody>(playerEntity);
+        auto& shape = ecs.GetComponent<CollisionShape>(playerEntity);
 
         glm::vec3 up      = -rb.gravityDirection;
         if(glm::length2(up) < 1e-6f) up = glm::vec3(0,1,0);
@@ -186,15 +173,15 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     };
 
 
-    Drawable lowerRes = Render::generatePlane(1, 2);
-    auto lowerResEntity = ecs.CreateEntity();
-    ecs.AddComponent<Drawable>(lowerResEntity, lowerRes);
-    sunDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
-    sunDraw.switchDistance = 15;
+    // Drawable lowerRes = Render::generatePlane(1, 2);
+    // auto lowerResEntity = ecs.CreateEntity();
+    // ecs.AddComponent<Drawable>(lowerResEntity, lowerRes);
+    // playerDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
+    // playerDraw.switchDistance = 15;
 
-    ecs.AddComponent(sunEntity, sunBehavior);
-    ecs.AddComponent(sunEntity, sunBody);
-    ecs.AddComponent(sunEntity, sunShape);
+    ecs.AddComponent(playerEntity, playerBehavior);
+    ecs.AddComponent(playerEntity, playerBody);
+    ecs.AddComponent(playerEntity, playerShape);
 
 
     auto rayTestEntity = ecs.CreateEntity();
@@ -208,8 +195,28 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(rayTestEntity, rayShape);
 
 
+
+
+    std::unique_ptr<SpatialNode> playerNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(playerEntity));
+    std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+
+    playerNode->AddChild(std::move(rayNode));
+    parent.AddChild(std::move(playerNode));
+
+    return playerEntity;
+}
+
+void initScene(SpatialNode &root, ecsManager &ecs){
+    Program::programs.push_back(std::make_unique<PBR>());    
+
+    Entity playerEntity = generatePlayer(ecs, root);
+
+    glm::vec3 planetCenter = {14, 0, 14};
+    auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
+    auto planetGravity = generateGravityArea(ecs, planetCenter, 60.f, playerEntity);
+
     // auto planetEntity = generatePlanet(ecs, {14,0,14}, 20.f);
-    // auto planetGravity = generateGravityArea(ecs, glm::vec3(0), 60.f, sunEntity);
+    // auto planetGravity = generateGravityArea(ecs, glm::vec3(0), 60.f, playerEntity);
 
 
     // auto cabaneEntity = ecs.CreateEntity();
@@ -269,8 +276,13 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 
 
-    auto crateEntity = generateCrate(ecs, {0,-15, 5});
+    auto crateEntity = generateCrate(ecs, {0,20, 0});
+    ecs.SetEntityName(crateEntity, "crate1");
+    auto crateEntity2 = generateCrate(ecs, {0,35, 0});
+    ecs.SetEntityName(crateEntity2, "crate2");
+
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
     
 
     
@@ -279,20 +291,21 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.SetEntityName(cameraEntity, "Camera player default");
     CustomBehavior cameraUpdate;
     Transform cameraTransform;
+    cameraTransform.translate({7,0,-42});
     CameraComponent cameraComponent;
     cameraComponent.needActivation = true;
-    cameraUpdate.update = [sunEntity, cameraEntity, &ecs](float deltaTime){
-        auto actions = InputManager::getInstance().getActions();
-
-        RigidBody& sunRigid = ecs.GetComponent<RigidBody>(sunEntity);
-
-        Transform &sunTransform = ecs.GetComponent<Transform>(sunEntity);
+    cameraUpdate.update = [playerEntity, cameraEntity, &ecs](float deltaTime){
+        RigidBody& targetBody = ecs.GetComponent<RigidBody>(playerEntity);
+        Transform &targetTransform = ecs.GetComponent<Transform>(playerEntity);
+        
         Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
-
-        camTransform.setLocalPosition(-sunRigid.gravityDirection * 10.f);
-        glm::vec3 direction = sunTransform.getGlobalPosition() - camTransform.getGlobalPosition();
-        direction = glm::normalize(sunRigid.gravityDirection);
-        camTransform.setLocalRotation(Camera::lookAt(direction));
+        
+        glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
+        direction = glm::normalize(direction);
+        camTransform.setLocalRotation(Camera::lookAtQuat(direction));
+        
+        // camTransform.setLocalPosition(targetTransform.getGlobalPosition() - targetBody.gravityDirection * 10.f);
+        // direction = glm::normalize(playerRigid.gravityDirection);
     };
     ecs.AddComponent(cameraEntity, cameraUpdate);
     ecs.AddComponent(cameraEntity, cameraTransform);
@@ -304,23 +317,17 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(rootEntity, rootTransform);
     root.transform = &ecs.GetComponent<Transform>(rootEntity);
     
-    std::unique_ptr<SpatialNode> sunNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(sunEntity));
-    std::unique_ptr<SpatialNode> sunCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
-    std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+    std::unique_ptr<SpatialNode> playerCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
     std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
     std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
     std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
     std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
     std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
 
-    
-    sunNode->AddChild(std::move(rayNode));
-    sunNode->AddChild(std::move(sunCameraNode));
-    root.AddChild(std::move(sunNode));
+    root.AddChild(std::move(playerCameraNode));
     root.AddChild(std::move(otherNode));
     root.AddChild(std::move(b1Node));
     root.AddChild(std::move(b2Node));
-    // root.AddChild(std::move(cabaneNode));
     planetNode->AddChild(std::move(planetGravityNode));
     root.AddChild(std::move(planetNode));
 }
@@ -428,4 +435,55 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent<Material>(animationEntity, animationMaterial);
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
+}
+
+
+
+void physicScene(SpatialNode &root, ecsManager &ecs){
+    auto rootEntity = ecs.CreateEntity();
+    Transform rootTransform;
+    ecs.AddComponent(rootEntity, rootTransform);
+    root.transform = &ecs.GetComponent<Transform>(rootEntity);
+
+    auto cameraEntity = ecs.CreateEntity();
+    ecs.SetEntityName(cameraEntity, "Camera player default");
+    Transform cameraTransform;
+    cameraTransform.translate({0,10,-50});
+    CameraComponent cameraComponent;
+    cameraComponent.needActivation = true;
+    ecs.AddComponent(cameraEntity, cameraTransform);
+    ecs.AddComponent(cameraEntity, cameraComponent);
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity)));
+
+    // auto crateEntity = generateCrate(ecs, {0,20, 0});
+    // ecs.SetEntityName(crateEntity, "crate1");
+    // ecs.GetComponent<CollisionShape>(crateEntity).shapeType = SPHERE;
+    // ecs.GetComponent<CollisionShape>(crateEntity).sphere.radius = 2.f;
+    auto crateEntity2 = generateCrate(ecs, {0,20, 0});
+    ecs.SetEntityName(crateEntity2, "crate2");
+    ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
+    ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
+
+    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
+
+
+    Entity groundE = ecs.CreateEntity();
+    Transform groundTransform;
+    Drawable groundDraw = Render::generatePlane(100.f, 2);
+    Material groundMat;
+    CollisionShape groundShape;
+    // groundShape.shapeType = PLANE;
+    // groundShape.plane.normal = glm::vec3(0,1,0);
+    groundShape.shapeType = OOBB;
+    groundShape.oobb.halfExtents = {10, 1, 10};
+    RigidBody groundBody;
+    groundBody.type = RigidBody::STATIC;
+
+    ecs.AddComponent<Transform>(groundE, groundTransform);
+    ecs.AddComponent<RigidBody>(groundE, groundBody);
+    ecs.AddComponent<CollisionShape>(groundE, groundShape);
+    ecs.AddComponent<Drawable>(groundE, groundDraw);
+    ecs.AddComponent<Material>(groundE, groundMat);
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(groundE)));
 }

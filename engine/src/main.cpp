@@ -277,6 +277,10 @@ void editorUpdate(float deltaTime){
             unloadScene();
             pbrScene(root, ecs);
             afterSceneInit();
+        } else if(ImGui::Button("Load scene physic")){
+            unloadScene();
+            physicScene(root, ecs);
+            afterSceneInit();
         }
 
         ecs.DisplayUI();

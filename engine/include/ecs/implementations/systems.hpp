@@ -91,8 +91,13 @@ class CollisionDetectionSystem: public System {
 class PhysicSystem: public System {
     private:
         void solver();
+        void accumulateForces();
+        // float linearProjectionPercent = 0.8f;
+        // float penetrationSlack = 0.1;
+        int impulseIteration = 20;
     public:
         void update(float deltaTime);
+        static glm::mat3 processInvertInertia(CollisionShape &shape, RigidBody &rigidBody);
 };
 
 class PhysicDebugSystem: public System {

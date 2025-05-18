@@ -111,6 +111,8 @@ struct Material: Component {
     float ao = 1.0f;
 
     Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
+
+    Material();
 };
 
 
@@ -229,54 +231,75 @@ struct CustomVar: Component {
 ////////////  Physic
 
 struct RigidBody: Component {
-    bool isStatic = false;
-    bool isKinematic = false;
+    enum BodyTypeEnum {
+        RIGID,
+        STATIC,
+        KINEMATIC
+    };
+    
+    bool dirty = true;
+    BodyTypeEnum type = RIGID;
     bool grounded = false;
-    glm::vec3 velocity=glm::vec3(0);
-    float weight=1.f;
-    float restitutionCoef=0.5f;
-    float frictionCoef=0.5f;
 
+    
+    glm::vec3  torque = glm::vec3(0);
+    
+    glm::vec3 forces=glm::vec3(0);
+    glm::vec3 velocity=glm::vec3(0);
     glm::vec3 gravityDirection = {0,-1,0};
+    glm::vec3 angularVelocity=glm::vec3(0);
+
+    glm::mat3 invInertia = glm::mat3(0.4);
+    
+    float mass=1.f;
+    float invMass = 1.f;
+    float restitutionCoef=0.5f;
+    float frictionCoef=0.6f;
+
 
     RigidBody() = default;
 
     RigidBody(RigidBody&& other) noexcept
-        : isStatic(other.isStatic),
-          isKinematic(other.isKinematic),  
+        : type(other.type),
           grounded(other.grounded),
           velocity(std::move(other.velocity)),
-          weight(other.weight),
+          mass(other.mass),
           restitutionCoef(other.restitutionCoef),
           frictionCoef(other.frictionCoef)
     {
-        other.weight = 1.f; // Ou autre valeur par défaut
+        other.mass = 1.f; // Ou autre valeur par défaut
         other.restitutionCoef = 0.5f;
         other.frictionCoef = 0.5f;
-        other.isStatic = false;
-        other.isKinematic = false;
+        other.type = RIGID;
         other.grounded = false;
     }
 
     RigidBody& operator=(RigidBody&& other) noexcept {
         if (this != &other) {
-            isStatic = other.isStatic;
-            isKinematic = other.isKinematic;
+            type = other.type;
             grounded = other.grounded;
             velocity = std::move(other.velocity);
-            weight = other.weight;
+            mass = other.mass;
             restitutionCoef = other.restitutionCoef;
             frictionCoef = other.frictionCoef;
 
-            other.weight = 1.f;
+            other.mass = 1.f;
             other.restitutionCoef = 0.5f;
             other.frictionCoef = 0.5f;
-            other.isStatic = false;
-            other.isKinematic = false;
+            other.type = RIGID;
             other.grounded = false;
         }
         return *this;
     }
+
+    void setMass(float value){
+        mass = value;
+        dirty = true;
+    }
+
+    void applyForces();
+    void addLinearImpulse(const glm::vec3 &impulse);
+    void update(float delta);
 };
 
 
