@@ -59,6 +59,19 @@ void PhysicSystem::solver(){
         RigidBody &rbB = ecs.GetComponent<RigidBody>(overlapping.entityB);
         Transform &tA = ecs.GetComponent<Transform>(overlapping.entityA);
         Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
+        // rbA.grounded = false; rbB.grounded = false;
+
+        if (rbA.isKinematic || rbB.isKinematic) {
+            if (rbA.isKinematic && rbB.isStatic && overlapping.aSeeB) {
+                tA.translate(overlapping.normal * overlapping.correctionDepth);
+                rbA.grounded = true;
+            }
+            else if (rbB.isKinematic && rbA.isStatic && overlapping.bSeeA) {
+                tB.translate(overlapping.normal * overlapping.correctionDepth);
+                rbB.grounded = true;
+            }
+            continue;
+        }
 
         glm::vec3 relativeVelocity = rbA.velocity - rbB.velocity;
         float velAlongNormal = glm::dot(relativeVelocity, overlapping.normal);
@@ -112,11 +125,16 @@ void PhysicSystem::update(float deltaTime){
     solver();
 
     for(auto &entity: mEntities){
+        
         auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
 
-        if(!rigidBody.isStatic){
+        if(rigidBody.isKinematic)     continue;
+
+        if(rigidBody.isStatic){
+            rigidBody.velocity = glm::vec3(0,0,0);
+        } else {
             float acceleration = G * rigidBody.weight;
             rigidBody.velocity += acceleration * deltaTime * rigidBody.gravityDirection;
             transform.translate(rigidBody.velocity * deltaTime);

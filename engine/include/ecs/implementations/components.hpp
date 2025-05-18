@@ -229,6 +229,8 @@ struct CustomVar: Component {
 
 struct RigidBody: Component {
     bool isStatic = false;
+    bool isKinematic = false;
+    bool grounded = false;
     glm::vec3 velocity=glm::vec3(0);
     float weight=1.f;
     float restitutionCoef=0.5f;
@@ -240,6 +242,8 @@ struct RigidBody: Component {
 
     RigidBody(RigidBody&& other) noexcept
         : isStatic(other.isStatic),
+          isKinematic(other.isKinematic),  
+          grounded(other.grounded),
           velocity(std::move(other.velocity)),
           weight(other.weight),
           restitutionCoef(other.restitutionCoef),
@@ -249,11 +253,15 @@ struct RigidBody: Component {
         other.restitutionCoef = 0.5f;
         other.frictionCoef = 0.5f;
         other.isStatic = false;
+        other.isKinematic = false;
+        other.grounded = false;
     }
 
     RigidBody& operator=(RigidBody&& other) noexcept {
         if (this != &other) {
             isStatic = other.isStatic;
+            isKinematic = other.isKinematic;
+            grounded = other.grounded;
             velocity = std::move(other.velocity);
             weight = other.weight;
             restitutionCoef = other.restitutionCoef;
@@ -263,6 +271,8 @@ struct RigidBody: Component {
             other.restitutionCoef = 0.5f;
             other.frictionCoef = 0.5f;
             other.isStatic = false;
+            other.isKinematic = false;
+            other.grounded = false;
         }
         return *this;
     }
