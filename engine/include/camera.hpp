@@ -32,10 +32,8 @@ public:
 
     static glm::quat lookAtQuat(glm::vec3 direction, glm::vec3 up = glm::vec3(0, 1, 0)) {
         direction = glm::normalize(direction);
-        glm::vec3 right = glm::normalize(glm::cross(up, direction));
-        glm::vec3 correctedUp = glm::cross(direction, right);
     
-        glm::mat3 rotationMatrix(right, correctedUp, direction);
+        glm::mat4 rotationMatrix = glm::lookAt({0,0,0}, -direction, up);
         return glm::quat_cast(rotationMatrix);
     }
 

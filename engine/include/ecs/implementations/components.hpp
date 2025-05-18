@@ -7,6 +7,7 @@
 #include <vector>
 #include <functional>
 #include <iostream>
+#include <unordered_set>
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
 #include <engine/include/rendering.hpp>
@@ -108,9 +109,10 @@ struct Material: Component {
     float metallic = 0.5f;
     float roughness = 0.5f;
     float ao = 1.0f;
-    bool hasTexture = false;
 
     Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
+
+    Material();
 };
 
 
@@ -129,7 +131,8 @@ class Transform: Component {
     friend class ComponentInspector<Transform>;
 
     glm::vec3 pos = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
+    glm::quat rot = {1.0f, 0.f, 0.f, 0.f};
+    // glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 modelMatrix = glm::mat4(1.f);
     bool dirty = true;
@@ -137,7 +140,6 @@ class Transform: Component {
     glm::mat4 getLocalModelMatrix();
 
     public:
-    RotationOrderEnum rotationOrder = YXZ;
     
     void computeModelMatrix();
     
@@ -149,7 +151,7 @@ class Transform: Component {
     glm::vec3 getLocalPosition();
     glm::vec3 getGlobalPosition();
     
-    glm::vec3 getLocalRotation();
+    glm::quat getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);
     void setLocalRotation(glm::quat rotationQuat);
 
@@ -162,15 +164,14 @@ class Transform: Component {
 
 
     Transform()
-    : modelMatrix(1.f), pos(0.0f), scale(1.0f), eulerRot(0.0f), rotationOrder(XYZ), dirty(true){}
+    : modelMatrix(1.f), pos(0.0f), scale(1.0f), rot(1.0f, 0.0f, 0.0f, 0.0f), dirty(true){}
 
     Transform(Transform&& other) noexcept
         : pos(std::move(other.pos)), 
-          eulerRot(std::move(other.eulerRot)),
+          rot(std::move(other.rot)),
           scale(std::move(other.scale)),
           modelMatrix(std::move(other.modelMatrix)),
-          dirty(other.dirty),
-          rotationOrder(other.rotationOrder)
+          dirty(other.dirty)
     {
         other.dirty = true;
     }
@@ -178,11 +179,10 @@ class Transform: Component {
     Transform& operator=(Transform&& other) noexcept {
         if (this != &other) {
             pos = std::move(other.pos);
-            eulerRot = std::move(other.eulerRot);
+            rot = std::move(other.rot);
             scale = std::move(other.scale);
             modelMatrix = std::move(other.modelMatrix);
             dirty = other.dirty;
-            rotationOrder = other.rotationOrder;
 
             other.dirty = true;
         }
@@ -191,13 +191,7 @@ class Transform: Component {
 
     void updateInterface(){
         if(ImGui::DragFloat3("Position", &pos[0])) dirty = true;
-        if(ImGui::DragFloat3("Rotation", &eulerRot[0])) dirty = true;
-        if(ImGui::BeginMenu("Rotation order")){
-            if(ImGui::MenuItem("XYZ")) rotationOrder = XYZ;
-            if(ImGui::MenuItem("YXZ")) rotationOrder = YXZ;
-            if(ImGui::MenuItem("ZYX")) rotationOrder = ZYX;
-            ImGui::EndMenu();
-        }
+        if(ImGui::DragFloat4("Rotation", &rot[0])) dirty = true;
         if(ImGui::DragFloat3("Scale", &scale[0])) dirty = true;
     }
 };
@@ -229,44 +223,75 @@ struct CustomVar: Component {
 ////////////  Physic
 
 struct RigidBody: Component {
-    bool isStatic = false;
-    glm::vec3 velocity=glm::vec3(0);
-    float weight=1.f;
-    float restitutionCoef=0.5f;
-    float frictionCoef=0.5f;
+    enum BodyTypeEnum {
+        RIGID,
+        STATIC,
+        KINEMATIC
+    };
+    
+    bool dirty = true;
+    BodyTypeEnum type = RIGID;
+    bool grounded = false;
 
+    
+    glm::vec3  torque = glm::vec3(0);
+    
+    glm::vec3 forces=glm::vec3(0);
+    glm::vec3 velocity=glm::vec3(0);
     glm::vec3 gravityDirection = {0,-1,0};
+    glm::vec3 angularVelocity=glm::vec3(0);
+
+    glm::mat3 invInertia = glm::mat3(0.4);
+    
+    float mass=1.f;
+    float invMass = 1.f;
+    float restitutionCoef=0.5f;
+    float frictionCoef=0.6f;
+
 
     RigidBody() = default;
 
     RigidBody(RigidBody&& other) noexcept
-        : isStatic(other.isStatic),
+        : type(other.type),
+          grounded(other.grounded),
           velocity(std::move(other.velocity)),
-          weight(other.weight),
+          mass(other.mass),
           restitutionCoef(other.restitutionCoef),
           frictionCoef(other.frictionCoef)
     {
-        other.weight = 1.f; // Ou autre valeur par défaut
+        other.mass = 1.f; // Ou autre valeur par défaut
         other.restitutionCoef = 0.5f;
         other.frictionCoef = 0.5f;
-        other.isStatic = false;
+        other.type = RIGID;
+        other.grounded = false;
     }
 
     RigidBody& operator=(RigidBody&& other) noexcept {
         if (this != &other) {
-            isStatic = other.isStatic;
+            type = other.type;
+            grounded = other.grounded;
             velocity = std::move(other.velocity);
-            weight = other.weight;
+            mass = other.mass;
             restitutionCoef = other.restitutionCoef;
             frictionCoef = other.frictionCoef;
 
-            other.weight = 1.f;
+            other.mass = 1.f;
             other.restitutionCoef = 0.5f;
             other.frictionCoef = 0.5f;
-            other.isStatic = false;
+            other.type = RIGID;
+            other.grounded = false;
         }
         return *this;
     }
+
+    void setMass(float value){
+        mass = value;
+        dirty = true;
+    }
+
+    void applyForces();
+    void addLinearImpulse(const glm::vec3 &impulse);
+    void update(float delta);
 };
 
 
@@ -315,7 +340,7 @@ struct Aabb {
 
 
 struct CollisionShape: Component{
-    static uint16_t ENV_LAYER, PLAYER_LAYER;
+    static uint16_t ENV_LAYER, PLAYER_LAYER, GRAVITY_SENSITIVE_LAYER;
     
     CollisionShapeTypeEnum shapeType;
     union {
@@ -329,14 +354,26 @@ struct CollisionShape: Component{
     uint16_t layer = 1;
     uint16_t mask = 1;
 
-    bool isColliding=false;
+    std::unordered_set<Entity> collidingEntities;
+    bool isColliding(Entity entity) {
+        return collidingEntities.find(entity) != collidingEntities.end();
+    }
+    void addCollision(Entity entity) {
+        collidingEntities.insert(entity);
+    }
+    void removeCollision(Entity entity) {
+        collidingEntities.erase(entity);
+    }
+    bool isAnythingColliding() {
+        return !collidingEntities.empty();
+    }
 
-    CollisionShape() : shapeType(PLANE), isColliding(false) {
+    CollisionShape() : shapeType(PLANE) {
         new(&plane) Plane();
     }
 
     CollisionShape(CollisionShape&& other) noexcept 
-        : shapeType(other.shapeType), isColliding(other.isColliding) {
+        : shapeType(other.shapeType), collidingEntities(other.collidingEntities) {
         switch (other.shapeType) {
             case RAY:
                 new(&ray) Ray(std::move(other.ray));
@@ -354,7 +391,7 @@ struct CollisionShape: Component{
                 new(&oobb) Oobb(std::move(other.oobb));
                 break;
         }
-        other.isColliding = false;
+        other.collidingEntities.clear();
         layer = other.layer;
         mask = other.mask;
     }
@@ -362,7 +399,7 @@ struct CollisionShape: Component{
     CollisionShape& operator=(CollisionShape&& other) noexcept {
         if (this != &other) {
             shapeType = other.shapeType;
-            isColliding = other.isColliding;
+            collidingEntities = other.collidingEntities;
 
             switch (other.shapeType) {
                 case RAY:
@@ -381,7 +418,7 @@ struct CollisionShape: Component{
                     new(&oobb) Oobb(std::move(other.oobb));
                     break;
             }
-            other.isColliding = false;
+            other.collidingEntities.clear();
             layer = other.layer;
             mask = other.mask;
         }

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <engine/include/camera.hpp>
 
-const float G = 8.1f;
+const float G = 9.81f;
 
 std::vector<OverlapingShape> detectedCollisions;
 
@@ -14,7 +14,7 @@ void CollisionDetectionSystem::update(float deltaTime){
 void CollisionDetectionSystem::narrowPhase(){
     detectedCollisions.clear();
     for(auto &entity: mEntities){
-        ecs.GetComponent<CollisionShape>(entity).isColliding = false;
+        ecs.GetComponent<CollisionShape>(entity).collidingEntities.clear();
     }
 
     for(auto itA=mEntities.begin(); itA != mEntities.end(); itA++){
@@ -37,8 +37,9 @@ void CollisionDetectionSystem::narrowPhase(){
             OverlapingShape collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
 
             if(collision.exist){
-                shapeA.isColliding = true;
-                shapeB.isColliding = true;
+                if(collision.aSeeB) shapeA.collidingEntities.emplace(entityB);
+                if(collision.bSeeA) shapeB.collidingEntities.emplace(entityA);
+                
                 collision.aSeeB = aSeeB;
                 collision.bSeeA = bSeeA;
                 collision.entityA = entityA;
@@ -49,6 +50,32 @@ void CollisionDetectionSystem::narrowPhase(){
     }
 }
 
+glm::vec3 calculateTorque(
+    const glm::vec3& collisionPoint,
+    const glm::vec3& centerOfMass,
+    const glm::vec3& collisionForce
+) {
+    glm::vec3 r = collisionPoint - centerOfMass;
+    return glm::cross(r, collisionForce);
+}
+
+glm::mat3 PhysicSystem::processInvertInertia(CollisionShape &shape, RigidBody &rigidBody){
+    glm::mat3 invInertiaLocal(1);
+    if(shape.shapeType == SPHERE){
+        float radius = shape.sphere.radius;
+        float inertia = 0.4f * rigidBody.mass * radius * radius; // I = (2/5)mr² pour une sphère pleine
+        invInertiaLocal = glm::mat3(1.0f / inertia);
+    } else if(shape.shapeType == OOBB){
+        glm::vec3 size = shape.oobb.halfExtents; // demi-extensions
+        glm::mat3 inertiaLocal;
+        inertiaLocal[0][0] = (rigidBody.mass / 12.0f) * (size.y*size.y + size.z*size.z); // Ixx
+        inertiaLocal[1][1] = (rigidBody.mass / 12.0f) * (size.x*size.x + size.z*size.z); // Iyy
+        inertiaLocal[2][2] = (rigidBody.mass / 12.0f) * (size.x*size.x + size.y*size.y); // Izz
+        invInertiaLocal = glm::inverse(inertiaLocal);
+    }
+
+    return invInertiaLocal;
+}
 
 void PhysicSystem::solver(){
     for(auto overlapping: detectedCollisions){
@@ -60,68 +87,175 @@ void PhysicSystem::solver(){
         Transform &tA = ecs.GetComponent<Transform>(overlapping.entityA);
         Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
 
-        glm::vec3 relativeVelocity = rbA.velocity - rbB.velocity;
-        float velAlongNormal = glm::dot(relativeVelocity, overlapping.normal);
+        // rbA.grounded = false; rbB.grounded = false;
+ 
+        if(rbA.type == RigidBody::KINEMATIC || rbB.type == RigidBody::KINEMATIC) continue;
 
+        float invMassSum = rbA.invMass + rbB.invMass;
+
+        glm::vec3 relativeVelocity = rbB.velocity - rbA.velocity;
+        float velAlongNormal = glm::dot(relativeVelocity, overlapping.normal);
+        if(velAlongNormal > 0.0f) continue;
 
         float e = std::min(rbA.restitutionCoef, rbB.restitutionCoef);
-        float invMassA = 1.0f / (rbA.weight * 5.f);
-        float invMassB = 1.0f / (rbB.weight * 5.f);
+        float num = (-(1.0f + e) * glm::dot(relativeVelocity, overlapping.normal));
+        float j = num / invMassSum;
 
         
-        float j = -(1 + e) * velAlongNormal / (invMassA + invMassB);
         glm::vec3 impulse = j * overlapping.normal;
 
-        if(overlapping.aSeeB) rbA.velocity += impulse * invMassA;
-        if(overlapping.bSeeA) rbB.velocity -= impulse * invMassB;
+        if(overlapping.aSeeB && rbA.type == RigidBody::RIGID) rbA.velocity -= impulse * rbA.invMass;
+        if(overlapping.bSeeA && rbB.type == RigidBody::RIGID) rbB.velocity += impulse * rbB.invMass;
 
+        
         // friction
-        glm::vec3 tangent = relativeVelocity - velAlongNormal * overlapping.normal;
+        glm::vec3 tangent = relativeVelocity - (overlapping.normal * glm::dot(relativeVelocity, overlapping.normal));
         if (glm::length(tangent) > 0.0001f)
             tangent = glm::normalize(tangent);
         else
             tangent = glm::vec3(0.0f);
 
+        num = -glm::dot(relativeVelocity, tangent);
+        float jt = num / invMassSum;
+
 
         float frictionCoef = std::sqrt(rbA.frictionCoef * rbB.frictionCoef);
 
-    
-        float jt = -glm::dot(relativeVelocity, tangent) / (invMassA + invMassB);
-        jt = glm::clamp(jt, -j, j);
+        if(jt > j*frictionCoef){
+            jt = j * frictionCoef;
+        } else if(jt < -j*frictionCoef){
+            jt = -j * frictionCoef;
+        };
 
         glm::vec3 frictionImpulse = jt * tangent;
 
-        if(overlapping.aSeeB) rbA.velocity += frictionImpulse * invMassA;
-        if(overlapping.bSeeA) rbB.velocity -= frictionImpulse * invMassB;
-
-
-
-        if(rbA.isStatic && !rbB.isStatic && overlapping.bSeeA){
-            tB.translate(overlapping.normal * overlapping.correctionDepth);
-        } else if(rbB.isStatic && !rbA.isStatic && overlapping.aSeeB){
-            tA.translate(overlapping.normal * overlapping.correctionDepth);
-        } else if(!rbA.isStatic && !rbB.isStatic){
-            tB.translate(overlapping.normal * overlapping.correctionDepth * 0.5f);
-            tA.translate(-overlapping.normal * overlapping.correctionDepth * 0.5f);
+        if(rbA.type == RigidBody::STATIC && rbB.type == RigidBody::RIGID && overlapping.bSeeA)
+        {
+            rbB.velocity -= frictionImpulse * rbB.invMass;
+        } else if(rbB.type == RigidBody::STATIC && rbA.type == RigidBody::RIGID && overlapping.aSeeB)
+        {
+            rbA.velocity += frictionImpulse * rbA.invMass;
+        } 
+        else if(rbA.type == RigidBody::RIGID && rbB.type == RigidBody::RIGID && overlapping.aSeeB && overlapping.bSeeA)
+        {
+            rbA.velocity += frictionImpulse * rbA.invMass;
+            rbB.velocity -= frictionImpulse * rbB.invMass;
+            
+            // Application des impulsions
+            // rbA.impulse += impulse * rbA.invMass;
+            // rbB.impulse -= impulse * rbB.invMass;
+            
+            // Calcul des torques
+            // glm::vec3 rA = overlapping.position - tA.getLocalPosition();
+            // glm::vec3 rB = overlapping.position - tB.getLocalPosition();
+            
+            // rbA.impulse += glm::cross(rA, impulse) * rbA.invInertia;
+            // rbB.impulse -= glm::cross(rB, impulse) * rbB.invInertia;
         }
     }
 }
 
+void PhysicSystem::accumulateForces(){
+    for(auto &entity : mEntities){
+        auto &rigidBody = ecs.GetComponent<RigidBody>(entity);
+        auto &shape = ecs.GetComponent<CollisionShape>(entity);
+        if(rigidBody.dirty){
+            rigidBody.invInertia = processInvertInertia(shape, rigidBody);
+            rigidBody.invMass = 1.f / rigidBody.mass;
+        }
+        rigidBody.applyForces();
+    }
+}
+
+
+void RigidBody::applyForces(){
+    forces = G * mass * gravityDirection;
+}
+
+void RigidBody::addLinearImpulse(const glm::vec3 &imp){
+    velocity = velocity + imp;
+}
+
+void RigidBody::update(float delta){
+    const float damping = 0.98f;
+    glm::vec3 acceleration = forces * invMass;
+    velocity = velocity + acceleration * delta;
+    velocity = velocity * damping;
+}
+
 
 void PhysicSystem::update(float deltaTime){
-    solver();
+    accumulateForces();
+
+    for(int i=0; i<impulseIteration; i++){
+        solver();
+    }
+
+    for(auto overlapping: detectedCollisions){
+        if(!overlapping.aSeeB || !overlapping.bSeeA || mEntities.find(overlapping.entityA) == mEntities.end() || mEntities.find(overlapping.entityB) == mEntities.end()) continue;
+
+        RigidBody &rbA = ecs.GetComponent<RigidBody>(overlapping.entityA);
+        RigidBody &rbB = ecs.GetComponent<RigidBody>(overlapping.entityB);
+        Transform &tA = ecs.GetComponent<Transform>(overlapping.entityA);
+        Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
+
+
+        if(rbA.type == RigidBody::STATIC && !rbB.type == RigidBody::STATIC && overlapping.bSeeA)
+        {
+            tB.translate(overlapping.normal * overlapping.correctionDepth);
+        } else if(rbB.type == RigidBody::STATIC && !rbA.type == RigidBody::STATIC && overlapping.aSeeB)
+        {
+            tA.translate(-overlapping.normal * overlapping.correctionDepth);
+        } 
+        else if(!rbA.type == RigidBody::STATIC && !rbB.type == RigidBody::STATIC && overlapping.aSeeB && overlapping.bSeeA)
+        {
+            const float ratio = rbB.invMass / (rbA.invMass + rbB.invMass);
+            tA.translate(-overlapping.normal * overlapping.correctionDepth * ratio);
+            tB.translate(overlapping.normal * overlapping.correctionDepth * (1.0f - ratio));
+        }
+
+
+        if (rbA.type == RigidBody::KINEMATIC && rbB.type == RigidBody::STATIC && overlapping.aSeeB){
+            tA.translate(overlapping.normal * overlapping.correctionDepth);
+            rbA.grounded = true;
+        }
+        else if (rbB.type == RigidBody::KINEMATIC && rbA.type == RigidBody::STATIC && overlapping.bSeeA) {
+            tB.translate(overlapping.normal * overlapping.correctionDepth);
+            rbB.grounded = true;
+        } 
+    }
 
     for(auto &entity: mEntities){
+        
         auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
 
-        if(rigidBody.isStatic){
-            rigidBody.velocity = glm::vec3(0,0,0);
+        if(rigidBody.type == RigidBody::STATIC){
+            continue;
         } else {
-            float acceleration = G * rigidBody.weight;
-            rigidBody.velocity += acceleration * deltaTime * rigidBody.gravityDirection;
+            rigidBody.update(deltaTime);
             transform.translate(rigidBody.velocity * deltaTime);
+
+            // gravity
+            // rigidBody.velocity += G * deltaTime * rigidBody.gravityDirection;
+
+            // rigidBody.velocity += rigidBody.impulse * rigidBody.invMass * deltaTime;
+            // rigidBody.angularVelocity += rigidBody.torque * rigidBody.invInertia * deltaTime;
+            
+            // rigidBody.impulse = glm::vec3(0); 
+            // rigidBody.torque = glm::vec3(0);
+
+            // transform.translate(rigidBody.velocity * deltaTime);
+            
+            // const float speed = glm::length(rigidBody.angularVelocity);
+            // if (speed > 0.001f) { // Évite les divisions par 0
+            //     glm::quat currentRot = glm::quat(transform.getLocalRotation()); 
+            //     glm::vec3 axis = rigidBody.angularVelocity / speed;
+                
+            //     glm::quat deltaRot = glm::angleAxis(speed * deltaTime, axis);
+            //     transform.setLocalRotation(deltaRot * currentRot);
+            // }
         }
     }
 
@@ -284,7 +418,7 @@ void PhysicDebugSystem::update(){
         }
         program.updateModelMatrix(model);
 
-        if(shape.isColliding) glUniform4f(colorLocation, 1,0,0,1);
+        if(shape.isAnythingColliding()) glUniform4f(colorLocation, 1,0,0,1);
         else glUniform4f(colorLocation, 0,1,0,1);
 
         int indexCount = 0;
@@ -299,7 +433,7 @@ void PhysicDebugSystem::update(){
         } else if(shape.shapeType == OOBB || shape.shapeType == AABB){
             indexCount = boxIndexCount;
             glm::vec3 scale = shape.oobb.halfExtents;
-            // glUniform3f(scaleLocation, scale.x, scale.y, scale.z);
+            glUniform3f(scaleLocation, scale.x, scale.y, scale.z);
             glBindVertexArray(boxVAO);
         } else if (shape.shapeType == RAY){
             glm::vec3 points[2] = { glm::vec3(0), shape.ray.ray_direction * shape.ray.length };

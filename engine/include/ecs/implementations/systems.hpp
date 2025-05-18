@@ -16,6 +16,7 @@ class Render: public System {
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide, bool front = false);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
     static Drawable loadSimpleMesh(char *path);
+    static void loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat);
 };
 
 class LightRender: public System {
@@ -51,7 +52,7 @@ class PBRrender: public System {
 class AnimatedPBRrender: public PBRrender {
     public:
     void update(glm::mat4 &view, float deltaTime);
-    static AnimatedDrawable loadMesh(char *filePath);
+    static void loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat);
 };
 
 class InfosRender: public System {
@@ -112,8 +113,13 @@ class CollisionDetectionSystem: public System {
 class PhysicSystem: public System {
     private:
         void solver();
+        void accumulateForces();
+        // float linearProjectionPercent = 0.8f;
+        // float penetrationSlack = 0.1;
+        int impulseIteration = 20;
     public:
         void update(float deltaTime);
+        static glm::mat3 processInvertInertia(CollisionShape &shape, RigidBody &rigidBody);
 };
 
 class PhysicDebugSystem: public System {

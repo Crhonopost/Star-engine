@@ -10,13 +10,22 @@ class Drawable;
 class Material;
 
 struct Texture {
-    char *path;
+    const char *path;
     GLuint id;
+    bool visible;
     
-    Texture(): id(0){};
+    Texture(): id(0), visible(false){};
     
-    static Texture& loadTexture(char * path);
+    static Texture& loadTextureFromMemory(const unsigned char* data,
+                                          size_t size,
+                                          int width,
+                                          int height,
+                                          int channels,
+                                          const std::string& key);
+    static Texture& loadTexture(const char * path);
     static std::map<std::string, Texture> textures;
+
+    static Texture emptyTexture;
     
     void activate(GLuint textureLocation);
     static int getAvailableActivationInt();
@@ -118,6 +127,7 @@ class PBR: public Program{
     private:
     GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, hasTextureLocation, indensiteScaleLightLocation;
     GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation, normalTexLocation;
+    GLuint hasAlbedoMapLocation, hasNormalMapLocation, hasMetallicMapLocation, hasRoughnessMapLocation, hasAoMapLocation;
     
 
     public:
