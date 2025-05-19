@@ -641,8 +641,8 @@ void LightRender::computeLights(PBRrender *pbr, InfosRender &infosRender, Skybox
         Light &light = ecs.GetComponent<Light>(lightEntity);
         Transform &lightTransform = ecs.GetComponent<Transform>(lightEntity);
 
-        sceneCubemapRender.renderInfosFromPoint(lightTransform.getLocalPosition(), infosRender, 1);
-        activationInt = sceneCubemapRender.unwrapOctaProj(light.depthID, 512, (Skybox*) skyboxProgPtr);
+        sceneCubemapRender.renderInfosFromPoint(lightTransform.getGlobalPosition(), infosRender, 1);
+        activationInt = sceneCubemapRender.unwrapOctaProj(light.depthID, 512, skyboxProgPtr);
 
         glUseProgram(pbr->pbrProgPtr->programID);
         auto strIdx = "[" + std::to_string(lightIdx ++) + "]";
@@ -1019,6 +1019,8 @@ void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRend
     glGetIntegerv( GL_VIEWPORT, m_viewport );
     glViewport(0,0, cubemap.resolution, cubemap.resolution);
 
+    if(mode == 1) glClearColor(0,0,0,1);
+
     for(int i=0; i<6; i++){
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap.textureID, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1068,6 +1070,9 @@ void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *
         
         render->update(view);
         pbr->update(view);
+
+        int a = Texture::getAvailableActivationInt();
+        save_PPM_file(cubemap.resolution, cubemap.resolution, "../pictures/" + std::to_string(a) + ".ppm");
     }
 
     glm::mat4 camProjection = Camera::getInstance().getP();
@@ -1154,7 +1159,7 @@ int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sky
     skyboxProgPtr->afterRender();
     skyboxProgPtr->cubemap = save;
 
-    save_PPM_file(resolution, resolution, "../pictures/octaProj.ppm");
+    save_PPM_file(resolution, resolution, "../pictures/octaProj" + std::to_string(Texture::getAvailableActivationInt()) + ".ppm");
 
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
     glDeleteRenderbuffers(1, &depthBufffer);

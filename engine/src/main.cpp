@@ -83,6 +83,9 @@ std::shared_ptr<PhysicSystem> physicSystem;
 std::shared_ptr<PhysicDebugSystem> physicDebugSystem;
 
 
+std::unique_ptr<Skybox> skyboxUtility;
+std::unique_ptr<CubemapRender> sceneCubemapRender;
+
 void initEcs(){
     ecs.Init();
     
@@ -187,20 +190,22 @@ void afterSceneInit(){
     //     "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
 
     Cubemap skyboxMap({
-    "../assets/images/cubemaps/galaxy_space/left.jpg",
-    "../assets/images/cubemaps/galaxy_space/right.jpg",
-    "../assets/images/cubemaps/galaxy_space/top.jpg",
-    "../assets/images/cubemaps/galaxy_space/bot.jpg",
-    "../assets/images/cubemaps/galaxy_space/back.jpg",
-    "../assets/images/cubemaps/galaxy_space/front.jpg"});
+        "../assets/images/cubemaps/galaxy_space/left.jpg",
+        "../assets/images/cubemaps/galaxy_space/right.jpg",
+        "../assets/images/cubemaps/galaxy_space/top.jpg",
+        "../assets/images/cubemaps/galaxy_space/bot.jpg",
+        "../assets/images/cubemaps/galaxy_space/back.jpg",
+        "../assets/images/cubemaps/galaxy_space/front.jpg"});
+    skyboxUtility = std::make_unique<Skybox>(skyboxMap);
+
+    sceneCubemapRender = std::make_unique<CubemapRender>(512);
 
 
-    Program::programs.push_back(std::make_unique<Skybox>(skyboxMap));
     Entity skyboxEntity = ecs.CreateEntity();
     ecs.SetEntityName(skyboxEntity, "Skybox");
     Drawable skyboxDraw = Render::generateCube(9999, 2, true);
     Transform skyboxTransform;
-    CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
+    CustomProgram skyboxProg(skyboxUtility.get());
 
     ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
     ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
@@ -208,17 +213,19 @@ void afterSceneInit(){
 
 
     lightRenderSystem->update();
-    
-    CubemapRender sceneCubemapRender(512);
+
+
     // Render scene into a cubemap
-    sceneCubemapRender.renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
+    sceneCubemapRender->renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
+    GLuint test;
+    sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
     
     ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
     Cubemap irradianceMap(32);
     
     // Apply shader onto skybox
-    sceneCubemapRender.applyFilter(irradianceShader.get(), irradianceMap);
+    sceneCubemapRender->applyFilter(irradianceShader.get(), irradianceMap);
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
     
     ///////////////////////// diffuse irradiance END
@@ -229,8 +236,8 @@ void afterSceneInit(){
     auto brdfShader =  std::make_unique<BrdfShader>();
     
     Cubemap prefilterMap(128);
-    sceneCubemapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
-    GLuint brdfLUTTEXID = sceneCubemapRender.TwoDLUT(brdfShader.get());
+    sceneCubemapRender->applyPrefilter(prefilterShader.get(),prefilterMap);
+    GLuint brdfLUTTEXID = sceneCubemapRender->TwoDLUT(brdfShader.get());
     
     pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
     pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
@@ -250,10 +257,13 @@ void afterSceneInit(){
     ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
     ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
     
-    lightRenderSystem->computeLights(pbrRenderSystem.get(), *infoRenderSystem.get(), (Skybox*) Program::programs[Program::programs.size()-1].get());
     
     std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
     root.AddChild(std::move(cubemapNode));
+
+    root.forceUpdateSelfAndChild();
+
+    // lightRenderSystem->computeLights(pbrRenderSystem.get(), *infoRenderSystem.get(), skyboxUtility.get());
 }
 
 void switchEditorMode(){
@@ -286,6 +296,10 @@ void editorUpdate(float deltaTime){
             glm::mat4 v = Camera::getInstance().getV();
             glm::mat4 p = Camera::getInstance().getP();
             infoRenderSystem->renderOnFrame(v, p, 500,500,1);
+    
+            // sceneCubemapRender->renderInfosFromPoint({0,0,0}, *infoRenderSystem.get(), 1);
+            // GLuint test;
+            // sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
         } else if(ImGui::Button("Load scene 2")){
             unloadScene();
             pbrScene(root, ecs);
