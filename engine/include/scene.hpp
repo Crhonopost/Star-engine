@@ -85,8 +85,7 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 
     collisionBehavior.update = [entity, &ecs](float deltaTime){
         for(auto &collidingEntity: ecs.GetComponent<CollisionShape>(entity).collidingEntities){
-            glm::vec3 gravDir = ecs.GetComponent<Transform>(entity).getGlobalPosition() - ecs.GetComponent<Transform>(collidingEntity).getGlobalPosition();
-            ecs.GetComponent<RigidBody>(collidingEntity).gravityDirection = glm::normalize(gravDir);
+            ecs.GetComponent<RigidBody>(collidingEntity).gravityCenter = ecs.GetComponent<Transform>(entity).getGlobalPosition();
         }
     };
 

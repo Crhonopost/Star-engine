@@ -86,8 +86,6 @@ void PhysicSystem::solver(){
         RigidBody &rbB = ecs.GetComponent<RigidBody>(overlapping.entityB);
         Transform &tA = ecs.GetComponent<Transform>(overlapping.entityA);
         Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
-
-        // rbA.grounded = false; rbB.grounded = false;
  
         if(rbA.type == RigidBody::KINEMATIC || rbB.type == RigidBody::KINEMATIC) continue;
 
@@ -185,6 +183,16 @@ void RigidBody::update(float delta){
 
 
 void PhysicSystem::update(float deltaTime){
+    for(auto &entity: mEntities){
+        auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
+        
+        if(rigidBody.gravityCenter.x != 0 || rigidBody.gravityCenter.y != 0 || rigidBody.gravityCenter.z != 0){
+            auto& transform = ecs.GetComponent<Transform>(entity);
+            rigidBody.gravityDirection = glm::normalize(rigidBody.gravityCenter - transform.getGlobalPosition());
+        }
+        if(rigidBody.type == RigidBody::KINEMATIC) rigidBody.grounded = false;
+    }
+
     accumulateForces();
 
     for(int i=0; i<impulseIteration; i++){
@@ -231,7 +239,7 @@ void PhysicSystem::update(float deltaTime){
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& shape = ecs.GetComponent<CollisionShape>(entity);
 
-        if(rigidBody.type == RigidBody::STATIC){
+        if(rigidBody.type == RigidBody::STATIC || rigidBody.type == RigidBody::KINEMATIC){
             continue;
         } else {
             rigidBody.update(deltaTime);
