@@ -1139,11 +1139,12 @@ void CameraSystem::update(){
         
         Camera::getInstance().camera_position = transform.getGlobalPosition();
         
-        glm::vec3 forward = glm::mat3(transform.getModelMatrix()) * glm::vec3(0,0,1);
-        forward.x = -forward.x;
-        forward.y = -forward.y;
+        // glm::vec3 forward = glm::mat3(transform.getModelMatrix()) * glm::vec3(0,0,1);
+
+        // forward.x = -forward.x;
+        // forward.y = -forward.y;
         
-        Camera::getInstance().camera_target = Camera::getInstance().camera_position + glm::normalize(forward);
+        Camera::getInstance().camera_target = cam.target;// Camera::getInstance().camera_position + glm::normalize(forward);
     }
 }
 

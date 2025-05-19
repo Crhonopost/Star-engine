@@ -96,6 +96,7 @@ struct AnimatedDrawable: Drawable{
 struct CameraComponent: Component {
     bool activated = false;
     bool needActivation = false;
+    glm::vec3 target = glm::vec3(0.f);
 };
 
 struct CustomProgram: Component {

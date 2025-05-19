@@ -297,11 +297,13 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         RigidBody& targetBody = ecs.GetComponent<RigidBody>(playerEntity);
         Transform &targetTransform = ecs.GetComponent<Transform>(playerEntity);
         
-        Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
+        // Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
         
-        glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
-        direction = glm::normalize(direction);
-        camTransform.setLocalRotation(Camera::lookAtQuat(direction));
+        // glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
+        // direction = glm::normalize(direction);
+        // camTransform.setLocalRotation(Camera::lookAtQuat(direction));
+
+        ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
         
         // camTransform.setLocalPosition(targetTransform.getGlobalPosition() - targetBody.gravityDirection * 10.f);
         // direction = glm::normalize(playerRigid.gravityDirection);
