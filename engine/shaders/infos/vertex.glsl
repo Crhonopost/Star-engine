@@ -20,7 +20,7 @@ void main(){
 
         gl_Position = vec4(vertices_position_modelspace,1);
         gl_Position = p * v * model *  gl_Position;
-        // position = gl_Position;
+        position = gl_Position;
 
         camPos = vec3(inverse(v)[3]);
 

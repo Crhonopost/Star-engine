@@ -618,6 +618,7 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
 void LightRender::update(){
     //TODO: update as a batch https://gamedev.stackexchange.com/questions/179539/how-to-set-the-value-of-each-index-in-a-uniform-array
     int associatedLight = 0;
+    int activationInt;
     glUseProgram(PBRrender::pbrProgPtr->programID);
     for (const auto& entity : mEntities) {
         auto& light = ecs.GetComponent<Light>(entity);
@@ -625,6 +626,11 @@ void LightRender::update(){
         
         PBRrender::pbrProgPtr->updateLightPosition(associatedLight, transform.getLocalPosition());
         PBRrender::pbrProgPtr->updateLightColor(associatedLight, light.color);
+
+        activationInt = Texture::getAvailableActivationInt();
+        glActiveTexture(GL_TEXTURE0 + activationInt);
+        glBindTexture(GL_TEXTURE_2D, light.depthID);
+        glUniform1i(light.shaderLoc, activationInt);
 
         associatedLight ++;
     }
@@ -1149,7 +1155,8 @@ int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sky
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    planeMesh.draw(-1);
+    // planeMesh.draw(-1);
+    renderQuad();
 
 
     glm::mat4 camProj = Camera::getInstance().getP();

@@ -230,17 +230,18 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 
     /////////////////////////////// collision debug
-    auto otherEntity = ecs.CreateEntity();
-    Transform otherTransform;
-    otherTransform.translate(glm::vec3(5,10,0));
+    auto lightEntity = ecs.CreateEntity();
+    ecs.SetEntityName(lightEntity, "Light source");
+    Transform lightTransform;
+    lightTransform.translate(glm::vec3(0,15,5));
     Light lightSource;
     lightSource.color = glm::vec3(1,1,1);
     CollisionShape otherCollision;
     otherCollision.shapeType = SPHERE;
     otherCollision.sphere.radius = 1.2;
-    ecs.AddComponent(otherEntity, otherTransform);
-    ecs.AddComponent(otherEntity, lightSource);
-    ecs.AddComponent(otherEntity, otherCollision);
+    ecs.AddComponent(lightEntity, lightTransform);
+    ecs.AddComponent(lightEntity, lightSource);
+    ecs.AddComponent(lightEntity, otherCollision);
 
 
     // TODO: fix custom programs, when adding mountain: pbr rendering not working ....
@@ -320,12 +321,12 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     std::unique_ptr<SpatialNode> playerCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
     std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
     std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
-    std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+    std::unique_ptr<SpatialNode> lightNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(lightEntity));
     std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
     std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
 
     root.AddChild(std::move(playerCameraNode));
-    root.AddChild(std::move(otherNode));
+    root.AddChild(std::move(lightNode));
     root.AddChild(std::move(b1Node));
     root.AddChild(std::move(b2Node));
     planetNode->AddChild(std::move(planetGravityNode));

@@ -261,7 +261,7 @@ void afterSceneInit(){
 
     root.forceUpdateSelfAndChild();
 
-    // lightRenderSystem->computeLights(pbrRenderSystem.get(), *infoRenderSystem.get(), skyboxUtility.get());
+    lightRenderSystem->computeLights(pbrRenderSystem.get(), *infoRenderSystem.get(), skyboxUtility.get());
 }
 
 void switchEditorMode(){
@@ -294,10 +294,6 @@ void editorUpdate(float deltaTime){
             glm::mat4 v = Camera::getInstance().getV();
             glm::mat4 p = Camera::getInstance().getP();
             infoRenderSystem->renderOnFrame(v, p, 500,500,1);
-    
-            sceneCubemapRender->renderInfosFromPoint({0,20,0}, *infoRenderSystem.get(), 1);
-            GLuint test;
-            sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
         } else if(ImGui::Button("Load scene 2")){
             unloadScene();
             pbrScene(root, ecs);
