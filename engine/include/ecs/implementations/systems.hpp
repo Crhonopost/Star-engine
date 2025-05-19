@@ -19,21 +19,16 @@ class Render: public System {
     static void loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat);
 };
 
-class LightRender: public System {
-    public:
-    void update();
-};
 
 class PBRrender: public System {
     protected:
-    friend LightRender;
-    static PBR* pbrProgPtr;
     GLuint mIrradianceMapID = 0; 
     GLuint mPrefilterMapID = 0; 
     GLuint mBrdfLUTID = 0; 
-
-
+    
+    
     public:
+    static PBR* pbrProgPtr;
     static void initPBR();
     void setupMaps();
     virtual void update(glm::mat4 &view);
@@ -48,13 +43,6 @@ class PBRrender: public System {
     }
 };
 
-
-class AnimatedPBRrender: public PBRrender {
-    public:
-    void update(glm::mat4 &view, float deltaTime);
-    static void loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat);
-};
-
 class InfosRender: public System {
     private:
     Program infoProgram;
@@ -63,6 +51,19 @@ class InfosRender: public System {
     InfosRender();
     void update(glm::mat4 &view, glm::mat4 &projection, int mode=0);
     GLuint renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int width, int height, int mode=0);
+};
+
+class LightRender: public System {
+    public:
+    void update();
+    void computeLights(PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr);
+};
+
+
+class AnimatedPBRrender: public PBRrender {
+    public:
+    void update(glm::mat4 &view, float deltaTime);
+    static void loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat);
 };
 
 class ProbeManager{

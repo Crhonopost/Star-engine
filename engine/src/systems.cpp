@@ -632,6 +632,24 @@ void LightRender::update(){
     PBRrender::pbrProgPtr->updateLightCount(associatedLight);
 }
 
+void LightRender::computeLights(PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr){
+    CubemapRender sceneCubemapRender(512);
+    int activationInt;
+
+    int lightIdx = 0;
+    for(auto &lightEntity : mEntities){
+        Light &light = ecs.GetComponent<Light>(lightEntity);
+        Transform &lightTransform = ecs.GetComponent<Transform>(lightEntity);
+
+        sceneCubemapRender.renderInfosFromPoint(lightTransform.getLocalPosition(), infosRender, 1);
+        activationInt = sceneCubemapRender.unwrapOctaProj(light.depthID, 512, (Skybox*) skyboxProgPtr);
+
+        glUseProgram(pbr->pbrProgPtr->programID);
+        auto strIdx = "[" + std::to_string(lightIdx ++) + "]";
+        light.shaderLoc = glGetUniformLocation(pbr->pbrProgPtr->programID, ("lightDepthMaps" + strIdx).c_str());
+    }
+}
+
 
 ProbeManager::ProbeManager(): prog(){}
 
@@ -1009,6 +1027,8 @@ void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRend
         glm::mat4 view = glm::lookAt(point, point + dir, ups[i]);
         infosRender.update(view, projection, mode);
     }
+
+    save_PPM_file(cubemap.resolution, cubemap.resolution, "../pictures/verif.ppm");
 
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
     glDeleteRenderbuffers(1, &depthBufffer);

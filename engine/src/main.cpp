@@ -208,7 +208,7 @@ void afterSceneInit(){
 
 
     lightRenderSystem->update();
-
+    
     CubemapRender sceneCubemapRender(512);
     // Render scene into a cubemap
     sceneCubemapRender.renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
@@ -222,8 +222,8 @@ void afterSceneInit(){
     pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
     
     ///////////////////////// diffuse irradiance END
-
-
+    
+    
     ///////////////////////// specular IBL
     auto prefilterShader = std::make_unique<PrefilterShader>();
     auto brdfShader =  std::make_unique<BrdfShader>();
@@ -231,25 +231,27 @@ void afterSceneInit(){
     Cubemap prefilterMap(128);
     sceneCubemapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
     GLuint brdfLUTTEXID = sceneCubemapRender.TwoDLUT(brdfShader.get());
-
+    
     pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
     pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
     ///////////////////////// specular IBL END
-
+    
     
     auto testCubemapRenderEntity = ecs.CreateEntity();
     ecs.SetEntityName(testCubemapRenderEntity, "Cubemap visu");
     Drawable cubemapDraw = Render::generateCube(2, 2, false);
     Transform cubemapTransform;
     cubemapTransform.translate({0,5,0});
-
+    
     Program::programs.push_back(std::make_unique<CubemapProg>());
     CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
     ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMap.textureID;
     ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
     ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
     ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
-
+    
+    lightRenderSystem->computeLights(pbrRenderSystem.get(), *infoRenderSystem.get(), (Skybox*) Program::programs[Program::programs.size()-1].get());
+    
     std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
     root.AddChild(std::move(cubemapNode));
 }

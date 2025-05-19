@@ -119,6 +119,7 @@ struct Material: Component {
 struct Light: Component {
     glm::vec3 color;
     float strength;
+    GLuint depthID, shaderLoc;
 };
 
 enum RotationOrderEnum {
