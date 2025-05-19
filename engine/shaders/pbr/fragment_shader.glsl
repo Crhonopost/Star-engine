@@ -170,14 +170,14 @@ void main(){
 
     color = vec4(colorPBR, 1.0);
 
-    // for(int lightI=0; lightI < lightCount; lightI++){
-    //     vec3 diff = lightPositions[lightI] - WorldPos;
-    //     vec3 direction = normalize(diff);
-    //     vec2 coord = octahedral_mapping(direction);
-    //     float depth = texture(lightDepthMaps[lightI], coord).r;
+    for(int lightI=0; lightI < lightCount; lightI++){
+        vec3 diff = lightPositions[lightI] - WorldPos;
+        vec3 direction = normalize(diff);
+        vec2 coord = octahedral_mapping(direction);
+        float depth = texture(lightDepthMaps[lightI], coord).r;
 
-    //     if(length(diff) < depth){
-    //         color = vec4(0,0,0,1);
-    //     }
-    // }
+        if(length(diff) < depth){
+            color = vec4(0,0,0,1);
+        }
+    }
 }

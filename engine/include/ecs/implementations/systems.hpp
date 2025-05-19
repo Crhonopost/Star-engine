@@ -81,7 +81,7 @@ class CubemapRender {
     glm::mat4 projection;
     glm::vec3 orientations[6];
     glm::vec3 ups[6];
-    Drawable cubeMesh;
+    Drawable cubeMesh, planeMesh;
     public:
     Cubemap cubemap;
     CubemapRender(int res);

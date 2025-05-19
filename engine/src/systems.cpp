@@ -812,7 +812,7 @@ GLuint InfosRender::renderOnFrame(glm::mat4 &view, glm::mat4 &projection, int wi
     return resTexID;
 }
 
-CubemapRender::CubemapRender(int res): cubemap(res), cubeMesh(Render::generateCube(10, 2, true)){
+CubemapRender::CubemapRender(int res): cubemap(res), cubeMesh(Render::generateCube(10, 2, true)), planeMesh(Render::generatePlane(2, 2, true)){
     orientations[0] = {1,0,0};
     orientations[1] = {-1,0,0};
     ups[0] = ups[1] = {0,-1,0};
@@ -999,6 +999,10 @@ void CubemapRender::applyFilter(Program *filterProg, Cubemap target){
 
 
 void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRender, int mode){
+    if(mode == 1){
+        glClearColor(0,0,0,1);
+    }
+
     GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -1019,8 +1023,6 @@ void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRend
     glGetIntegerv( GL_VIEWPORT, m_viewport );
     glViewport(0,0, cubemap.resolution, cubemap.resolution);
 
-    if(mode == 1) glClearColor(0,0,0,1);
-
     for(int i=0; i<6; i++){
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cubemap.textureID, 0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1028,9 +1030,9 @@ void CubemapRender::renderInfosFromPoint(glm::vec3 point, InfosRender &infosRend
         
         glm::mat4 view = glm::lookAt(point, point + dir, ups[i]);
         infosRender.update(view, projection, mode);
+        save_PPM_file(cubemap.resolution, cubemap.resolution, "../pictures/verif" + std::to_string(i) + ".ppm");
     }
 
-    save_PPM_file(cubemap.resolution, cubemap.resolution, "../pictures/verif.ppm");
 
     glViewport(m_viewport[0],m_viewport[1], m_viewport[2], m_viewport[3]);
     glDeleteRenderbuffers(1, &depthBufffer);
@@ -1116,11 +1118,8 @@ int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sky
     skyboxProgPtr->cubemap = cubemap;
     skyboxProgPtr->updateModelMatrix(identity);
     skyboxProgPtr->updateProjectionMatrix(identity);
-    // glm::mat4 view = glm::lookAt(glm::vec3(0), {0,0,1}, {0,1,0});
     skyboxProgPtr->updateViewMatrix(identity);
     skyboxProgPtr->beforeRender();
-
-    Drawable plane = Render::generatePlane(2, 2, true);
 
     // Generate texture
     glGenTextures(1, &textureID);
@@ -1150,7 +1149,7 @@ int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sky
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureID, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    plane.draw(-1);
+    planeMesh.draw(-1);
 
 
     glm::mat4 camProj = Camera::getInstance().getP();

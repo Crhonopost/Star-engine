@@ -217,8 +217,6 @@ void afterSceneInit(){
 
     // Render scene into a cubemap
     sceneCubemapRender->renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
-    GLuint test;
-    sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
     
     ///////////////////////// diffuse irradiance
     auto irradianceShader = std::make_unique<IrradianceShader>();        
@@ -297,9 +295,9 @@ void editorUpdate(float deltaTime){
             glm::mat4 p = Camera::getInstance().getP();
             infoRenderSystem->renderOnFrame(v, p, 500,500,1);
     
-            // sceneCubemapRender->renderInfosFromPoint({0,0,0}, *infoRenderSystem.get(), 1);
-            // GLuint test;
-            // sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
+            sceneCubemapRender->renderInfosFromPoint({0,20,0}, *infoRenderSystem.get(), 1);
+            GLuint test;
+            sceneCubemapRender->unwrapOctaProj(test, 512, skyboxUtility.get());
         } else if(ImGui::Button("Load scene 2")){
             unloadScene();
             pbrScene(root, ecs);
