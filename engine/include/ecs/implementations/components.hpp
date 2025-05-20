@@ -97,6 +97,7 @@ struct CameraComponent: Component {
     bool activated = false;
     bool needActivation = false;
     glm::vec3 target = glm::vec3(0.f);
+    glm::vec3 up = glm::vec3(0.f,1.f,0.f);
 };
 
 struct CustomProgram: Component {

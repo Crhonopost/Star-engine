@@ -1145,6 +1145,7 @@ void CameraSystem::update(){
         // forward.y = -forward.y;
         
         Camera::getInstance().camera_target = cam.target;// Camera::getInstance().camera_position + glm::normalize(forward);
+        Camera::getInstance().camera_up = cam.up;
     }
 }
 

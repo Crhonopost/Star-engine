@@ -143,7 +143,9 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         glm::vec3 up      = -rb.gravityDirection;
         if(glm::length2(up) < 1e-6f) up = glm::vec3(0,1,0);
         glm::vec3 left    = glm::normalize(glm::cross(up,    glm::vec3(0,1,0)));
-        glm::vec3 forward = glm::normalize(glm::cross(left,  up));
+        glm::vec3 forward;
+        if(fabs(up.y)>0.95f)    forward = left;
+        else     forward = glm::normalize(glm::cross(left,  up));
 
         auto actions = InputManager::getInstance().getActions();
         glm::vec3 inputDir(0.0f);
@@ -212,7 +214,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
     glm::vec3 planetCenter = {14, 0, 14};
     auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
-    auto planetGravity = generateGravityArea(ecs, planetCenter, 60.f, playerEntity);
+    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
 
     // auto planetEntity = generatePlanet(ecs, {14,0,14}, 20.f);
     // auto planetGravity = generateGravityArea(ecs, glm::vec3(0), 60.f, playerEntity);
@@ -297,13 +299,29 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         RigidBody& targetBody = ecs.GetComponent<RigidBody>(playerEntity);
         Transform &targetTransform = ecs.GetComponent<Transform>(playerEntity);
         
-        // Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
+        Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
+
+        glm::vec3 up = glm::length2(targetBody.gravityDirection) > 1e-6f
+                   ? -glm::normalize(targetBody.gravityDirection)
+                   : glm::vec3(0,1,0);
+
+        glm::vec3 worldUp = glm::vec3(0,1,0);
+        glm::vec3 right   = glm::normalize(glm::cross(up, worldUp));
+        glm::vec3 forward = glm::normalize(glm::cross(right, up));
+
+        const float behindDistance = 10.0f;
+        const float aboveDistance  = 26.0f;
+        glm::vec3 camOffset = -forward * behindDistance + up * aboveDistance;
+        camTransform.setLocalPosition(targetTransform.getGlobalPosition()+camOffset);
+        
         
         // glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
         // direction = glm::normalize(direction);
         // camTransform.setLocalRotation(Camera::lookAtQuat(direction));
 
         ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
+        ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
+
         
         // camTransform.setLocalPosition(targetTransform.getGlobalPosition() - targetBody.gravityDirection * 10.f);
         // direction = glm::normalize(playerRigid.gravityDirection);
