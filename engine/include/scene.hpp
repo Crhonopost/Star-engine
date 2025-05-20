@@ -121,6 +121,21 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
 
 
 Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
+    // Ground check
+    auto groundCheckEntity = ecs.CreateEntity();
+    Transform rayTransform;
+    CollisionShape rayShape;
+    rayShape.shapeType = RAY;
+    rayShape.ray.length = 3.5;
+    rayShape.ray.ray_direction = glm::vec3(0,-1,0);
+    rayShape.layer = 0;
+    rayShape.mask = CollisionShape::ENV_LAYER;
+    
+    ecs.AddComponent(groundCheckEntity, rayTransform);
+    ecs.AddComponent(groundCheckEntity, rayShape);
+
+
+    // Player entity
     auto playerEntity = generateSpherePBR(ecs, 0.75f, {0, 0, 0});;
     ecs.SetEntityName(playerEntity, "Player");
     auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
@@ -132,13 +147,17 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     CollisionShape playerShape;
     playerShape.shapeType = SPHERE;
     playerShape.sphere.radius = 1.f;
-    playerShape.layer = CollisionShape::ENV_LAYER | CollisionShape::PLAYER_LAYER;
+    playerShape.layer = CollisionShape::PLAYER_LAYER;
+    playerShape.mask = CollisionShape::ENV_LAYER;
     
     CustomBehavior playerBehavior;
-    playerBehavior.update = [playerEntity, &ecs](float dt){
+    playerBehavior.update = [playerEntity, &ecs, groundCheckEntity](float dt){
         auto& tr    = ecs.GetComponent<Transform>(playerEntity);
         auto& rb    = ecs.GetComponent<RigidBody>(playerEntity);
         auto& shape = ecs.GetComponent<CollisionShape>(playerEntity);
+        auto& groundCheck = ecs.GetComponent<CollisionShape>(groundCheckEntity);
+
+        bool grounded = groundCheck.isAnythingColliding();
 
         glm::vec3 up      = -rb.gravityDirection;
         if(glm::length2(up) < 1e-6f) up = glm::vec3(0,1,0);
@@ -167,7 +186,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 
         float verticalSpeed = glm::dot(rb.velocity, rb.gravityDirection);
         const float jumpStrength = 8.0f;
-        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && shape.isAnythingColliding() ) {
+        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && grounded) {
             verticalSpeed = -jumpStrength;
         }else if(shape.isAnythingColliding()){
             verticalSpeed = 0.f;
@@ -191,24 +210,12 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     ecs.AddComponent(playerEntity, playerShape);
 
 
-    // auto rayTestEntity = ecs.CreateEntity();
-    // Transform rayTransform;
-    // CollisionShape rayShape;
-    // rayShape.shapeType = RAY;
-    // rayShape.ray.length = 1.5;
-    // rayShape.ray.ray_direction = glm::vec3(0,-1,0);
-    // rayShape.layer = 0;
-    
-    // ecs.AddComponent(rayTestEntity, rayTransform);
-    // ecs.AddComponent(rayTestEntity, rayShape);
-
-
 
 
     std::unique_ptr<SpatialNode> playerNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(playerEntity));
-    // std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(rayTestEntity));
+    std::unique_ptr<SpatialNode> rayNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(groundCheckEntity));
 
-    // playerNode->AddChild(std::move(rayNode));
+    playerNode->AddChild(std::move(rayNode));
     parent.AddChild(std::move(playerNode));
 
     return playerEntity;

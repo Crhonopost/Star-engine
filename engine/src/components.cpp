@@ -227,10 +227,16 @@ OverlapingShape rayPlaneIntersection(Ray &rayA, Transform &transformA, Plane &pl
     glm::vec3 globalPosA = transformA.getGlobalPosition();
     glm::vec3 globalPosB = transformB.getGlobalPosition();
 
-    glm::vec3 planeNormal(glm::normalize(transformB.getModelMatrix() * glm::vec4(planeB.normal, 1)));
-    glm::vec3 rayDirection(glm::normalize(transformA.getModelMatrix() * glm::vec4(rayA.ray_direction, 1)));
+    
+    glm::vec3 planeNormal(glm::normalize(transformB.applyRotation(planeB.normal) ));
+    glm::vec3 rayDirection(glm::normalize(transformA.applyRotation(rayA.ray_direction)));
+    
+    float nd = glm::dot(rayDirection, planeNormal);
+    float pn = glm::dot(globalPosB, planeNormal);
 
-    float t = glm::dot(globalPosB - globalPosA, planeNormal) / glm::dot(rayDirection, planeNormal);
+    if(nd >= 0.f) return res;
+
+    float t = (dot(planeNormal, globalPosB - globalPosA)) / nd;
 
     if(t <= rayA.length){
         res.exist = true;

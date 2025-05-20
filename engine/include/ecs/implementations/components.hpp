@@ -330,7 +330,7 @@ struct Sphere {
 
 struct Plane {
     Plane() = default;
-    glm::vec3 normal;
+    glm::vec3 normal{0,1,0};
 };
 
 struct Oobb {
