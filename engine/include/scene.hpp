@@ -294,6 +294,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Transform cameraTransform;
     cameraTransform.translate({0, 10, -15});
     CameraComponent levelCamComp;
+    levelCamComp.target = cameraTransform.getGlobalPosition() + glm::vec3(0,0,-1);
     levelCamComp.needActivation = true;
 
     ecs.AddComponent<Transform>(levelCameraEntity, cameraTransform);

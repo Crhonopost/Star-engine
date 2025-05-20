@@ -175,21 +175,6 @@ void Transform::translate(glm::vec3 translation){
 }
 
 
-float magnitudeSq(glm::vec3 v){
-    return glm::dot(v,v);
-}
-
-glm::vec3 closestPoint(glm::vec3 rayOrigin, glm::vec3 rayDirection, glm::vec3 point){
-    float t = glm::dot(point - rayOrigin, rayDirection);
-    t = std::max(t, 0.f);
-    return rayOrigin + rayDirection * t;
-}
-
-glm::vec3 closestPoint(glm::vec3& planeNormal, glm::vec3& point){
-    float distance = glm::dot(planeNormal, point);
-    return point - planeNormal * distance;
-}
-
 bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
     return (checker.mask & checked.layer) != 0;
 }
@@ -199,11 +184,10 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     
     
     glm::vec3 globalPlaneNormal = glm::normalize(transformB.applyRotation(planeB.normal));
-    glm::vec3 globalPlaneLeft = glm::normalize(transformB.applyRotation(planeB.left));
     glm::vec3 globalSpherePos = transformA.getGlobalPosition();
     glm::vec3 globalPlanePos = transformB.getGlobalPosition();
 
-    float distanceFromPlane = glm::dot(globalPlaneNormal, globalSpherePos - (globalPlanePos + globalPlaneLeft));
+    float distanceFromPlane = glm::dot(globalPlaneNormal, globalSpherePos - globalPlanePos);
 
     if(distanceFromPlane < 0.0f) return res;
 
