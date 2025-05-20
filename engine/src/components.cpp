@@ -70,13 +70,36 @@ CustomProgram::CustomProgram(Program *progPtr): Component(){
 }
 
 glm::mat4 Transform::getLocalModelMatrix(){
-    rot = glm::normalize(rot);
-    glm::mat4 rotationMatrix = glm::mat4_cast(rot);
+    const glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.x),
+    glm::vec3(1.0f, 0.0f, 0.0f));
+    const glm::mat4 transformY = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.y),
+    glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 transformZ = glm::rotate(glm::mat4(1.0f),
+    glm::radians(eulerRot.z),
+    glm::vec3(0.0f, 0.0f, 1.0f));
     
-    return glm::translate(glm::mat4(1.0f), pos) * 
-           rotationMatrix * 
+    glm::mat4 rotationMatrix;
+    switch (rotationOrder)
+    {
+        case YXZ:
+        rotationMatrix = transformY * transformX * transformZ;
+        break;
+        case XYZ:
+        rotationMatrix = transformX * transformY * transformZ;
+        break;
+        case ZYX:
+        rotationMatrix = transformZ * transformY * transformX;
+        break;
+    }
+    
+    // translation * rotation * scale (also know as TRS matrix)
+    return glm::translate(glm::mat4(1.0f), pos) *
+           rotationMatrix *
            glm::scale(glm::mat4(1.0f), scale);
 }
+
 
 
 void Transform::computeModelMatrix(){
@@ -100,47 +123,48 @@ void Transform::setLocalPosition(glm::vec3 position){
 glm::vec3 Transform::getLocalPosition(){
     return pos;
 }
+
 glm::vec3 Transform::getGlobalPosition(){
-    return glm::vec3(modelMatrix[3]);
+    glm::vec4 globalPos = modelMatrix * glm::vec4(pos, 1);
+    glm::vec3 res = {globalPos.x, globalPos.y, globalPos.z}; 
+    return res;
 }
     
 void Transform::setLocalRotation(glm::vec3 rotationAngles){
-    rot = glm::quat(glm::radians(rotationAngles));
+    eulerRot = rotationAngles;
     dirty = true;
 }
 
 void Transform::setLocalRotation(glm::quat rotationQuat){
-    rot = rotationQuat;
+    eulerRot = glm::degrees(glm::eulerAngles(rotationQuat)); // conversion radians → degrés
     dirty = true;
 }
 
-glm::quat Transform::getLocalRotation(){
-    return rot;
+glm::vec3 Transform::getLocalRotation(){
+    return eulerRot;
 }
 
 void Transform::rotate(glm::vec3 rotations){
-    float qx = sin(rotations.z/2) * cos(rotations.y/2) * cos(rotations.x/2) - cos(rotations.z/2) * sin(rotations.y/2) * sin(rotations.x/2);
-    float qy = cos(rotations.z/2) * sin(rotations.y/2) * cos(rotations.x/2) + sin(rotations.z/2) * cos(rotations.y/2) * sin(rotations.x/2);
-    float qz = cos(rotations.z/2) * cos(rotations.y/2) * sin(rotations.x/2) - sin(rotations.z/2) * sin(rotations.y/2) * cos(rotations.x/2);
-    float qw = cos(rotations.z/2) * cos(rotations.y/2) * cos(rotations.x/2) + sin(rotations.z/2) * sin(rotations.y/2) * sin(rotations.x/2);
-
-    rot *= glm::quat(qx, qy, qz, qw);//glm::quat(glm::radians(rotations));
+    eulerRot += rotations;
     dirty = true;
 }
 
 glm::vec3 Transform::applyRotation(glm::vec3 vector){
-    // glm::mat4 rotationMatrix = glm::mat4_cast(rot);
+    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.x), glm::vec3(1, 0, 0));
+    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.y), glm::vec3(0, 1, 0));
+    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.z), glm::vec3(0, 0, 1));
 
-    glm::vec3 u(rot.x, rot.y, rot.z);
-    float s = rot.w;
+    glm::mat4 rotationMatrix;
+    if(rotationOrder == YXZ){
+        rotationMatrix = rotY * rotX * rotZ;
+    } else if(rotationOrder == XYZ){
+        rotationMatrix = rotX * rotY * rotZ;
+    } else {
+        rotationMatrix = rotZ * rotY * rotX;
+    }
 
-    return 2.f * glm::dot(u, vector) * u
-            + (s * s - glm::dot(u, vector)) * vector
-            + 2.f * s * glm::cross(u, vector);
-
-
-    // glm::vec4 result = rotationMatrix * glm::vec4(vector, 0.0f);
-    // return glm::vec3(result);
+    glm::vec4 result = rotationMatrix * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
+    return glm::vec3(result);
 }
 
 glm::mat4 Transform::getModelMatrix(){
@@ -160,7 +184,7 @@ bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
 
 OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
     OverlapingShape res;
-    glm::vec3 planeToSphere = transformA.getLocalPosition() - transformB.getLocalPosition();
+    glm::vec3 planeToSphere = transformA.getGlobalPosition() - transformB.getGlobalPosition();
     
     float distToPlane = glm::dot(planeToSphere, planeB.normal);
 
@@ -168,7 +192,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
         res.exist = true;
         res.correctionDepth = abs(distToPlane - sphereA.radius);
         res.normal = -planeB.normal;
-        res.position = transformA.getLocalPosition() - sphereA.radius * res.normal;
+        res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 
     return res;
@@ -177,7 +201,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
 OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
 
-    glm::vec3 difference = transformB.getLocalPosition() - transformA.getLocalPosition();
+    glm::vec3 difference = transformB.getGlobalPosition() - transformA.getGlobalPosition();
 
     float rSq = sphereB.radius * sphereB.radius;
     float eSq = glm::length(difference);
@@ -193,7 +217,7 @@ OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &
     res.exist = true;
     res.correctionDepth = 0;
     res.normal = glm::normalize(-difference);
-    res.position = transformA.getLocalPosition() + (a-f) * rayA.ray_direction;
+    res.position = transformA.getGlobalPosition() + (a-f) * rayA.ray_direction;
     return res;
 }
 
@@ -241,7 +265,7 @@ OverlapingShape aabbIntersection(Aabb &aabbA, Transform &transformA, Aabb &aabbB
         res.exist = true;
         res.normal = glm::normalize(globalPosA - globalPosB);
         res.correctionDepth = 0;
-        res.position = transformA.getLocalPosition() + (globalPosA - globalPosB) / 2.f;
+        res.position = transformA.getGlobalPosition() + (globalPosA - globalPosB) / 2.f;
     }
 
     return res;
@@ -370,7 +394,7 @@ OverlapingShape oobbIntersection(Oobb &oobbA, Transform &transformA, Oobb &oobbB
         res.normal = -res.normal;
     }
 
-    res.position = transformA.getLocalPosition() + res.normal * res.correctionDepth;
+    res.position = transformA.getGlobalPosition() + res.normal * res.correctionDepth;
     
     return res;
 }
@@ -436,7 +460,7 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
 
     glm::vec3 closestGlobal = glm::vec3(transformA.getModelMatrix() * glm::vec4(closest, 1.f));
     // TODO : fix getGlobalPosition !!
-    glm::vec3 direction = transformB.getLocalPosition() - closestGlobal;
+    glm::vec3 direction = transformB.getGlobalPosition() - closestGlobal;
     float distance = glm::length(direction);
 
     if (distance > sphereB.radius) return res;
@@ -459,14 +483,14 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
     // SPHERE
     if(shapeA.shapeType == SPHERE && shapeB.shapeType == SPHERE){
         float radiusSum = shapeA.sphere.radius + shapeB.sphere.radius;
-        float distance = glm::length(transformA.getLocalPosition() - transformB.getLocalPosition());
+        float distance = glm::length(transformA.getGlobalPosition() - transformB.getGlobalPosition());
         
         float dist = distance - radiusSum;
         if(dist < 0){
             res.exist = true;
             res.correctionDepth = -dist;
-            res.normal = glm::normalize(transformA.getLocalPosition() - transformB.getLocalPosition());
-            res.position = transformA.getLocalPosition() - shapeA.sphere.radius * res.normal;
+            res.normal = glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
+            res.position = transformA.getGlobalPosition() - shapeA.sphere.radius * res.normal;
         }
     } 
     

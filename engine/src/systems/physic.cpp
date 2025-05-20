@@ -88,6 +88,7 @@ void PhysicSystem::solver(){
         Transform &tB = ecs.GetComponent<Transform>(overlapping.entityB);
  
         if(rbA.type == RigidBody::KINEMATIC || rbB.type == RigidBody::KINEMATIC) continue;
+        if(rbA.type == RigidBody::STATIC && rbB.type == RigidBody::STATIC) continue;
 
         float invMassSum = rbA.invMass + rbB.invMass;
 
