@@ -259,20 +259,24 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent<Transform>(level, levelTransform);
     std::unique_ptr<SpatialNode> levelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(level));
     
-    // Entity wall1 = generateWall(ecs, levelNode.get());
-    // ecs.GetComponent<Transform>(wall1).rotate({180,0,0});
-    // ecs.GetComponent<Transform>(wall1).translate({0,-10,0});
-    // Entity wall2 = generateWall(ecs, levelNode.get());
-    // ecs.GetComponent<Transform>(wall2).rotate({90,0,0});
-    // ecs.GetComponent<Transform>(wall2).translate({-10,0,0});
+    Entity wall1 = generateWall(ecs, levelNode.get());
+    ecs.GetComponent<Transform>(wall1).rotate({180,0,0});
+    ecs.GetComponent<Transform>(wall1).translate({0,10,0});
+    Entity wall2 = generateWall(ecs, levelNode.get());
+    ecs.GetComponent<Transform>(wall2).rotate({-90,0,0});
+    ecs.GetComponent<Transform>(wall2).translate({0,5,5});
     Entity wall3 = generateWall(ecs, levelNode.get());
-    // Entity wall4 = generateWall(ecs, levelNode.get());
-    // Entity wall5 = generateWall(ecs, levelNode.get());
+    ecs.GetComponent<Transform>(wall3).rotate({0,0,90});
+    ecs.GetComponent<Transform>(wall3).translate({5,5,0});
+    Entity wall4 = generateWall(ecs, levelNode.get());
+    ecs.GetComponent<Transform>(wall4).rotate({0,0,-90});
+    ecs.GetComponent<Transform>(wall4).translate({-5,5,0});
+    Entity wall5 = generateWall(ecs, levelNode.get());
 
 
     Entity levelCameraEntity = ecs.CreateEntity();
     Transform cameraTransform;
-    cameraTransform.translate({0, 10, -10});
+    cameraTransform.translate({0, 10, -15});
     CameraComponent levelCamComp;
     levelCamComp.needActivation = true;
 

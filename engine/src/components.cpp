@@ -124,10 +124,8 @@ glm::vec3 Transform::getLocalPosition(){
     return pos;
 }
 
-glm::vec3 Transform::getGlobalPosition(){
-    glm::vec4 globalPos = modelMatrix * glm::vec4(pos, 1);
-    glm::vec3 res = {globalPos.x, globalPos.y, globalPos.z}; 
-    return res;
+glm::vec3 Transform::getGlobalPosition() {
+    return glm::vec3(modelMatrix[3]);
 }
     
 void Transform::setLocalRotation(glm::vec3 rotationAngles){
@@ -177,6 +175,20 @@ void Transform::translate(glm::vec3 translation){
 }
 
 
+float magnitudeSq(glm::vec3 v){
+    return glm::dot(v,v);
+}
+
+glm::vec3 closestPoint(glm::vec3 rayOrigin, glm::vec3 rayDirection, glm::vec3 point){
+    float t = glm::dot(point - rayOrigin, rayDirection);
+    t = std::max(t, 0.f);
+    return rayOrigin + rayDirection * t;
+}
+
+glm::vec3 closestPoint(glm::vec3& planeNormal, glm::vec3& point){
+    float distance = glm::dot(planeNormal, point);
+    return point - planeNormal * distance;
+}
 
 bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
     return (checker.mask & checked.layer) != 0;
@@ -184,14 +196,21 @@ bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
 
 OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
     OverlapingShape res;
-    glm::vec3 planeToSphere = transformA.getGlobalPosition() - transformB.getGlobalPosition();
     
-    float distToPlane = glm::dot(planeToSphere, planeB.normal);
+    
+    glm::vec3 globalPlaneNormal = glm::normalize(transformB.applyRotation(planeB.normal));
+    glm::vec3 globalPlaneLeft = glm::normalize(transformB.applyRotation(planeB.left));
+    glm::vec3 globalSpherePos = transformA.getGlobalPosition();
+    glm::vec3 globalPlanePos = transformB.getGlobalPosition();
 
-    if(distToPlane < sphereA.radius){
+    float distanceFromPlane = glm::dot(globalPlaneNormal, globalSpherePos - (globalPlanePos + globalPlaneLeft));
+
+    if(distanceFromPlane < 0.0f) return res;
+
+    if(distanceFromPlane < sphereA.radius){
         res.exist = true;
-        res.correctionDepth = abs(distToPlane - sphereA.radius);
-        res.normal = planeB.normal;
+        res.correctionDepth = abs(distanceFromPlane - sphereA.radius);
+        res.normal = globalPlaneNormal;
         res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 
