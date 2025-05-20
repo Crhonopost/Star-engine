@@ -26,6 +26,7 @@ public:
         ACTION_LOOK_RIGHT,
         ACTION_LOCK_POSITION,
         ACTION_JUMP,
+        ACTION_INTERACT,
 
         EDITOR_SWITCH_MODE
     };

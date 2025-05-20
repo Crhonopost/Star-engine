@@ -35,8 +35,8 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
     Light lightSource;
     lightSource.color = color;
     
-    ecs.AddComponent<Transform>(otherEntity, otherTransform);
-    ecs.AddComponent<Light>(otherEntity, lightSource);
+    ecs.AddComponent(otherEntity, otherTransform);
+    ecs.AddComponent(otherEntity, lightSource);
 
     return otherEntity;
 }
@@ -110,11 +110,11 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     
     Transform crateTransform;
     crateTransform.translate(position);
-    ecs.AddComponent<Transform>(crateEntity, crateTransform);
-    ecs.AddComponent<CollisionShape>(crateEntity, crateShape);
-    ecs.AddComponent<RigidBody>(crateEntity, crateBody);
-    ecs.AddComponent<Drawable>(crateEntity, crateDrawable);
-    ecs.AddComponent<Material>(crateEntity, crateMat);
+    ecs.AddComponent(crateEntity, crateTransform);
+    ecs.AddComponent(crateEntity, crateShape);
+    ecs.AddComponent(crateEntity, crateBody);
+    ecs.AddComponent(crateEntity, crateDrawable);
+    ecs.AddComponent(crateEntity, crateMat);
 
     return crateEntity;
 }
@@ -136,9 +136,18 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 
 
     // Player entity
-    auto playerEntity = generateSpherePBR(ecs, 0.75f, {0, 0, 0});;
+    auto playerEntity = ecs.CreateEntity();
     ecs.SetEntityName(playerEntity, "Player");
-    auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
+    AnimatedDrawable playerDrawable;
+    Material playerMaterial;
+    Transform playerTransform;
+    ecs.AddComponent(playerEntity, playerTransform);
+
+    AnimatedPBRrender::loadMesh("../assets/meshes", "/Walking.glb", playerDrawable, playerMaterial);
+    ecs.AddComponent(playerEntity, playerDrawable);
+    ecs.AddComponent(playerEntity, playerMaterial);
+
+    // auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
     RigidBody playerBody;
     // playerBody.velocity = glm::vec3(1,1,0) * 2.f;
     playerBody.restitutionCoef = 1.0f;
@@ -252,16 +261,92 @@ Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     wallBody.type = RigidBody::STATIC;
     
     Transform wallTransform;
-    ecs.AddComponent<Transform>(wallEntity, wallTransform);
-    ecs.AddComponent<CollisionShape>(wallEntity, wallShape);
-    ecs.AddComponent<RigidBody>(wallEntity, wallBody);
-    ecs.AddComponent<Drawable>(wallEntity, wallDrawable);
-    ecs.AddComponent<Material>(wallEntity, wallMat);
+    ecs.AddComponent(wallEntity, wallTransform);
+    ecs.AddComponent(wallEntity, wallShape);
+    ecs.AddComponent(wallEntity, wallBody);
+    ecs.AddComponent(wallEntity, wallDrawable);
+    ecs.AddComponent(wallEntity, wallMat);
 
     std::unique_ptr<SpatialNode> wallNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(wallEntity));
     parent->AddChild(std::move(wallNode));
 
     return wallEntity;
+}
+
+
+Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &interactionEntity){
+    Entity tunnel = ecs.CreateEntity();
+    Transform tunnelTransform;
+    Drawable tunnelDrawable;
+    Material tunnelMaterial;
+    RigidBody tunnelBody;
+    CollisionShape tunnelShape;
+
+    // Render::loadSimpleMesh("../assets/meshes", "/Walking.glb", tunnelDrawable, tunnelMaterial);
+    tunnelDrawable = Render::generateCube(1, 3);
+    tunnelBody.type = RigidBody::STATIC;
+    tunnelShape.shapeType = OOBB;
+    tunnelShape.oobb.halfExtents = {0.5,0.5,0.5};
+    
+    ecs.AddComponent(tunnel, tunnelTransform);
+    ecs.AddComponent(tunnel, tunnelDrawable);
+    ecs.AddComponent(tunnel, tunnelMaterial);
+    ecs.AddComponent(tunnel, tunnelBody);
+    ecs.AddComponent(tunnel, tunnelShape);
+
+
+    interactionEntity = ecs.CreateEntity();
+    Transform interactionTransform;
+    CollisionShape interactionShape;
+
+    interactionTransform.translate({0,0.5f,0});
+    interactionShape.shapeType = SPHERE;
+    interactionShape.sphere.radius = 0.5f;
+    interactionShape.layer = 0;
+    interactionShape.mask = CollisionShape::PLAYER_LAYER;
+
+    ecs.AddComponent(interactionEntity, interactionTransform);
+    ecs.AddComponent(interactionEntity, interactionShape);
+
+    std::unique_ptr<SpatialNode> tunnelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(tunnel));
+    std::unique_ptr<SpatialNode> interactionNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(interactionEntity));
+
+    tunnelNode->AddChild(std::move(interactionNode));
+    parent.AddChild(std::move(tunnelNode));
+    return tunnel;
+}
+void generateTunnels(ecsManager &ecs, SpatialNode &parent, Entity &playerEntity, Entity &tunnelA, Entity &tunnelB){
+    Entity interactionA, interactionB;
+    tunnelA = generateSingleTunnel(ecs, parent, interactionA);
+    tunnelB = generateSingleTunnel(ecs, parent, interactionB);
+
+    CustomBehavior behaviorA;
+    behaviorA.update = [interactionA, interactionB, playerEntity, &ecs](float delta) {
+        auto actions = InputManager::getInstance().getActions();
+        
+        auto &collisionA = ecs.GetComponent<CollisionShape>(interactionA);
+        if(collisionA.isAnythingColliding() && actions[InputManager::ACTION_INTERACT].clicked){
+            Transform &playerTransform = ecs.GetComponent<Transform>(playerEntity);
+            Transform &interactionBTransform = ecs.GetComponent<Transform>(interactionB);
+            
+            playerTransform.translate(interactionBTransform.getGlobalPosition() - playerTransform.getGlobalPosition());
+        }
+    };
+    ecs.AddComponent(tunnelA, behaviorA);
+
+
+    CustomBehavior behaviorB;
+    behaviorB.update = [interactionA, interactionB, playerEntity, &ecs](float delta) {
+        auto actions = InputManager::getInstance().getActions();
+        
+        if(ecs.GetComponent<CollisionShape>(interactionB).isAnythingColliding() && actions[InputManager::ACTION_INTERACT].clicked){
+            Transform &playerTransform = ecs.GetComponent<Transform>(playerEntity);
+            Transform &interactionATransform = ecs.GetComponent<Transform>(interactionA);
+            
+            playerTransform.translate(interactionATransform.getGlobalPosition() - playerTransform.getGlobalPosition());
+        }
+    };
+    ecs.AddComponent(tunnelB, behaviorB);
 }
 
 void initScene(SpatialNode &root, ecsManager &ecs){
@@ -272,7 +357,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.SetEntityName(level, "Level1");
     Transform levelTransform;
     levelTransform.translate({0,-3,0});
-    ecs.AddComponent<Transform>(level, levelTransform);
+    ecs.AddComponent(level, levelTransform);
     std::unique_ptr<SpatialNode> levelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(level));
     
     Entity wall1 = generateWall(ecs, levelNode.get());
@@ -290,6 +375,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Entity wall5 = generateWall(ecs, levelNode.get());
 
 
+    Entity light1 = createLightSource(ecs, {0,0,0}, {1,1,1});
+
+
     Entity levelCameraEntity = ecs.CreateEntity();
     Transform cameraTransform;
     cameraTransform.translate({0, 10, -15});
@@ -297,9 +385,17 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     levelCamComp.target = cameraTransform.getGlobalPosition() + glm::vec3(0,0,-1);
     levelCamComp.needActivation = true;
 
-    ecs.AddComponent<Transform>(levelCameraEntity, cameraTransform);
-    ecs.AddComponent<CameraComponent>(levelCameraEntity, levelCamComp);
+    ecs.AddComponent(levelCameraEntity, cameraTransform);
+    ecs.AddComponent(levelCameraEntity, levelCamComp);
     levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(levelCameraEntity)));
+    
+    levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
+
+    Entity tunnelA, tunnelB;
+    generateTunnels(ecs, *levelNode.get(), playerEntity, tunnelA, tunnelB);
+
+    ecs.GetComponent<Transform>(tunnelA).translate({-2,0,0});
+    ecs.GetComponent<Transform>(tunnelB).translate({2,0,0});
 
 
     auto rootEntity = ecs.CreateEntity();
@@ -363,8 +459,8 @@ void initScene2(SpatialNode &root, ecsManager &ecs){
     
     auto b1Transform = Transform();
     b1Transform.translate({0,20,0});
-    ecs.AddComponent<CollisionShape>(b1Entity, b1Collision);
-    ecs.AddComponent<Transform>(b1Entity, b1Transform);
+    ecs.AddComponent(b1Entity, b1Collision);
+    ecs.AddComponent(b1Entity, b1Transform);
     
     auto b2Entity = ecs.CreateEntity();
     ecs.SetEntityName(b2Entity, "b2");
@@ -374,8 +470,8 @@ void initScene2(SpatialNode &root, ecsManager &ecs){
     
     auto b2Transform = Transform();
     b2Transform.translate({0,20,0});
-    ecs.AddComponent<CollisionShape>(b2Entity, b2Collision);
-    ecs.AddComponent<Transform>(b2Entity, b2Transform);
+    ecs.AddComponent(b2Entity, b2Collision);
+    ecs.AddComponent(b2Entity, b2Transform);
 
 
 
@@ -495,7 +591,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     continuousRotation.update = [&root](float deltaTime){
         root.transform->rotate(glm::vec3(0, deltaTime * 10.f, 0));
     };
-    ecs.AddComponent<CustomBehavior>(rootEntity, continuousRotation);
+    ecs.AddComponent(rootEntity, continuousRotation);
 
     Program::programs.push_back(std::make_unique<PBR>());
     for(int i=0; i<5; i++){
@@ -529,7 +625,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
         float direction = cos(totalTime); 
         transfo.translate({0,direction * deltaTime * 10.f,0});
     };
-    ecs.AddComponent<CustomBehavior>(movingLight, oscilatingLight);
+    ecs.AddComponent(movingLight, oscilatingLight);
 
 
 
@@ -551,9 +647,9 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     Material animationMaterial;
     animationMaterial.albedo = {0.5f,0.5f,0.5f};
     AnimatedPBRrender::loadMesh("../assets/meshes", "/Walking.glb", animationDraw, animationMaterial);
-    ecs.AddComponent<Transform>(animationEntity, animationTransform);
-    ecs.AddComponent<AnimatedDrawable>(animationEntity, animationDraw);
-    ecs.AddComponent<Material>(animationEntity, animationMaterial);
+    ecs.AddComponent(animationEntity, animationTransform);
+    ecs.AddComponent(animationEntity, animationDraw);
+    ecs.AddComponent(animationEntity, animationMaterial);
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
 }
@@ -603,10 +699,10 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     RigidBody groundBody;
     groundBody.type = RigidBody::STATIC;
 
-    ecs.AddComponent<Transform>(groundE, groundTransform);
-    ecs.AddComponent<RigidBody>(groundE, groundBody);
-    ecs.AddComponent<CollisionShape>(groundE, groundShape);
-    ecs.AddComponent<Drawable>(groundE, groundDraw);
-    ecs.AddComponent<Material>(groundE, groundMat);
+    ecs.AddComponent(groundE, groundTransform);
+    ecs.AddComponent(groundE, groundBody);
+    ecs.AddComponent(groundE, groundShape);
+    ecs.AddComponent(groundE, groundDraw);
+    ecs.AddComponent(groundE, groundMat);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(groundE)));
 }

@@ -327,6 +327,7 @@ void gameUpdate(float deltaTime){
     lightRenderSystem->update();
     renderSystem->update(view);
     pbrRenderSystem->update(view);
+    animatedPbrRenderSystem->update(view, deltaTime);
 }
 
 int main( void )

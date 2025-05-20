@@ -93,7 +93,7 @@ void CalculateAnimationPose(const std::vector<Bone>& bones,
     std::vector<glm::mat4> modelMatrices(bones.size());
 
     for(int i = 0; i < bones.size(); i++) {
-        localTransforms[i] = bones[i].localTransform * animationTransforms[i];
+        localTransforms[i] = bones[i].localTransform;// * animationTransforms[i];
     }
 
     modelMatrices[0] = localTransforms[0];

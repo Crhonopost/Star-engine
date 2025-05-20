@@ -33,6 +33,7 @@ InputManager::InputManager() {
     actions[ACTION_LOCK_POSITION] = { GLFW_KEY_R};
 
     actions[ACTION_JUMP] = { GLFW_KEY_SPACE};
+    actions[ACTION_INTERACT] = { GLFW_KEY_LEFT_CONTROL};
 
     actions[EDITOR_SWITCH_MODE] = {GLFW_KEY_ENTER};
 }
