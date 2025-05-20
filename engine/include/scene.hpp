@@ -143,7 +143,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     Transform playerTransform;
     ecs.AddComponent(playerEntity, playerTransform);
 
-    AnimatedPBRrender::loadMesh("../assets/meshes", "/Walking.glb", playerDrawable, playerMaterial);
+    AnimatedPBRrender::loadMesh("../assets/meshes/Player", "/Run.glb", playerDrawable, playerMaterial);
     ecs.AddComponent(playerEntity, playerDrawable);
     ecs.AddComponent(playerEntity, playerMaterial);
 
@@ -349,14 +349,10 @@ void generateTunnels(ecsManager &ecs, SpatialNode &parent, Entity &playerEntity,
     ecs.AddComponent(tunnelB, behaviorB);
 }
 
-void initScene(SpatialNode &root, ecsManager &ecs){
-    Program::programs.push_back(std::make_unique<PBR>());   
-    Entity playerEntity = generatePlayer(ecs, root);
-
+Entity generateLevel1(SpatialNode &root, ecsManager &ecs){
     Entity level = ecs.CreateEntity();
     ecs.SetEntityName(level, "Level1");
     Transform levelTransform;
-    levelTransform.translate({0,-3,0});
     ecs.AddComponent(level, levelTransform);
     std::unique_ptr<SpatialNode> levelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(level));
     
@@ -382,17 +378,28 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Transform cameraTransform;
     cameraTransform.translate({0, 10, -15});
     CameraComponent levelCamComp;
-    levelCamComp.target = cameraTransform.getGlobalPosition() + glm::vec3(0,0,-1);
-    levelCamComp.needActivation = true;
+    levelCamComp.direction = glm::vec3(0,0,-1);
+    // levelCamComp.needActivation = true;
 
     ecs.AddComponent(levelCameraEntity, cameraTransform);
     ecs.AddComponent(levelCameraEntity, levelCamComp);
     levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(levelCameraEntity)));
     
     levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
+    root.AddChild(std::move(levelNode));
+
+    return level;
+}
+
+void initScene(SpatialNode &root, ecsManager &ecs){
+    Program::programs.push_back(std::make_unique<PBR>());   
+    Entity playerEntity = generatePlayer(ecs, root);
+
+    Entity levelEntity = generateLevel1(root, ecs);
+    ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
 
     Entity tunnelA, tunnelB;
-    generateTunnels(ecs, *levelNode.get(), playerEntity, tunnelA, tunnelB);
+    generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
 
     ecs.GetComponent<Transform>(tunnelA).translate({-2,0,0});
     ecs.GetComponent<Transform>(tunnelB).translate({2,0,0});
@@ -402,13 +409,24 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Transform rootTransform;
     ecs.AddComponent(rootEntity, rootTransform);
     root.transform = &ecs.GetComponent<Transform>(rootEntity);
-    root.AddChild(std::move(levelNode));
 }
 
 void initScene2(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
 
     Entity playerEntity = generatePlayer(ecs, root);
+
+
+    Entity levelEntity = generateLevel1(root, ecs);
+    ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
+
+    Entity tunnelA, tunnelB;
+    generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
+
+    ecs.GetComponent<Transform>(tunnelA).translate({0,20,0});
+    ecs.GetComponent<Transform>(tunnelB).translate({-198,-200,-200});
+
+
 
     glm::vec3 planetCenter = {14, 0, 14};
     auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
@@ -517,7 +535,8 @@ void initScene2(SpatialNode &root, ecsManager &ecs){
         // direction = glm::normalize(direction);
         // camTransform.setLocalRotation(Camera::lookAtQuat(direction));
 
-        ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
+        ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(targetTransform.getGlobalPosition() - camTransform.getGlobalPosition());
+        // ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
         ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
 
         
