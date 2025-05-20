@@ -30,6 +30,7 @@ uniform bool hasAoMap = false;
 const int MAX_LIGHT = 20;
 uniform int lightCount = 0;
 uniform vec3 lightPositions[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(2.f,2.f,0.f));
+// uniform samplerCube lightDepthMaps[MAX_LIGHT];
 uniform sampler2D lightDepthMaps[MAX_LIGHT];
 uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
 uniform float indensiteScaleLight = 1.f;
@@ -171,15 +172,23 @@ void main(){
     color = vec4(colorPBR, 1.0);
 
     for(int lightI=0; lightI < lightCount; lightI++){
-        vec3 diff = WorldPos - lightPositions[lightI];
+        vec3 diff = lightPositions[lightI] - WorldPos;
         vec3 direction = normalize(diff);
-        vec2 coord = octahedral_mapping(direction);
-        float depth = texture(lightDepthMaps[lightI], coord).r;// * 1000.f;
 
-        if(depth < length(diff)/25.f){
-            color = vec4(1,0,0,1);
 
-        }
+        vec2 coord = octEncode(direction);
+        vec2 uv = coord * 0.5 + 0.5; 
+        // uv.y = 1.0 - uv.y;
+        
+        // float depth = texture(lightDepthMaps[lightI], coord).r;// * 1000.f;
+        float depth = texture(lightDepthMaps[lightI], uv).r;
+
+        // float depth = texture(lightDepthMaps[lightI], direction).r;// * 1000.f;
+
+        color = vec4(depth,depth,depth,1);
+        // if(depth < length(diff)/25.f){
+
+        // }
         // if(depth < length(diff))
     }
 

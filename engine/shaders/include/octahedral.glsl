@@ -1,5 +1,5 @@
-vec2 octahedral_mapping(vec3 co)
-{
+/** Assumes that v is a unit vector. The result is an octahedral vector on the [-1, +1] square. */
+vec2 octEncode(in vec3 co) {
     // projection onto octahedron
 	co /= dot( vec3(1), abs(co) );
 
@@ -13,8 +13,9 @@ vec2 octahedral_mapping(vec3 co)
 }
 
 
-vec3 octahedral_unmapping(vec2 co)
-{
+/** Returns a unit vector. Argument o is an octahedral vector packed via octEncode,
+    on the [-1, +1] square*/
+vec3 octDecode(vec2 co) {
     co = co * 2.0 - 1.0;
 
     vec2 abs_co = abs(co);

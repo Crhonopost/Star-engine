@@ -12,7 +12,7 @@ class Render: public System {
     public:
     void update(glm::mat4 &view);
 
-    static Drawable generateSphere(float radius);
+    static Drawable generateSphere(float radius, bool inward=false);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide, bool front = false);
     static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
     static Drawable loadSimpleMesh(char *path);

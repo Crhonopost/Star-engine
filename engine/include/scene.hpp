@@ -1,6 +1,7 @@
 #include <engine/include/spatial.hpp>
 #include <engine/include/rendering.hpp>
 #include <engine/include/input.hpp>
+#include <engine/include/rendering.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
 
@@ -233,7 +234,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto lightEntity = ecs.CreateEntity();
     ecs.SetEntityName(lightEntity, "Light source");
     Transform lightTransform;
-    lightTransform.translate(glm::vec3(0,15,5));
+    lightTransform.translate(glm::vec3(0,15,0));
     Light lightSource;
     lightSource.color = glm::vec3(1,1,1);
     CollisionShape otherCollision;
@@ -467,6 +468,10 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
 
     // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
+
+
+    auto light1 = createLightSource(ecs, {0,25,0}, {1,0,0});
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
 
 
     Entity groundE = ecs.CreateEntity();

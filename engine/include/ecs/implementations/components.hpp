@@ -4,19 +4,16 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <vector>
 #include <functional>
 #include <iostream>
 #include <unordered_set>
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
-#include <engine/include/rendering.hpp>
-#include <engine/include/animation.hpp>
 
 template<typename T>
 class ComponentInspector;
-class Program;
-class Texture;
 
 struct Component{
     Component(const Component&) = delete;
@@ -24,102 +21,9 @@ struct Component{
 };
 
 
-struct Vertex {
-    glm::vec3 position;
-    glm::vec2 texCoord;
-    glm::vec3 normal;
-    glm::vec4 boneWeights;
-    glm::ivec4 boneIndices;
-};
-
-struct Drawable: Component {
-    GLuint VAO, VBO, EBO;
-    int indexCount;
-
-    Drawable* lodLower = nullptr;
-    float switchDistance = -1.0f;
-
-    Drawable(): VAO(0), VBO(0), EBO(0){};
-
-    Drawable(Drawable&& other) noexcept
-        : VAO(other.VAO), VBO(other.VBO), EBO(other.EBO), 
-          indexCount(other.indexCount),
-          lodLower(other.lodLower), switchDistance(other.switchDistance) {
-        other.VAO = 0;
-        other.VBO = 0;
-        other.EBO = 0;
-    }
-
-    Drawable& operator=(Drawable&& other) noexcept {
-        if (this != &other) {
-            glDeleteVertexArrays(1, &VAO);
-            glDeleteBuffers(1, &VBO);
-            glDeleteBuffers(1, &EBO);
-
-            VAO = other.VAO;
-            VBO = other.VBO;
-            EBO = other.EBO;
-            indexCount = other.indexCount;
-            lodLower = other.lodLower;
-            switchDistance = other.switchDistance;
-
-            other.VAO = 0;
-            other.VBO = 0;
-            other.EBO = 0;
-        }
-        return *this;
-    }
-
-    ~Drawable() {
-        if (VAO != 0) {
-            glDeleteVertexArrays(1, &VAO);
-        }
-        if (VBO != 0) {
-            glDeleteBuffers(1, &VBO);
-        }
-        if (EBO != 0) {
-            glDeleteBuffers(1, &EBO);
-        }
-        // Les textures seront automatiquement détruites grâce au destructeur de std::vector
-    }
-
-    void init(std::vector<Vertex>&, std::vector<short unsigned int>&);
-    void draw(float renderDistance);
-};
-
-struct AnimatedDrawable: Drawable{
-    bool playing = false;
-    std::vector<Bone> bones;
-    Animation animation;
-};
-
 struct CameraComponent: Component {
     bool activated = false;
     bool needActivation = false;
-};
-
-struct CustomProgram: Component {
-    Program *programPtr;
-    CustomProgram():Component(){};
-    CustomProgram(Program *progPtr);
-};
-
-struct Material: Component {
-    glm::vec3 albedo = {1.f, 0.7f, 0.77f};
-    float metallic = 0.5f;
-    float roughness = 0.5f;
-    float ao = 1.0f;
-
-    Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
-
-    Material();
-};
-
-
-struct Light: Component {
-    glm::vec3 color;
-    float strength;
-    GLuint depthID, shaderLoc;
 };
 
 enum RotationOrderEnum {

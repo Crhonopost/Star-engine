@@ -43,55 +43,9 @@ public:
 
 
 // Imgui
-template<>
-inline void ComponentInspector<Drawable>::DisplayComponentGUI(Drawable& drawable){
-    ImGui::SeparatorText("Drawable");
-    ImGui::DragFloat("Lod switch distance", &drawable.switchDistance);
-}
-
-template<>
-inline void ComponentInspector<AnimatedDrawable>::DisplayComponentGUI(AnimatedDrawable& drawable){
-    ImGui::SeparatorText("Animated Drawable");
-    ImGui::DragFloat("Lod switch distance", &drawable.switchDistance);
-    if(ImGui::Checkbox("Playing", &drawable.playing));
-    ImGui::DragFloat("Animation time", &drawable.animation.currentTime, 0.01f, 0.0f, drawable.animation.duration / 1000.f);
-}
-
-template<>
-inline void ComponentInspector<CustomProgram>::DisplayComponentGUI(CustomProgram& prog){}
 
 template<>
 inline void ComponentInspector<CameraComponent>::DisplayComponentGUI(CameraComponent& cameraComponent) {}
-
-template<>
-inline void ComponentInspector<Material>::DisplayComponentGUI(Material& material){
-    ImGui::SeparatorText("Material");
-    
-    ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 5.0f);
-    ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 5.0f);
-    ImGui::SliderFloat("Ambient oclusion", &material.ao, 0.0f, 5.0f);
-    ImGui::SliderFloat3("Albedo", &material.albedo[0], 0.f, 1.f);
-    
-    // ImGui::Checkbox("use textures",&material.hasTexture);
-
-
-    // if(ImGui::SliderFloat("indensity of light", &indensiteScaleLight, 1.0f, 500.0f)){
-    //     glUniform1f(indensiteScaleLightLocation, indensiteScaleLight);
-    // }
-
-    // const char* items[] = { "gold", "oldMetal", "rock", "woods" };
-    // static int selected = currentMaterialIndex;
-    // if (ImGui::Combo("Material Folder", &selected, items, IM_ARRAYSIZE(items))) {
-    //     currentMaterialIndex = selected;
-    //     loadCurrentMaterial();
-    // }
-}
-
-template<>
-inline void ComponentInspector<Light>::DisplayComponentGUI(Light& light){
-    ImGui::SeparatorText("Light");
-    ImGui::DragFloat3("Color", &light.color.x, 0.01f, 0.0f, 1.0f);
-}
 
 
 template<>
@@ -160,51 +114,8 @@ inline void ComponentInspector<CollisionShape>::DisplayComponentGUI(CollisionSha
 // }
 
 template<>
-inline json ComponentInspector<Drawable>::GetComponentJson(Drawable& drawable){
-    // TODO: store mesh path for drawable and reference lod lower
-    return {
-        {"name", "Drawable"}, 
-        {"data", {
-            {"switch_distance", drawable.switchDistance}}
-        }
-    };
-}
-
-template<>
-inline json ComponentInspector<AnimatedDrawable>::GetComponentJson(AnimatedDrawable& drawable){
-    // TODO: store mesh path for drawable and reference lod lower
-    return {
-        {"name", "AnimatedDrawable"}
-    };
-}
-
-template<>
 inline json ComponentInspector<CameraComponent>::GetComponentJson(CameraComponent& comp){
     return {{"name", "CameraComponent"}};
-}
-
-template<>
-inline json ComponentInspector<CustomProgram>::GetComponentJson(CustomProgram& prog){
-    return {{"name", "CustomProg"}};
-}
-
-
-template<>
-inline json ComponentInspector<Material>::GetComponentJson(Material& material){
-    return {
-        {"name", "Material"},
-        {"data", {
-            {"ao", material.ao},
-            {"metallic", material.metallic},
-            {"roughness", material.roughness},
-            // {"albedo", serializeVec3(material.albedo)}
-        }}
-    };
-}
-
-template<>
-inline json ComponentInspector<Light>::GetComponentJson(Light& drawable){
-    return {{"name", "Light"}};
 }
 
 template<>

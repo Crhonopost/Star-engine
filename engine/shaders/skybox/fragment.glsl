@@ -14,7 +14,7 @@ uniform bool octahedralProjection = false;
 void main()
 {
     if(octahedralProjection){
-    	vec3 co = octahedral_unmapping(coord);
+    	vec3 co = octDecode(coord);
         FragColor = texture(skybox, co);
     } else {
         FragColor = texture(skybox, position);

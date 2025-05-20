@@ -624,12 +624,13 @@ void LightRender::update(){
         auto& light = ecs.GetComponent<Light>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
         
-        PBRrender::pbrProgPtr->updateLightPosition(associatedLight, transform.getLocalPosition());
+        PBRrender::pbrProgPtr->updateLightPosition(associatedLight, transform.getGlobalPosition());
         PBRrender::pbrProgPtr->updateLightColor(associatedLight, light.color);
 
         activationInt = Texture::getAvailableActivationInt();
         glActiveTexture(GL_TEXTURE0 + activationInt);
         glBindTexture(GL_TEXTURE_2D, light.depthID);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, light.depthCubemap.textureID);
         glUniform1i(light.shaderLoc, activationInt);
 
         associatedLight ++;
@@ -641,12 +642,16 @@ void LightRender::update(){
 void LightRender::computeLights(PBRrender *pbr, InfosRender &infosRender, Skybox *skyboxProgPtr){
     CubemapRender sceneCubemapRender(512);
     int activationInt;
+    
+    Cubemap &savedMap = sceneCubemapRender.cubemap;
 
     int lightIdx = 0;
     for(auto &lightEntity : mEntities){
         Light &light = ecs.GetComponent<Light>(lightEntity);
         Transform &lightTransform = ecs.GetComponent<Transform>(lightEntity);
 
+        // light.depthCubemap.clear();
+        // sceneCubemapRender.cubemap = light.depthCubemap;
         sceneCubemapRender.renderInfosFromPoint(lightTransform.getGlobalPosition(), infosRender, 1);
         activationInt = sceneCubemapRender.unwrapOctaProj(light.depthID, 512, skyboxProgPtr);
 
@@ -654,6 +659,8 @@ void LightRender::computeLights(PBRrender *pbr, InfosRender &infosRender, Skybox
         auto strIdx = "[" + std::to_string(lightIdx ++) + "]";
         light.shaderLoc = glGetUniformLocation(pbr->pbrProgPtr->programID, ("lightDepthMaps" + strIdx).c_str());
     }
+
+    sceneCubemapRender.cubemap = savedMap;
 }
 
 
@@ -1175,7 +1182,7 @@ int CubemapRender::unwrapOctaProj(GLuint &textureID, int resolution, Skybox *sky
 }
 
 
-Drawable Render::generateSphere(float radius){
+Drawable Render::generateSphere(float radius, bool inward){
     Drawable res;
 
     std::vector<unsigned short> indices;
@@ -1212,13 +1219,23 @@ Drawable Render::generateSphere(float radius){
             int first = (lat * (longitudeBands + 1)) + lon;
             int second = first + longitudeBands + 1;
 
-            indices.push_back(first + 1);
-            indices.push_back(second);
-            indices.push_back(first);
-            
-            indices.push_back(first + 1);
-            indices.push_back(second + 1);
-            indices.push_back(second);
+            if (inward) {
+                indices.push_back(first);
+                indices.push_back(second);
+                indices.push_back(first + 1);
+
+                indices.push_back(second);
+                indices.push_back(second + 1);
+                indices.push_back(first + 1);
+            }else {
+                indices.push_back(first + 1);
+                indices.push_back(second);
+                indices.push_back(first);
+                
+                indices.push_back(first + 1);
+                indices.push_back(second + 1);
+                indices.push_back(second);
+            }
         }
     }
 
