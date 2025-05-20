@@ -143,14 +143,16 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         glm::vec3 up      = -rb.gravityDirection;
         if(glm::length2(up) < 1e-6f) up = glm::vec3(0,1,0);
         glm::vec3 left;
+        glm::vec3 forward;
+
         if(rb.gravityCenter.x == 0 && rb.gravityCenter.y == 0 && rb.gravityCenter.z == 0){
             left    = glm::normalize(glm::cross(Camera::getInstance().camera_position - Camera::getInstance().camera_target,    glm::vec3(0,1,0)));
+            forward = glm::normalize(glm::cross(left,  up));
         } else {
             left    = glm::normalize(glm::cross(up,    glm::vec3(0,1,0)));
+            if(fabs(up.y)>0.95f)    forward = left;
+            else     forward = glm::normalize(glm::cross(left,  up));
         }
-        glm::vec3 forward;
-        if(fabs(up.y)>0.95f)    forward = left;
-        else     forward = glm::normalize(glm::cross(left,  up));
 
         auto actions = InputManager::getInstance().getActions();
         glm::vec3 inputDir(0.0f);
@@ -165,17 +167,16 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 
         float verticalSpeed = glm::dot(rb.velocity, rb.gravityDirection);
         const float jumpStrength = 8.0f;
-        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && rb.grounded ) {
+        if(actions[InputManager::ActionEnum::ACTION_JUMP].pressed && shape.isAnythingColliding() ) {
             verticalSpeed = -jumpStrength;
-            rb.grounded = false;
-        }else if(rb.grounded){
+        }else if(shape.isAnythingColliding()){
             verticalSpeed = 0.f;
         }else{
             verticalSpeed += 9.81f * dt;
         }
         
         rb.velocity = horizontalVel + rb.gravityDirection * verticalSpeed;
-        // tr.translate(rb.velocity * dt);
+        tr.translate(rb.velocity * dt);
     };
 
 

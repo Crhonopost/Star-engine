@@ -240,7 +240,6 @@ struct RigidBody: Component {
     
     bool dirty = true;
     BodyTypeEnum type = RIGID;
-    bool grounded = false;
 
     
     glm::vec3  torque = glm::vec3(0);
@@ -263,7 +262,6 @@ struct RigidBody: Component {
 
     RigidBody(RigidBody&& other) noexcept
         : type(other.type),
-          grounded(other.grounded),
           velocity(std::move(other.velocity)),
           mass(other.mass),
           restitutionCoef(other.restitutionCoef),
@@ -273,13 +271,11 @@ struct RigidBody: Component {
         other.restitutionCoef = 0.5f;
         other.frictionCoef = 0.5f;
         other.type = RIGID;
-        other.grounded = false;
     }
 
     RigidBody& operator=(RigidBody&& other) noexcept {
         if (this != &other) {
             type = other.type;
-            grounded = other.grounded;
             velocity = std::move(other.velocity);
             mass = other.mass;
             restitutionCoef = other.restitutionCoef;
@@ -289,7 +285,6 @@ struct RigidBody: Component {
             other.restitutionCoef = 0.5f;
             other.frictionCoef = 0.5f;
             other.type = RIGID;
-            other.grounded = false;
         }
         return *this;
     }

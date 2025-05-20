@@ -191,7 +191,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     if(distToPlane < sphereA.radius){
         res.exist = true;
         res.correctionDepth = abs(distToPlane - sphereA.radius);
-        res.normal = -planeB.normal;
+        res.normal = planeB.normal;
         res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 

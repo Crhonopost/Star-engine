@@ -191,7 +191,6 @@ void PhysicSystem::update(float deltaTime){
             auto& transform = ecs.GetComponent<Transform>(entity);
             rigidBody.gravityDirection = glm::normalize(rigidBody.gravityCenter - transform.getGlobalPosition());
         }
-        if(rigidBody.type == RigidBody::KINEMATIC) rigidBody.grounded = false;
     }
 
     accumulateForces();
@@ -226,11 +225,9 @@ void PhysicSystem::update(float deltaTime){
 
         if (rbA.type == RigidBody::KINEMATIC && rbB.type == RigidBody::STATIC && overlapping.aSeeB){
             tA.translate(overlapping.normal * overlapping.correctionDepth);
-            rbA.grounded = true;
         }
         else if (rbB.type == RigidBody::KINEMATIC && rbA.type == RigidBody::STATIC && overlapping.bSeeA) {
             tB.translate(overlapping.normal * overlapping.correctionDepth);
-            rbB.grounded = true;
         } 
     }
 
