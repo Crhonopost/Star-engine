@@ -21,6 +21,8 @@ public:
     float hAngle = 0;
     float vAngle = 0;
     float lastX, lastY;
+    float view_height = 600.f;
+    float view_width = 800.f;
     
     float mSpeed = 0.1f;
     float cameraSpeed = 10.5f;

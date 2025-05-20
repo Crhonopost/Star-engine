@@ -54,6 +54,7 @@ const unsigned int SCR_HEIGHT = 600;
 
 unsigned int currentWidth = SCR_WIDTH;
 unsigned int currentHeight = SCR_HEIGHT;
+int screenWidth,screenHeight;
 
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
@@ -401,6 +402,8 @@ int main( void )
         
         
         do{
+            glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
@@ -474,7 +477,10 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
-    currentWidth = width;
-    currentHeight = height;
+    // currentWidth = width;
+    // currentHeight = height;
+    Camera::getInstance().view_width = float(width);
+    Camera::getInstance().view_height = float(height);
+    std::cout<<width<<" "<<height<<std::endl;
     glViewport(0, 0, width, height);
 }

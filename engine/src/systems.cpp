@@ -15,7 +15,8 @@
 
 void renderQuad();
 
-void Render::update(glm::mat4 &view) {    
+void Render::update(glm::mat4 &view) {
+        
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
         auto& transform = ecs.GetComponent<Transform>(entity);
@@ -32,6 +33,8 @@ void Render::update(glm::mat4 &view) {
 
         program.updateViewMatrix(view);
         program.updateModelMatrix(model);
+        glm::mat4 camProj = Camera::getInstance().getP();
+        program.updateProjectionMatrix(camProj);
 
         drawable.draw(distanceToCam);
         program.afterRender();
@@ -82,6 +85,8 @@ void PBRrender::update(glm::mat4 &view){
     PBR &pbrProg = *pbrProgPtr;
     pbrProg.beforeRender();
     pbrProg.updateViewMatrix(view);
+    glm::mat4 camProj = Camera::getInstance().getP();
+    pbrProg.updateProjectionMatrix(camProj);
 
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
@@ -109,6 +114,8 @@ void AnimatedPBRrender::update(glm::mat4 &view, float deltaTime){
     PBR &pbrProg = *pbrProgPtr;
     pbrProg.beforeRender();
     pbrProg.updateViewMatrix(view);
+    glm::mat4 camProj = Camera::getInstance().getP();
+    pbrProg.updateProjectionMatrix(camProj);
 
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<AnimatedDrawable>(entity);
@@ -715,6 +722,7 @@ void CubemapRender::applyPrefilter(Program* prefilterProg, Cubemap prefilterMap)
 
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap.textureID);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
 
     prefilterProg->afterRender();
     glViewport(oldViewport[0], oldViewport[1], oldViewport[2], oldViewport[3]);

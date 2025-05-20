@@ -14,7 +14,7 @@ glm::mat4 Camera::getV(){
 }
 
 glm::mat4 Camera::getP(){
-    return glm::perspective(glm::radians(45.f), 800.0f / 600.0f, 0.1f, 9999.0f);
+    return glm::perspective(glm::radians(45.f), view_width / view_height, 0.1f, 9999.0f);
 }
 
 glm::vec3 Camera::getPosition(){

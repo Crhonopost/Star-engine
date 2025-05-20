@@ -403,6 +403,8 @@ void PhysicDebugSystem::update(){
     
     glm::mat4 V = Camera::getInstance().getV();
     program.updateViewMatrix(V);
+    glm::mat4 camProj = Camera::getInstance().getP();
+    program.updateProjectionMatrix(camProj);
     
     GLuint tempVBO;
     glGenBuffers(1, &tempVBO);
