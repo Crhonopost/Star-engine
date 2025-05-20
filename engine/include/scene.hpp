@@ -196,6 +196,22 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         
         rb.velocity = horizontalVel + rb.gravityDirection * verticalSpeed;
         tr.translate(rb.velocity * dt);
+
+        glm::quat qAlign = glm::rotation(glm::vec3(0,1,0), up);
+
+        glm::quat qYaw = glm::quat();
+         if (glm::length2(inputDir) > 1e-6f) {
+            glm::vec3 localFwd = qAlign * glm::vec3(0,0,1);
+            glm::vec3 wishDir  = inputDir;
+
+            float d = glm::clamp(glm::dot(localFwd, wishDir), -1.0f, 1.0f);
+            float ang = acos(d);
+            float s = (glm::dot(glm::cross(localFwd, wishDir), up) >= 0.0f) ? +1.0f : -1.0f;
+            qYaw = glm::angleAxis(s * ang, up);
+        }
+
+        glm::quat qFinal = qYaw * qAlign;
+        tr.setLocalRotation(qFinal);
     };
 
 

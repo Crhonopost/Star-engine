@@ -166,6 +166,8 @@ Program::Program(const char *vertexPath, const char *fragmentPath){
 
     glm::mat4 p = Camera::getInstance().getP();
     updateProjectionMatrix(p);
+    glm::mat4 camProj = Camera::getInstance().getP();
+    updateProjectionMatrix(camProj);
 }
 
 void Program::clear(){
