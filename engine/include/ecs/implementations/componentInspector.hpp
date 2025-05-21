@@ -98,7 +98,12 @@ template<>
 inline void ComponentInspector<Transform>::DisplayComponentGUI(Transform& transform) {
     ImGui::SeparatorText("Transform");
     if(ImGui::DragFloat3("Position", &transform.pos.x)) transform.dirty = true;
-    if(ImGui::DragFloat3("Rotation", &transform.eulerRot.x)) transform.dirty = true;
+    
+    // glm::vec3 rotationEuler = transform.getLocalRotation();
+    // if(ImGui::DragFloat3("Rotation", &rotationEuler.x)){
+    //     transform.dirty = true;
+    //     transform.setLocalRotation(rotationEuler);
+    // } 
 
     if(ImGui::DragFloat3("Scale", &transform.scale.x)) transform.dirty = true;
 }

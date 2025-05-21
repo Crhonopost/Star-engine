@@ -70,34 +70,6 @@ CustomProgram::CustomProgram(Program *progPtr): Component(){
 }
 
 glm::mat4 Transform::getLocalModelMatrix(){
-    const glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
-    glm::radians(eulerRot.x),
-    glm::vec3(1.0f, 0.0f, 0.0f));
-    const glm::mat4 transformY = glm::rotate(glm::mat4(1.0f),
-    glm::radians(eulerRot.y),
-    glm::vec3(0.0f, 1.0f, 0.0f));
-    const glm::mat4 transformZ = glm::rotate(glm::mat4(1.0f),
-    glm::radians(eulerRot.z),
-    glm::vec3(0.0f, 0.0f, 1.0f));
-    
-    glm::mat4 rotationMatrix;
-    switch (rotationOrder)
-    {
-        case YXZ:
-        rotationMatrix = transformY * transformX * transformZ;
-        break;
-        case XYZ:
-        rotationMatrix = transformX * transformY * transformZ;
-        break;
-        case ZYX:
-        rotationMatrix = transformZ * transformY * transformX;
-        break;
-    }
-    
-    // translation * rotation * scale (also know as TRS matrix)
-    // return glm::translate(glm::mat4(1.0f), pos) *
-    //        rotationMatrix *
-    //        glm::scale(glm::mat4(1.0f), scale);
     glm::mat4 R = glm::toMat4(rotationQuat);
     return glm::translate(glm::mat4(1.0f), pos)
          * R
@@ -133,7 +105,31 @@ glm::vec3 Transform::getGlobalPosition() {
 }
     
 void Transform::setLocalRotation(glm::vec3 rotationAngles){
-    eulerRot = rotationAngles;
+    const glm::mat4 transformX = glm::rotate(glm::mat4(1.0f),
+            glm::radians(rotationAngles.x),
+            glm::vec3(1.0f, 0.0f, 0.0f));
+    const glm::mat4 transformY = glm::rotate(glm::mat4(1.0f),
+            glm::radians(rotationAngles.y),
+            glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::mat4 transformZ = glm::rotate(glm::mat4(1.0f),
+            glm::radians(rotationAngles.z),
+            glm::vec3(0.0f, 0.0f, 1.0f));
+    
+    glm::mat4 rotationMatrix;
+    switch (rotationOrder)
+    {
+        case YXZ:
+        rotationMatrix = transformY * transformX * transformZ;
+        break;
+        case XYZ:
+        rotationMatrix = transformX * transformY * transformZ;
+        break;
+        case ZYX:
+        rotationMatrix = transformZ * transformY * transformX;
+        break;
+    }
+
+    rotationQuat = glm::toQuat(rotationMatrix);
     dirty = true;
 }
 
@@ -147,7 +143,7 @@ void Transform::setLocalRotation(const glm::quat &q) {
 }
 
 glm::vec3 Transform::getLocalRotation(){
-    return eulerRot;
+    return glm::eulerAngles(rotationQuat);
 }
 
 // void Transform::rotate(glm::vec3 rotations){
@@ -162,20 +158,7 @@ void Transform::rotate(glm::vec3 rotations){
 }
 
 glm::vec3 Transform::applyRotation(glm::vec3 vector){
-    glm::mat4 rotX = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.x), glm::vec3(1, 0, 0));
-    glm::mat4 rotY = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.y), glm::vec3(0, 1, 0));
-    glm::mat4 rotZ = glm::rotate(glm::mat4(1.0f), glm::radians(eulerRot.z), glm::vec3(0, 0, 1));
-
-    glm::mat4 rotationMatrix;
-    if(rotationOrder == YXZ){
-        rotationMatrix = rotY * rotX * rotZ;
-    } else if(rotationOrder == XYZ){
-        rotationMatrix = rotX * rotY * rotZ;
-    } else {
-        rotationMatrix = rotZ * rotY * rotX;
-    }
-
-    glm::vec4 result = rotationMatrix * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
+    glm::vec4 result = glm::toMat4(rotationQuat) * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
     return glm::vec3(result);
     // return rotationQuat * vector;
 }
@@ -216,6 +199,8 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     return res;
 }
 
+
+// TODO: fix
 OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
 
@@ -513,7 +498,7 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
         if(dist < 0){
             res.exist = true;
             res.correctionDepth = -dist;
-            res.normal = glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
+            res.normal = -glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
             res.position = transformA.getGlobalPosition() - shapeA.sphere.radius * res.normal;
         }
         return res;

@@ -133,7 +133,6 @@ class Transform: Component {
     friend class ComponentInspector<Transform>;
 
     glm::vec3 pos = { 0.0f, 0.0f, 0.0f };
-    glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 modelMatrix = glm::mat4(1.f);
     glm::quat rotationQuat = glm::quat();
@@ -168,11 +167,11 @@ class Transform: Component {
 
 
     Transform()
-    : modelMatrix(1.f), pos(0.0f), scale(1.0f), eulerRot(0.0f), rotationOrder(XYZ), dirty(true){}
+    : modelMatrix(1.f), pos(0.0f), scale(1.0f), rotationQuat(1.0f, 0.f, 0.f, 0.f), rotationOrder(XYZ), dirty(true){}
 
     Transform(Transform&& other) noexcept
         : pos(std::move(other.pos)), 
-          eulerRot(std::move(other.eulerRot)),
+          rotationQuat(std::move(other.rotationQuat)),
           scale(std::move(other.scale)),
           modelMatrix(std::move(other.modelMatrix)),
           dirty(other.dirty),
@@ -184,7 +183,7 @@ class Transform: Component {
     Transform& operator=(Transform&& other) noexcept {
         if (this != &other) {
             pos = std::move(other.pos);
-            eulerRot = std::move(other.eulerRot);
+            rotationQuat = std::move(other.rotationQuat);
             scale = std::move(other.scale);
             modelMatrix = std::move(other.modelMatrix);
             dirty = other.dirty;
@@ -193,18 +192,6 @@ class Transform: Component {
             other.dirty = true;
         }
         return *this;
-    }
-
-    void updateInterface(){
-        if(ImGui::DragFloat3("Position", &pos[0])) dirty = true;
-        if(ImGui::DragFloat3("Rotation", &eulerRot[0])) dirty = true;
-        if(ImGui::BeginMenu("Rotation order")){
-            if(ImGui::MenuItem("XYZ")) rotationOrder = XYZ;
-            if(ImGui::MenuItem("YXZ")) rotationOrder = YXZ;
-            if(ImGui::MenuItem("ZYX")) rotationOrder = ZYX;
-            ImGui::EndMenu();
-        }
-        if(ImGui::DragFloat3("Scale", &scale[0])) dirty = true;
     }
 };
 struct CustomBehavior: Component {

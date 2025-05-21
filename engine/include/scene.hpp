@@ -126,7 +126,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     Transform rayTransform;
     CollisionShape rayShape;
     rayShape.shapeType = RAY;
-    rayShape.ray.length = 3.5;
+    rayShape.ray.length = 5;
     rayShape.ray.ray_direction = glm::vec3(0,-1,0);
     rayShape.layer = 0;
     rayShape.mask = CollisionShape::ENV_LAYER;
@@ -645,18 +645,18 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(cameraEntity, cameraComponent);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity)));
 
-    // auto crateEntity = generateCrate(ecs, {0,20, 0});
-    // ecs.SetEntityName(crateEntity, "crate1");
-    // ecs.GetComponent<CollisionShape>(crateEntity).shapeType = SPHERE;
-    // ecs.GetComponent<CollisionShape>(crateEntity).sphere.radius = 2.f;
-    auto crateEntity2 = generateCrate(ecs, {0,20, 0});
+    auto crateEntity = generateCrate(ecs, {0,20, 0});
+    ecs.SetEntityName(crateEntity, "crate1");
+    ecs.GetComponent<CollisionShape>(crateEntity).shapeType = SPHERE;
+    ecs.GetComponent<CollisionShape>(crateEntity).sphere.radius = 2.f;
+    auto crateEntity2 = generateCrate(ecs, {0,10, 0});
     ecs.SetEntityName(crateEntity2, "crate2");
     // ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
     // ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
     ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = SPHERE;
     ecs.GetComponent<CollisionShape>(crateEntity2).sphere.radius = 1;
 
-    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
 
 

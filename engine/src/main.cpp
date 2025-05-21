@@ -307,6 +307,7 @@ void editorUpdate(float deltaTime){
     
     Camera::getInstance().updateInput(deltaTime);
     glm::mat4 view = Camera::getInstance().getV();
+    collisionDetectionSystem->update(deltaTime);
     lightRenderSystem->update();
     renderSystem->update(view);
     pbrRenderSystem->update(view);
