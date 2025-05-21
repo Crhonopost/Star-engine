@@ -177,6 +177,19 @@ void Transform::translate(glm::vec3 translation){
     pos += translation;
     dirty = true;
 }
+void Transform::setLocalScale(const glm::vec3 &s) {
+    scale = s;
+    dirty = true;
+}
+
+glm::vec3 Transform::getLocalScale() const {
+    return scale;
+}
+
+void Transform::changeScale(const glm::vec3 &factor) {
+    scale *= factor;
+    dirty = true;
+}
 
 
 bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){

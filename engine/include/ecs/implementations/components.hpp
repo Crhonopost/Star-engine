@@ -117,6 +117,10 @@ struct Material: Component {
     Material();
 };
 
+struct Health : Component {
+    int maxLives = 3;
+    int currentLives = 3;
+};
 
 struct Light: Component {
     glm::vec3 color;
@@ -166,6 +170,9 @@ class Transform: Component {
 
     void rotate(glm::vec3 rotations);
     void translate(glm::vec3);
+    void setLocalScale(const glm::vec3 &s);
+    glm::vec3 getLocalScale() const;
+    void changeScale(const glm::vec3 &factor);
 
     glm::mat4 getModelMatrix();
 

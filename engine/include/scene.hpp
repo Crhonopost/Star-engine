@@ -147,6 +147,12 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     ecs.AddComponent(playerEntity, playerDrawable);
     ecs.AddComponent(playerEntity, playerMaterial);
 
+    // health system
+    Health playerHealth;
+    playerHealth.maxLives = 3;
+    playerHealth.currentLives = 3;
+    ecs.AddComponent(playerEntity, playerHealth);
+
     // auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
     RigidBody playerBody;
     // playerBody.velocity = glm::vec3(1,1,0) * 2.f;
@@ -178,7 +184,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
             forward = glm::normalize(glm::cross(left,  up));
         } else {
             left    = glm::normalize(glm::cross(up,    glm::vec3(0,1,0)));
-            if(fabs(up.y)>0.95f)    forward = left;
+            if(fabs(up.y)>0.999f)    forward = left;
             else     forward = glm::normalize(glm::cross(left,  up));
         }
 
@@ -422,8 +428,10 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Entity tunnelA, tunnelB;
     generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
 
-    ecs.GetComponent<Transform>(tunnelA).translate({0,12,6});
-    ecs.GetComponent<Transform>(tunnelA).rotate({0,-39,52});
+    // ecs.GetComponent<Transform>(tunnelA).translate({0,12,6});
+    // ecs.GetComponent<Transform>(tunnelA).rotate({0,-39,52});
+    ecs.GetComponent<Transform>(tunnelA).translate({14,18,14});
+    ecs.GetComponent<Transform>(tunnelA).changeScale(glm::vec3(4.5f,10.f,4.5f));
     ecs.GetComponent<Transform>(tunnelB).translate({-198,-200,-200});
 
 
