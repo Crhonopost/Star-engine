@@ -136,6 +136,10 @@ class Transform: Component {
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 modelMatrix = glm::mat4(1.f);
     glm::quat rotationQuat = glm::quat();
+
+    glm::vec3 eulerRotStorage = glm::vec3(0);
+    bool eulerStorageDirty = true;
+
     bool dirty = true;
 
     glm::mat4 getLocalModelMatrix();

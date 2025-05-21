@@ -81,11 +81,17 @@ glm::mat4 Transform::getLocalModelMatrix(){
 void Transform::computeModelMatrix(){
     modelMatrix = getLocalModelMatrix();
     dirty = false;
+
+    if(eulerStorageDirty) eulerRotStorage = getLocalRotation();
+    eulerStorageDirty = false;
 }
-    
+
 void Transform::computeModelMatrix(const glm::mat4& parentGlobalModelMatrix){
     modelMatrix = parentGlobalModelMatrix * getLocalModelMatrix();
     dirty = false;
+
+    if(eulerStorageDirty) eulerRotStorage = getLocalRotation();
+    eulerStorageDirty = false;
 }
 
 
@@ -143,7 +149,7 @@ void Transform::setLocalRotation(const glm::quat &q) {
 }
 
 glm::vec3 Transform::getLocalRotation(){
-    return glm::eulerAngles(rotationQuat);
+    return glm::degrees(glm::eulerAngles(rotationQuat));
 }
 
 // void Transform::rotate(glm::vec3 rotations){
