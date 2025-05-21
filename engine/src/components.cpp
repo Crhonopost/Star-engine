@@ -95,9 +95,13 @@ glm::mat4 Transform::getLocalModelMatrix(){
     }
     
     // translation * rotation * scale (also know as TRS matrix)
-    return glm::translate(glm::mat4(1.0f), pos) *
-           rotationMatrix *
-           glm::scale(glm::mat4(1.0f), scale);
+    // return glm::translate(glm::mat4(1.0f), pos) *
+    //        rotationMatrix *
+    //        glm::scale(glm::mat4(1.0f), scale);
+    glm::mat4 R = glm::toMat4(rotationQuat);
+    return glm::translate(glm::mat4(1.0f), pos)
+         * R
+         * glm::scale(glm::mat4(1.0f), scale);
 }
 
 
@@ -133,8 +137,12 @@ void Transform::setLocalRotation(glm::vec3 rotationAngles){
     dirty = true;
 }
 
-void Transform::setLocalRotation(glm::quat rotationQuat){
-    eulerRot = glm::degrees(glm::eulerAngles(rotationQuat)); // conversion radians → degrés
+// void Transform::setLocalRotation(glm::quat rotationQuat){
+//     eulerRot = glm::degrees(glm::eulerAngles(rotationQuat)); // conversion radians → degrés
+//     dirty = true;
+// }
+void Transform::setLocalRotation(const glm::quat &q) {
+    rotationQuat = glm::normalize(q);
     dirty = true;
 }
 
@@ -142,8 +150,14 @@ glm::vec3 Transform::getLocalRotation(){
     return eulerRot;
 }
 
+// void Transform::rotate(glm::vec3 rotations){
+//     eulerRot += rotations;
+//     dirty = true;
+// }
 void Transform::rotate(glm::vec3 rotations){
-    eulerRot += rotations;
+    glm::vec3 radians = glm::radians(rotations);
+    glm::quat dq = glm::quat(radians);  
+    rotationQuat = glm::normalize(dq * rotationQuat);
     dirty = true;
 }
 
@@ -163,6 +177,7 @@ glm::vec3 Transform::applyRotation(glm::vec3 vector){
 
     glm::vec4 result = rotationMatrix * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
     return glm::vec3(result);
+    // return rotationQuat * vector;
 }
 
 glm::mat4 Transform::getModelMatrix(){

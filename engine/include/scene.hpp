@@ -160,7 +160,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     playerShape.mask = CollisionShape::ENV_LAYER;
     
     CustomBehavior playerBehavior;
-    playerBehavior.update = [playerEntity, &ecs, groundCheckEntity](float dt){
+    playerBehavior.update = [playerEntity, &ecs, groundCheckEntity,lastInputDir = glm::vec3(0,0,1)](float dt) mutable{
         auto& tr    = ecs.GetComponent<Transform>(playerEntity);
         auto& rb    = ecs.GetComponent<RigidBody>(playerEntity);
         auto& shape = ecs.GetComponent<CollisionShape>(playerEntity);
@@ -188,7 +188,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         if(actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)  inputDir -=  forward;
         if(actions[InputManager::ActionEnum::ACTION_LEFT    ].pressed)  inputDir +=  left;
         if(actions[InputManager::ActionEnum::ACTION_RIGHT   ].pressed)  inputDir -=  left;
-        if(glm::length2(inputDir) > 1e-6f) inputDir = glm::normalize(inputDir);
+        if(glm::length2(inputDir) > 1e-6f) {inputDir = glm::normalize(inputDir);lastInputDir = inputDir;}
         const float speed = 10.0f;
         glm::vec3 horizontalVel = inputDir * speed;
 
@@ -205,22 +205,15 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         
         rb.velocity = horizontalVel + rb.gravityDirection * verticalSpeed;
         tr.translate(rb.velocity * dt);
-
-        glm::quat qAlign = glm::rotation(glm::vec3(0,1,0), up);
-
+        glm::vec3 newUp = -glm::normalize(rb.gravityDirection);
+        if (glm::length2(newUp) < 1e-6f) newUp = glm::vec3(0,1,0);
+        glm::quat qAlign = glm::rotation(glm::vec3(0,1,0), newUp);
         glm::quat qYaw = glm::quat();
-         if (glm::length2(inputDir) > 1e-6f) {
-            glm::vec3 localFwd = qAlign * glm::vec3(0,0,1);
-            glm::vec3 wishDir  = inputDir;
+        glm::vec3 forwardLocal = qAlign * glm::vec3(0,0,1);
+        qYaw = glm::rotation(forwardLocal, lastInputDir);
 
-            float d = glm::clamp(glm::dot(localFwd, wishDir), -1.0f, 1.0f);
-            float ang = acos(d);
-            float s = (glm::dot(glm::cross(localFwd, wishDir), up) >= 0.0f) ? +1.0f : -1.0f;
-            qYaw = glm::angleAxis(s * ang, up);
-        }
-
-        glm::quat qFinal = qYaw * qAlign;
-        tr.setLocalRotation(qFinal);
+        glm::quat qFinal = glm::normalize(qYaw * qAlign);
+        ecs.GetComponent<Transform>(playerEntity).setLocalRotation(qFinal);
     };
 
 

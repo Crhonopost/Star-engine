@@ -34,7 +34,10 @@ BoneTransform  BoneAnimation::interpolate(float time) const {
             float t0 = keys[i].first, t1 = keys[i + 1].first;
             if (time >= t0 && time <= t1) {
                 float f = (time - t0) / (t1 - t0);
-                return glm::slerp(keys[i].second, keys[i + 1].second, f);
+                glm::quat a = keys[i].second;
+                glm::quat b = keys[i+1].second;
+                if (glm::dot(a,b) < 0.0f) b = -b;
+                return glm::slerp(a, b, f);
             }
         }
         return keys.back().second;
@@ -66,6 +69,7 @@ void Animation::getPose(std::vector<Bone>& bones, std::vector<glm::mat4>& outMat
             outMatrices[i] = tr.toMat4();
         }
     }
+
 }
 
 void PrintBoneState(const std::string& label, const glm::mat4& matrix) {
@@ -94,6 +98,7 @@ void CalculateAnimationPose(const std::vector<Bone>& bones,
 
     for(int i = 0; i < bones.size(); i++) {
         localTransforms[i] = bones[i].localTransform * animationTransforms[i];
+        // localTransforms[i] = animationTransforms[i];  
     }
 
     modelMatrices[0] = localTransforms[0];

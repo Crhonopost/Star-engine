@@ -136,6 +136,7 @@ class Transform: Component {
     glm::vec3 eulerRot = { 0.0f, 0.0f, 0.0f };
     glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
     glm::mat4 modelMatrix = glm::mat4(1.f);
+    glm::quat rotationQuat = glm::quat();
     bool dirty = true;
 
     glm::mat4 getLocalModelMatrix();
@@ -155,7 +156,8 @@ class Transform: Component {
     
     glm::vec3 getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);
-    void setLocalRotation(glm::quat rotationQuat);
+    // void setLocalRotation(glm::quat rotationQuat);
+    void setLocalRotation(const glm::quat &q) ;
 
     glm::vec3 applyRotation(glm::vec3 vector);
 
