@@ -246,8 +246,19 @@ struct RigidBody: Component {
     
     glm::vec3 forces=glm::vec3(0);
     glm::vec3 velocity=glm::vec3(0);
+
     glm::vec3 gravityDirection = {0,-1,0};
-    glm::vec3 gravityCenter = {0,0,0};
+    glm::vec3 gravityAnchor = {0,0,0};
+    bool useGravityAnchor = false;
+    void setGravityAnchor(glm::vec3 center){
+        gravityAnchor = center;
+        useGravityAnchor = true;
+    }
+    void removeAnchor(){
+        gravityAnchor = glm::vec3(0);
+        useGravityAnchor = false;
+    }
+    
     glm::vec3 angularVelocity=glm::vec3(0);
 
     glm::mat3 invInertia = glm::mat3(0.4);

@@ -272,7 +272,7 @@ void editorUpdate(float deltaTime){
 
         if (ImGui::Button("Load scene 1")){
             unloadScene();
-            initScene2(root, ecs);
+            initScene(root, ecs);
             afterSceneInit();
         } else if(ImGui::Button("Load scene 2")){
             unloadScene();
@@ -388,7 +388,7 @@ int main( void )
         initEcs();
         auto actions = InputManager::getInstance().getActions();
 
-        initScene2(root, ecs);
+        initScene(root, ecs);
     
         afterSceneInit();
 

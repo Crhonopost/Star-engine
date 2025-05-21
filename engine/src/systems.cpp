@@ -1144,15 +1144,14 @@ void CameraSystem::update(){
     } else {
         auto& cam = ecs.GetComponent<CameraComponent>(cams.front());        
         auto& transform = ecs.GetComponent<Transform>(cams.front());
+
+        glm::vec3 newPos = transform.getGlobalPosition();
         
-        Camera::getInstance().camera_position = transform.getGlobalPosition();
+        Camera::getInstance().camera_position = newPos;
         
         // glm::vec3 forward = glm::mat3(transform.getModelMatrix()) * glm::vec3(0,0,1);
-
-        // forward.x = -forward.x;
-        // forward.y = -forward.y;
         
-        Camera::getInstance().camera_target = Camera::getInstance().camera_position + cam.direction;// Camera::getInstance().camera_position + glm::normalize(forward);
+        Camera::getInstance().camera_target = newPos + cam.direction;// Camera::getInstance().camera_position + glm::normalize(forward);
         Camera::getInstance().camera_up = cam.up;
     }
 }

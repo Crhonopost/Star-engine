@@ -85,7 +85,7 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 
     collisionBehavior.update = [entity, &ecs](float deltaTime){
         for(auto &collidingEntity: ecs.GetComponent<CollisionShape>(entity).collidingEntities){
-            ecs.GetComponent<RigidBody>(collidingEntity).gravityCenter = ecs.GetComponent<Transform>(entity).getGlobalPosition();
+            ecs.GetComponent<RigidBody>(collidingEntity).setGravityAnchor(ecs.GetComponent<Transform>(entity).getGlobalPosition());
         }
     };
 
@@ -173,7 +173,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         glm::vec3 left;
         glm::vec3 forward;
 
-        if(rb.gravityCenter.x == 0 && rb.gravityCenter.y == 0 && rb.gravityCenter.z == 0){
+        if(rb.gravityAnchor.x == 0 && rb.gravityAnchor.y == 0 && rb.gravityAnchor.z == 0){
             left    = glm::normalize(glm::cross(Camera::getInstance().camera_position - Camera::getInstance().camera_target,    glm::vec3(0,1,0)));
             forward = glm::normalize(glm::cross(left,  up));
         } else {
@@ -349,12 +349,46 @@ void generateTunnels(ecsManager &ecs, SpatialNode &parent, Entity &playerEntity,
     ecs.AddComponent(tunnelB, behaviorB);
 }
 
-Entity generateLevel1(SpatialNode &root, ecsManager &ecs){
+Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
+    Entity levelCameraEntity = ecs.CreateEntity();
+    Transform cameraTransform;
+    cameraTransform.translate({0, 10, -15});
+    CameraComponent levelCamComp;
+    levelCamComp.direction = glm::vec3(0,0,-1);
+    ecs.AddComponent(levelCameraEntity, cameraTransform);
+    ecs.AddComponent(levelCameraEntity, levelCamComp);
+
+
     Entity level = ecs.CreateEntity();
     ecs.SetEntityName(level, "Level1");
     Transform levelTransform;
+    CollisionShape levelShape;
+    levelShape.shapeType = OOBB;
+    levelShape.oobb.halfExtents = {5,5,5};
+    levelShape.layer = 0;
+    levelShape.mask = CollisionShape::PLAYER_LAYER;
+    CustomBehavior levelBehavior;
+    levelBehavior.update = [levelCameraEntity, playerEntity, level, &ecs](float delta){
+        if(ecs.GetComponent<CollisionShape>(level).isColliding(playerEntity)){
+            auto &camComp = ecs.GetComponent<CameraComponent>(levelCameraEntity); 
+            camComp.needActivation = true;
+            auto &levelTransform = ecs.GetComponent<Transform>(level);
+            camComp.direction = glm::vec3(0,0,-1);
+            ecs.GetComponent<RigidBody>(playerEntity).removeAnchor();
+            ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0,-1,0);
+        } else {
+            ecs.GetComponent<CameraComponent>(levelCameraEntity).needActivation = false;
+        }
+    };
+    ecs.AddComponent(level, levelShape);
+    ecs.AddComponent(level, levelBehavior);
     ecs.AddComponent(level, levelTransform);
+
+    Entity light1 = createLightSource(ecs, {0,0,0}, {1,1,1});
+
     std::unique_ptr<SpatialNode> levelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(level));
+    levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(levelCameraEntity)));
+    levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
     
     Entity wall1 = generateWall(ecs, levelNode.get());
     ecs.GetComponent<Transform>(wall1).rotate({180,0,0});
@@ -371,59 +405,50 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs){
     Entity wall5 = generateWall(ecs, levelNode.get());
 
 
-    Entity light1 = createLightSource(ecs, {0,0,0}, {1,1,1});
 
-
-    Entity levelCameraEntity = ecs.CreateEntity();
-    Transform cameraTransform;
-    cameraTransform.translate({0, 10, -15});
-    CameraComponent levelCamComp;
-    levelCamComp.direction = glm::vec3(0,0,-1);
     // levelCamComp.needActivation = true;
 
-    ecs.AddComponent(levelCameraEntity, cameraTransform);
-    ecs.AddComponent(levelCameraEntity, levelCamComp);
-    levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(levelCameraEntity)));
+
     
-    levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
     root.AddChild(std::move(levelNode));
 
     return level;
 }
 
+// void initScene(SpatialNode &root, ecsManager &ecs){
+//     Program::programs.push_back(std::make_unique<PBR>());   
+//     Entity playerEntity = generatePlayer(ecs, root);
+
+//     Entity levelEntity = generateLevel1(root, ecs, playerEntity);
+//     ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
+
+//     Entity tunnelA, tunnelB;
+//     generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
+
+//     ecs.GetComponent<Transform>(tunnelA).translate({-2,0,0});
+//     ecs.GetComponent<Transform>(tunnelB).translate({2,0,0});
+
+
+//     auto rootEntity = ecs.CreateEntity();
+//     Transform rootTransform;
+//     ecs.AddComponent(rootEntity, rootTransform);
+//     root.transform = &ecs.GetComponent<Transform>(rootEntity);
+// }
+
 void initScene(SpatialNode &root, ecsManager &ecs){
-    Program::programs.push_back(std::make_unique<PBR>());   
-    Entity playerEntity = generatePlayer(ecs, root);
-
-    Entity levelEntity = generateLevel1(root, ecs);
-    ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
-
-    Entity tunnelA, tunnelB;
-    generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
-
-    ecs.GetComponent<Transform>(tunnelA).translate({-2,0,0});
-    ecs.GetComponent<Transform>(tunnelB).translate({2,0,0});
-
-
-    auto rootEntity = ecs.CreateEntity();
-    Transform rootTransform;
-    ecs.AddComponent(rootEntity, rootTransform);
-    root.transform = &ecs.GetComponent<Transform>(rootEntity);
-}
-
-void initScene2(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
 
     Entity playerEntity = generatePlayer(ecs, root);
 
 
-    Entity levelEntity = generateLevel1(root, ecs);
+    Entity levelEntity = generateLevel1(root, ecs, playerEntity);
     ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
 
     Entity tunnelA, tunnelB;
     generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
 
-    ecs.GetComponent<Transform>(tunnelA).translate({0,20,0});
+    ecs.GetComponent<Transform>(tunnelA).translate({0,12,6});
+    ecs.GetComponent<Transform>(tunnelA).rotate({0,-39,52});
     ecs.GetComponent<Transform>(tunnelB).translate({-198,-200,-200});
 
 

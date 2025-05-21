@@ -187,9 +187,9 @@ void PhysicSystem::update(float deltaTime){
     for(auto &entity: mEntities){
         auto& rigidBody = ecs.GetComponent<RigidBody>(entity);
         
-        if(rigidBody.gravityCenter.x != 0 || rigidBody.gravityCenter.y != 0 || rigidBody.gravityCenter.z != 0){
+        if(rigidBody.useGravityAnchor){
             auto& transform = ecs.GetComponent<Transform>(entity);
-            rigidBody.gravityDirection = glm::normalize(rigidBody.gravityCenter - transform.getGlobalPosition());
+            rigidBody.gravityDirection = glm::normalize(rigidBody.gravityAnchor - transform.getGlobalPosition());
         }
     }
 
