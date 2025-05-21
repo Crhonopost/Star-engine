@@ -205,16 +205,19 @@ bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
 OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
     OverlapingShape res;
     
+    
     glm::vec3 globalPlaneNormal = glm::normalize(transformB.applyRotation(planeB.normal));
     glm::vec3 globalSpherePos = transformA.getGlobalPosition();
     glm::vec3 globalPlanePos = transformB.getGlobalPosition();
 
-    float distanceFromPlane = std::abs(glm::dot(globalSpherePos - globalPlanePos, globalPlaneNormal));
+    float distanceFromPlane = glm::dot(globalPlaneNormal, globalSpherePos - globalPlanePos);
+
+    if(distanceFromPlane < 0.0f) return res;
 
     if(distanceFromPlane < sphereA.radius){
         res.exist = true;
-        res.correctionDepth = std::abs(distanceFromPlane - sphereA.radius);
-        res.normal = globalPlaneNormal;
+        res.correctionDepth = abs(distanceFromPlane - sphereA.radius);
+        res.normal = -globalPlaneNormal;
         res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 

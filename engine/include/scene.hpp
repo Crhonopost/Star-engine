@@ -284,6 +284,15 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     auto wallEntity = ecs.CreateEntity();
     Material wallMat;
+    wallMat.albedoTex = &Texture::loadTexture("../assets/images/wall/blockPieceTex.png");
+    wallMat.albedoTex->visible = true;
+    // wallMat.normalTex = &Texture::loadTexture("../assets/images/wall/.png");
+    wallMat.normalTex->visible = false;
+    // wallMat.metallicTex = &Texture::loadTexture("../assets/images/wall/.png");
+    wallMat.metallicTex->visible = false;
+    // wallMat.roughnessTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Roughness.png");
+    wallMat.aoTex = &Texture::loadTexture("../assets/images/wall/blockTex_Occ1.png");
+    wallMat.aoTex->visible = true;
     //albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex
     Drawable wallDrawable = Render::generatePlane(10, 2);
     // Render::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
@@ -421,11 +430,13 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
     ecs.AddComponent(level, levelBehavior);
     ecs.AddComponent(level, levelTransform);
 
-    Entity light1 = createLightSource(ecs, {0,0,0}, {1,1,1});
+    Entity light1 = createLightSource(ecs, {-195,-195,-200}, {1,1,1});
+    ecs.SetEntityName(light1, "Light 1");
 
     std::unique_ptr<SpatialNode> levelNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(level));
     levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(levelCameraEntity)));
     levelNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(light1)));
+
     
     Entity wall1 = generateWall(ecs, levelNode.get());
     ecs.GetComponent<Transform>(wall1).rotate({180,0,0});
@@ -503,6 +514,14 @@ Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
     ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
 
+    float lightDistance = 30.f;
+    createLightSource(ecs, planetCenter, {1,1,1});
+    createLightSource(ecs, planetCenter + glm::vec3(lightDistance,0,0), {1,0.5,0.25});
+    createLightSource(ecs, planetCenter + glm::vec3(-lightDistance,0,0), {1,0.5,0.25});
+    createLightSource(ecs, planetCenter + glm::vec3(0,0,lightDistance), {1,0.5,0.25});
+    createLightSource(ecs, planetCenter + glm::vec3(0,0,-lightDistance), {1,0.5,0.25});
+    createLightSource(ecs, planetCenter + glm::vec3(0,lightDistance,0), {1,0.5,0.25});
+    createLightSource(ecs, planetCenter + glm::vec3(0,-lightDistance,0), {1,0.5,0.25});
 
     planetNode->AddChild(std::move(planetGravityNode));
     planetNode->AddChild(std::move(drawingNode));
@@ -536,6 +555,14 @@ Entity generatePlanet2(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
     loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
     loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+
+    
+    float lightDistance = 20.f;
+    createLightSource(ecs, planetCenter, {1,1,1});
+    createLightSource(ecs, planetCenter + glm::vec3(lightDistance,0,0), {1,1,1});
+    createLightSource(ecs, planetCenter + glm::vec3(-lightDistance,0,0), {1,1,1});
+    createLightSource(ecs, planetCenter + glm::vec3(0,0,lightDistance), {1,1,1});
+    createLightSource(ecs, planetCenter + glm::vec3(0,0,-lightDistance), {1,1,1});
 
 
     planetNode->AddChild(std::move(planetGravityNode));

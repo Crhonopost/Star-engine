@@ -485,6 +485,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // currentHeight = height;
     Camera::getInstance().view_width = float(width);
     Camera::getInstance().view_height = float(height);
+
+    Camera::editor = !Camera::editor; 
+    Camera::getInstance().view_width = float(width);
+    Camera::getInstance().view_height = float(height);
+
+    Camera::editor = !Camera::editor;
     std::cout<<width<<" "<<height<<std::endl;
     glViewport(0, 0, width, height);
 }

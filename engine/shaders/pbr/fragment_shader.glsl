@@ -31,7 +31,7 @@ const int MAX_LIGHT = 20;
 uniform int lightCount = 0;
 uniform vec3 lightPositions[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(2.f,2.f,0.f));
 uniform vec3 lightColors[MAX_LIGHT];// = vec3[MAX_LIGHT](vec3(1.f));
-uniform float indensiteScaleLight = 1.f;
+uniform float indensiteScaleLight = 10.f;
 
 
 in vec3 camPos;
