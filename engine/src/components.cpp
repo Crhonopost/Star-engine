@@ -169,8 +169,9 @@ void Transform::rotate(glm::vec3 rotations){
 }
 
 glm::vec3 Transform::applyRotation(glm::vec3 vector){
-    glm::vec4 result = glm::toMat4(rotationQuat) * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
-    return glm::vec3(result);
+    // glm::vec4 result = glm::toMat4(rotationQuat) * glm::vec4(vector, 0.0f); // vecteur direction, w = 0
+    glm::mat3 rotationMatrix = glm::mat3(modelMatrix);
+    return rotationMatrix * vector;
     // return rotationQuat * vector;
 }
 
@@ -223,28 +224,49 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     return res;
 }
 
+float raycast(glm::vec3 rayOrigin, glm::vec3 rayDirection, glm::vec3 spherePosition, float sphereRadius) {
+    
+    glm::vec3 diff = rayOrigin - spherePosition;
+    float a = glm::dot(rayDirection, rayDirection);
+    float b = 2.0 * glm::dot(diff, rayDirection);
+    float c = glm::dot(diff, diff) - sphereRadius * sphereRadius;
+    float discriminant = b*b - 4.f*a*c;
+
+    if(discriminant > 0){
+        float sqrtDis = sqrt(discriminant);
+
+        float t1 = (-b -sqrtDis) / (2 * a);
+        float t2 = (-b +sqrtDis) / (2 * a);
+        
+        if (t1 > 0 && t2 > 0) return std::min(t1, t2);
+        else if (t1 > 0) return t1;
+        else if (t2 > 0) return t2;
+        else return -1;
+
+    } else if (discriminant == 0){
+        return -b / (2. * a);
+    }
+
+    return -1.;
+}
+
 
 // TODO: fix
 OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &sphereB, Transform &transformB){
     OverlapingShape res;
 
-    glm::vec3 difference = transformB.getGlobalPosition() - transformA.getGlobalPosition();
+    glm::vec3 globalPosSphere = transformB.getGlobalPosition();
+    glm::vec3 globalPosRay = transformA.getGlobalPosition();
+    
 
-    float rSq = sphereB.radius * sphereB.radius;
-    float eSq = glm::length(difference);
-    eSq *= eSq;
+    float length = raycast(globalPosRay, transformA.applyRotation(rayA.ray_direction), globalPosSphere, sphereB.radius);
 
-    float a = glm::dot(difference, rayA.ray_direction);
-
-    float bSq = eSq - (a*a);
-    float f = sqrt(rSq - bSq);
-
-    if(rSq - (eSq - (a*a)) < 0.0f) return res;
+    if(length < 0) return res;
 
     res.exist = true;
-    res.correctionDepth = 0;
-    res.normal = glm::normalize(-difference);
-    res.position = transformA.getGlobalPosition() + (a-f) * rayA.ray_direction;
+    res.correctionDepth = length;
+    res.normal = glm::normalize(globalPosRay - globalPosSphere);
+    res.position = transformA.getGlobalPosition() + res.correctionDepth  * res.normal;
     return res;
 }
 

@@ -432,7 +432,7 @@ Entity loadMeshLayer(SpatialNode &parent, ecsManager &ecs, char* folderPath, cha
 Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity, glm::vec3 planetCenter){
     auto planetEntity = generatePlanetBody(ecs, planetCenter, 23.f);
     ecs.SetEntityName(planetEntity, "Planet 1");
-    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
+    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 30.f, playerEntity);
 
 
     auto drawingNodeEntity = ecs.CreateEntity();
