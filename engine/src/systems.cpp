@@ -491,45 +491,46 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
             }
 
 
+            // Chat GPT binding pose test
             // Vérification cohérence offsetMatrix <-> globalBindPoseMatrix⁻¹
-            std::map<std::string, aiMatrix4x4> globalTransforms;
-            std::function<void(aiNode*, aiMatrix4x4)> computeGlobalTransform;
-            computeGlobalTransform = [&](aiNode* node, aiMatrix4x4 parentTransform) {
-                aiMatrix4x4 global = parentTransform * node->mTransformation;
-                globalTransforms[node->mName.C_Str()] = global;
-                for (unsigned int i = 0; i < node->mNumChildren; ++i) {
-                    computeGlobalTransform(node->mChildren[i], global);
-                }
-            };
-            computeGlobalTransform(scene->mRootNode, aiMatrix4x4());
+            // std::map<std::string, aiMatrix4x4> globalTransforms;
+            // std::function<void(aiNode*, aiMatrix4x4)> computeGlobalTransform;
+            // computeGlobalTransform = [&](aiNode* node, aiMatrix4x4 parentTransform) {
+            //     aiMatrix4x4 global = parentTransform * node->mTransformation;
+            //     globalTransforms[node->mName.C_Str()] = global;
+            //     for (unsigned int i = 0; i < node->mNumChildren; ++i) {
+            //         computeGlobalTransform(node->mChildren[i], global);
+            //     }
+            // };
+            // computeGlobalTransform(scene->mRootNode, aiMatrix4x4());
 
-            for (unsigned int j = 0; j < mesh->mNumBones; ++j) {
-                aiBone* bone = mesh->mBones[j];
-                std::string boneName = bone->mName.C_Str();
+            // for (unsigned int j = 0; j < mesh->mNumBones; ++j) {
+            //     aiBone* bone = mesh->mBones[j];
+            //     std::string boneName = bone->mName.C_Str();
 
-                auto it = globalTransforms.find(boneName);
-                if (it == globalTransforms.end()) {
-                    std::cerr << "Warning: Bone name " << boneName << " not found in node hierarchy.\n";
-                    continue;
-                }
+            //     auto it = globalTransforms.find(boneName);
+            //     if (it == globalTransforms.end()) {
+            //         std::cerr << "Warning: Bone name " << boneName << " not found in node hierarchy.\n";
+            //         continue;
+            //     }
 
-                aiMatrix4x4 globalBind = it->second;
-                aiMatrix4x4 inverseGlobalBind = globalBind;
-                inverseGlobalBind.Inverse();
+            //     aiMatrix4x4 globalBind = it->second;
+            //     aiMatrix4x4 inverseGlobalBind = globalBind;
+            //     inverseGlobalBind.Inverse();
 
-                aiMatrix4x4 offset = bone->mOffsetMatrix;
+            //     aiMatrix4x4 offset = bone->mOffsetMatrix;
 
-                float epsilon = 1e-3f;
-                bool equal = true;
-                for (int row = 0; row < 4 && equal; ++row)
-                    for (int col = 0; col < 4 && equal; ++col)
-                        if (fabs(offset[row][col] - inverseGlobalBind[row][col]) > epsilon)
-                            equal = false;
+            //     float epsilon = 1e-3f;
+            //     bool equal = true;
+            //     for (int row = 0; row < 4 && equal; ++row)
+            //         for (int col = 0; col < 4 && equal; ++col)
+            //             if (fabs(offset[row][col] - inverseGlobalBind[row][col]) > epsilon)
+            //                 equal = false;
 
-                if (!equal) {
-                    std::cerr << "Mismatch in offset matrix for bone: " << boneName << "\n";
-                }
-            }
+            //     if (!equal) {
+            //         std::cerr << "Mismatch in offset matrix for bone: " << boneName << "\n";
+            //     }
+            // }
 
 
 
@@ -584,7 +585,7 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
                 // boneAnim.rotationKeys.push_back({data.mTime, {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z}});
                 
                 glm::quat rotGLM = {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z};
-                boneAnim.rotationKeys.push_back({data.mTime, tPoseInverse * rotGLM});
+                boneAnim.rotationKeys.push_back({data.mTime, rotGLM});
             }
 
             for(int scaleIdx=0; scaleIdx<aiBoneAnim->mNumScalingKeys; scaleIdx++){

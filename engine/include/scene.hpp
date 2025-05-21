@@ -566,26 +566,51 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     CameraComponent cameraComponent;
     cameraComponent.needActivation = true;
     cameraUpdate.update = [playerEntity, cameraEntity, &ecs](float deltaTime){
+        const float stopDist = 20.f;
+
         RigidBody& targetBody = ecs.GetComponent<RigidBody>(playerEntity);
         Transform &targetTransform = ecs.GetComponent<Transform>(playerEntity);
-        
+        glm::vec3 targetPosition = targetTransform.getGlobalPosition();
+
         Transform &camTransform = ecs.GetComponent<Transform>(cameraEntity);
+        CameraComponent &camComp = ecs.GetComponent<CameraComponent>(cameraEntity);
 
         glm::vec3 up = glm::length2(targetBody.gravityDirection) > 1e-6f
                    ? -glm::normalize(targetBody.gravityDirection)
                    : glm::vec3(0,1,0);
 
-        glm::vec3 worldUp = glm::vec3(0,1,0);
-        glm::vec3 right   = glm::normalize(glm::cross(up, worldUp));
+        glm::vec3 diffTarget = camTransform.getGlobalPosition() - targetTransform.getGlobalPosition();
+        glm::vec3 right   = glm::normalize(glm::cross(up, glm::normalize(diffTarget)));
         glm::vec3 forward = glm::normalize(glm::cross(right, up));
+
 
         const float behindDistance = 10.0f;
         const float aboveDistance  = 26.0f;
-        glm::vec3 camOffset = -forward * behindDistance + up * aboveDistance;
-        camTransform.setLocalPosition(targetTransform.getGlobalPosition() + camOffset);
+        const float predictionDistance = 15.f;
+        const float minSpeedRequierd = 0.5f;
+
+
+        glm::vec3 goalPos;
         
-        ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(camTransform.getGlobalPosition() - targetTransform.getGlobalPosition());
-        ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
+        glm::vec3 goalTarget;
+        if(glm::length(targetBody.velocity) >= minSpeedRequierd){
+            goalTarget = targetPosition + glm::normalize(targetBody.velocity) * predictionDistance;
+            goalPos = targetPosition + up * aboveDistance + glm::normalize(targetBody.velocity) * behindDistance;
+        } else {
+            goalTarget = targetPosition;
+            goalPos = targetPosition + up * (aboveDistance + behindDistance);
+        }
+        glm::vec3 goalDirection = glm::normalize(goalPos - goalTarget);
+        
+        
+        glm::vec3 newPos = glm::mix(camTransform.getGlobalPosition(), goalPos, deltaTime);
+
+        glm::vec3 newDirection = glm::mix(camComp.direction, goalDirection, deltaTime);
+
+        camTransform.setLocalPosition(newPos);
+        // ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(camTransform.getGlobalPosition() - targetTransform.getGlobalPosition());
+        camComp.direction = newDirection;
+        // ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
     };
     ecs.AddComponent(cameraEntity, cameraUpdate);
     ecs.AddComponent(cameraEntity, cameraTransform);
