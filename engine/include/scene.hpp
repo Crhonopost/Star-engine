@@ -117,6 +117,41 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
 }
 
 
+Entity generateEgg(ecsManager &ecs, SpatialNode *parent, glm::vec3 position){
+    auto eggEntity = ecs.CreateEntity();
+    Transform eggTransform;
+    CollisionShape eggShape;
+    RigidBody eggBody;
+    
+    eggTransform.translate(position);
+    eggBody.type = RigidBody::RIGID;
+    eggBody.setMass(3);
+    eggShape.shapeType = SPHERE;
+    eggShape.sphere.radius = 1.f;
+
+    ecs.AddComponent(eggEntity, eggTransform);
+    ecs.AddComponent(eggEntity, eggBody);
+    ecs.AddComponent(eggEntity, eggShape);
+
+    
+    
+    Entity eggMeshEntity = ecs.CreateEntity();
+    Transform eggMeshTransform;
+    eggMeshTransform.setScale(glm::vec3(0.001));
+    Drawable eggDrawable;
+    Material eggMaterial;
+    Render::loadSimpleMesh("../assets/meshes/Props", "/Egg.glb", eggDrawable, eggMaterial);
+    ecs.AddComponent(eggMeshEntity, eggMeshTransform);
+    ecs.AddComponent(eggMeshEntity, eggDrawable);
+    ecs.AddComponent(eggMeshEntity, eggMaterial);
+    
+    
+    std::unique_ptr<SpatialNode> eggNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(eggEntity));
+    eggNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(eggMeshEntity)));
+    parent->AddChild(std::move(eggNode));
+    return eggEntity;
+}
+
 Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     // Ground check
     auto groundCheckEntity = ecs.CreateEntity();
@@ -163,6 +198,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         auto& tr    = ecs.GetComponent<Transform>(playerEntity);
         auto& rb    = ecs.GetComponent<RigidBody>(playerEntity);
         auto& shape = ecs.GetComponent<CollisionShape>(playerEntity);
+        auto& playerAnimation = ecs.GetComponent<AnimatedDrawable>(playerEntity);
         auto& groundCheck = ecs.GetComponent<CollisionShape>(groundCheckEntity);
 
         bool grounded = groundCheck.isAnythingColliding();
@@ -187,7 +223,12 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         if(actions[InputManager::ActionEnum::ACTION_BACKWARD].pressed)  inputDir -=  forward;
         if(actions[InputManager::ActionEnum::ACTION_LEFT    ].pressed)  inputDir +=  left;
         if(actions[InputManager::ActionEnum::ACTION_RIGHT   ].pressed)  inputDir -=  left;
-        if(glm::length2(inputDir) > 1e-6f) {inputDir = glm::normalize(inputDir);lastInputDir = inputDir;}
+        if(glm::length2(inputDir) > 1e-6f) {
+            inputDir = glm::normalize(inputDir);lastInputDir = inputDir;
+            playerAnimation.playing = true;
+        } else {
+            playerAnimation.playing = false;
+        }
         const float speed = 10.0f;
         glm::vec3 horizontalVel = inputDir * speed;
 
@@ -448,12 +489,19 @@ Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     std::unique_ptr<SpatialNode> drawingNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(drawingNodeEntity));
 
 
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+    Entity currentEntity;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
+    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
 
 
     planetNode->AddChild(std::move(planetGravityNode));
@@ -562,12 +610,10 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     ecs.SetEntityName(cameraEntity, "Camera player default");
     CustomBehavior cameraUpdate;
     Transform cameraTransform;
-    cameraTransform.translate({7,0,-42});
+    cameraTransform.translate({0,100,0});
     CameraComponent cameraComponent;
     cameraComponent.needActivation = true;
     cameraUpdate.update = [playerEntity, cameraEntity, &ecs](float deltaTime){
-        const float stopDist = 20.f;
-
         RigidBody& targetBody = ecs.GetComponent<RigidBody>(playerEntity);
         Transform &targetTransform = ecs.GetComponent<Transform>(playerEntity);
         glm::vec3 targetPosition = targetTransform.getGlobalPosition();
@@ -585,7 +631,7 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 
         const float behindDistance = 10.0f;
-        const float aboveDistance  = 26.0f;
+        const float aboveDistance  = 20.0f;
         const float predictionDistance = 15.f;
         const float minSpeedRequierd = 0.5f;
 
@@ -778,7 +824,7 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     // groundShape.shapeType = PLANE;
     // groundShape.plane.normal = glm::vec3(0,1,0);
     groundShape.shapeType = OOBB;
-    groundShape.oobb.halfExtents = {10, 1, 10};
+    groundShape.oobb.halfExtents = {20, 1, 20};
     RigidBody groundBody;
     groundBody.type = RigidBody::STATIC;
 
@@ -788,4 +834,23 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(groundE, groundDraw);
     ecs.AddComponent(groundE, groundMat);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(groundE)));
+
+    Entity eggSpawner = ecs.CreateEntity();
+    CustomBehavior eggSpawnerBehavior;
+    eggSpawnerBehavior.update = [&ecs, &root](float delta){
+        auto actions = InputManager::getInstance().getActions();
+        if(actions[InputManager::ActionEnum::ACTION_JUMP ].clicked){
+            auto egg = generateEgg(ecs, &root, {7, 10, 0});
+        }
+    };
+    ecs.AddComponent(eggSpawner, eggSpawnerBehavior);
+
+    auto plane = generateWall(ecs, &root);
+    CollisionShape &planeShape = ecs.GetComponent<CollisionShape>(plane);
+    planeShape.shapeType = PLANE;
+    planeShape.plane.normal = glm::vec3(0,1,0);
+    planeShape.plane.left = glm::vec3(1,0,0);
+    // planeShape.oobb.halfExtents = glm::vec3(5,1,5);
+    ecs.GetComponent<Transform>(plane).rotate({-30,0,0});
+    ecs.GetComponent<Transform>(plane).translate({10,5,0});
 }

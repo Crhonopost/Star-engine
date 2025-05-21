@@ -205,19 +205,16 @@ bool CollisionShape::canSee(CollisionShape &checker, CollisionShape &checked){
 OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, Plane &planeB, Transform &transformB){
     OverlapingShape res;
     
-    
     glm::vec3 globalPlaneNormal = glm::normalize(transformB.applyRotation(planeB.normal));
     glm::vec3 globalSpherePos = transformA.getGlobalPosition();
     glm::vec3 globalPlanePos = transformB.getGlobalPosition();
 
-    float distanceFromPlane = glm::dot(globalPlaneNormal, globalSpherePos - globalPlanePos);
-
-    if(distanceFromPlane < 0.0f) return res;
+    float distanceFromPlane = std::abs(glm::dot(globalSpherePos - globalPlanePos, globalPlaneNormal));
 
     if(distanceFromPlane < sphereA.radius){
         res.exist = true;
-        res.correctionDepth = abs(distanceFromPlane - sphereA.radius);
-        res.normal = -globalPlaneNormal;
+        res.correctionDepth = std::abs(distanceFromPlane - sphereA.radius);
+        res.normal = globalPlaneNormal;
         res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 
@@ -265,8 +262,8 @@ OverlapingShape raySphereIntersection(Ray &rayA, Transform &transformA, Sphere &
 
     res.exist = true;
     res.correctionDepth = length;
-    res.normal = glm::normalize(globalPosRay - globalPosSphere);
-    res.position = transformA.getGlobalPosition() + res.correctionDepth  * res.normal;
+    res.normal = glm::normalize(globalPosSphere - (globalPosRay + length * transformA.applyRotation(rayA.ray_direction)));
+    res.position = globalPosRay + length * transformA.applyRotation(rayA.ray_direction);
     return res;
 }
 
@@ -514,7 +511,6 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
     closest.z = std::max(-oobbA.halfExtents.z, std::min(localSphereCenter.z, oobbA.halfExtents.z));
 
     glm::vec3 closestGlobal = glm::vec3(transformA.getModelMatrix() * glm::vec4(closest, 1.f));
-    // TODO : fix getGlobalPosition !!
     glm::vec3 direction = transformB.getGlobalPosition() - closestGlobal;
     float distance = glm::length(direction);
 
@@ -526,7 +522,7 @@ OverlapingShape oobbSphereIntersection(Oobb &oobbA, Transform &transformA, Spher
     else
         res.normal = glm::vec3(0, 1, 0);
 
-    res.correctionDepth = sphereB.radius - distance;
+    res.correctionDepth = (sphereB.radius - distance);
     res.position = closestGlobal;
 
     return res;
@@ -543,8 +539,8 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
         float dist = distance - radiusSum;
         if(dist < 0){
             res.exist = true;
-            res.correctionDepth = -dist;
-            res.normal = -glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
+            res.correctionDepth = dist;
+            res.normal = glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
             res.position = transformA.getGlobalPosition() - shapeA.sphere.radius * res.normal;
         }
         return res;

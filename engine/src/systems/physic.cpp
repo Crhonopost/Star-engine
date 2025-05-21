@@ -139,17 +139,6 @@ void PhysicSystem::solver(){
         {
             rbA.velocity += frictionImpulse * rbA.invMass;
             rbB.velocity -= frictionImpulse * rbB.invMass;
-            
-            // Application des impulsions
-            // rbA.impulse += impulse * rbA.invMass;
-            // rbB.impulse -= impulse * rbB.invMass;
-            
-            // Calcul des torques
-            // glm::vec3 rA = overlapping.position - tA.getLocalPosition();
-            // glm::vec3 rB = overlapping.position - tB.getLocalPosition();
-            
-            // rbA.impulse += glm::cross(rA, impulse) * rbA.invInertia;
-            // rbB.impulse -= glm::cross(rB, impulse) * rbB.invInertia;
         }
     }
 }

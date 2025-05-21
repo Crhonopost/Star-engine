@@ -35,6 +35,7 @@ struct Vertex {
 struct Drawable: Component {
     GLuint VAO, VBO, EBO;
     int indexCount;
+    bool hideOnCubemapRender = false;
 
     Drawable* lodLower = nullptr;
     float switchDistance = -1.0f;

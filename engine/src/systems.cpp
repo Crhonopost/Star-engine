@@ -15,10 +15,13 @@
 
 void renderQuad();
 
-void Render::update(glm::mat4 &view) {
+void Render::update(glm::mat4 &view, bool isCubemapRender) {
         
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
+        if (isCubemapRender && drawable.hideOnCubemapRender) {
+            continue;
+        }
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& program = *ecs.GetComponent<CustomProgram>(entity).programPtr;
         
@@ -79,7 +82,7 @@ void PBRrender::setupMaps(){
     glUniform1i(brdfLoc, current);
 }
 
-void PBRrender::update(glm::mat4 &view){
+void PBRrender::update(glm::mat4 &view, bool isCubemapRender) {
     setupMaps();
 
     PBR &pbrProg = *pbrProgPtr;
@@ -90,6 +93,9 @@ void PBRrender::update(glm::mat4 &view){
 
     for (const auto& entity : mEntities) {
         auto& drawable = ecs.GetComponent<Drawable>(entity);
+        if (isCubemapRender && drawable.hideOnCubemapRender) {
+            continue;
+        }
         auto& transform = ecs.GetComponent<Transform>(entity);
         auto& material = ecs.GetComponent<Material>(entity);
 
@@ -585,7 +591,7 @@ void AnimatedPBRrender::loadMesh(char *directory, char *fileName, AnimatedDrawab
                 // boneAnim.rotationKeys.push_back({data.mTime, {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z}});
                 
                 glm::quat rotGLM = {data.mValue.w, data.mValue.x, data.mValue.y, data.mValue.z};
-                boneAnim.rotationKeys.push_back({data.mTime, rotGLM});
+                boneAnim.rotationKeys.push_back({data.mTime, tPoseInverse * rotGLM});
             }
 
             for(int scaleIdx=0; scaleIdx<aiBoneAnim->mNumScalingKeys; scaleIdx++){
@@ -862,8 +868,8 @@ void CubemapRender::renderFromPoint(glm::vec3 point, Render *render, PBRrender *
         
         glm::mat4 view = glm::lookAt(point, point + dir, ups[i]);
         
-        render->update(view);
-        pbr->update(view);
+        render->update(view, true);
+        pbr->update(view, true);
     }
 
     glm::mat4 camProjection = Camera::getInstance().getP();

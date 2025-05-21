@@ -12,7 +12,7 @@ extern ecsManager ecs;
 
 class Render: public System {
     public:
-    void update(glm::mat4 &view);
+    void update(glm::mat4 &view, bool isCubemapRender = false);
 
     static Drawable generateSphere(float radius);
     static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
@@ -38,7 +38,7 @@ class PBRrender: public System {
     public:
     static void initPBR();
     void setupMaps();
-    virtual void update(glm::mat4 &view);
+    virtual void update(glm::mat4 &view, bool isCubemapRender = false);
     void setIrradianceMap(GLuint cubemapTextureID) {
         mIrradianceMapID = cubemapTextureID;
     }
