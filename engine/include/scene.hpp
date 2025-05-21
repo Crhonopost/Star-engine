@@ -506,14 +506,21 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     Entity levelEntity = generateLevel1(root, ecs, playerEntity);
     ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
 
-    Entity tunnelA, tunnelB;
+    Entity tunnelA, tunnelB,tunnelC, tunnelD;
     generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
+    generateTunnels(ecs, root, playerEntity, tunnelC, tunnelD);
+
 
     // ecs.GetComponent<Transform>(tunnelA).translate({0,12,6});
     // ecs.GetComponent<Transform>(tunnelA).rotate({0,-39,52});
     ecs.GetComponent<Transform>(tunnelA).translate({14-1e-3f,22,14-1e-3f});
     ecs.GetComponent<Transform>(tunnelA).changeScale(glm::vec3(1.f,1.f,1.f));
     ecs.GetComponent<Transform>(tunnelB).translate({-198,-200,-200});
+
+    ecs.GetComponent<Transform>(tunnelC).translate({14+21,0,14});
+    ecs.GetComponent<Transform>(tunnelC).rotate({0,0,-90});
+    ecs.GetComponent<Transform>(tunnelD).translate({80+10,80,80});
+    ecs.GetComponent<Transform>(tunnelD).rotate({0,0,-90});
 
 
 
