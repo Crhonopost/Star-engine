@@ -97,7 +97,6 @@ void initEcs(){
     ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
     ecs.RegisterComponent<RigidBody>("RigidBody");
     ecs.RegisterComponent<CollisionShape>("CollisionShape");
-    ecs.RegisterComponent<Health>("Health");
 
     renderSystem = ecs.RegisterSystem<Render>();
     pbrRenderSystem = ecs.RegisterSystem<PBRrender>();

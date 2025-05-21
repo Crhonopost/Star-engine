@@ -144,11 +144,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     ecs.AddComponent(playerEntity, playerDrawable);
     ecs.AddComponent(playerEntity, playerMaterial);
 
-    // health system
-    Health playerHealth;
-    playerHealth.maxLives = 3;
-    playerHealth.currentLives = 3;
-    ecs.AddComponent(playerEntity, playerHealth);
+
 
     // auto &playerDraw = ecs.GetComponent<Drawable>(playerEntity);
     RigidBody playerBody;
@@ -467,6 +463,40 @@ Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     return planetEntity;
 }
 
+Entity generatePlanet2(SpatialNode &root, ecsManager &ecs, Entity &playerEntity, glm::vec3 planetCenter){
+    auto planetEntity = generatePlanetBody(ecs, planetCenter, 10.f);
+    ecs.SetEntityName(planetEntity, "Planet 2");
+    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 20.f, playerEntity);
+
+
+    auto drawingNodeEntity = ecs.CreateEntity();
+    ecs.SetEntityName(drawingNodeEntity, "Planet 2 Mesh");
+    Transform drawingNodetransform;
+    drawingNodetransform.setScale(glm::vec3(0.008));
+    ecs.AddComponent(drawingNodeEntity, drawingNodetransform);
+
+
+
+    std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
+    std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
+    std::unique_ptr<SpatialNode> drawingNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(drawingNodeEntity));
+
+
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+
+
+    planetNode->AddChild(std::move(planetGravityNode));
+    planetNode->AddChild(std::move(drawingNode));
+    root.AddChild(std::move(planetNode));
+
+    return planetEntity;
+}
+
 void initScene(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
 
@@ -481,14 +511,17 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
     // ecs.GetComponent<Transform>(tunnelA).translate({0,12,6});
     // ecs.GetComponent<Transform>(tunnelA).rotate({0,-39,52});
-    ecs.GetComponent<Transform>(tunnelA).translate({14,18,14});
-    ecs.GetComponent<Transform>(tunnelA).changeScale(glm::vec3(4.5f,10.f,4.5f));
+    ecs.GetComponent<Transform>(tunnelA).translate({14-1e-3f,22,14-1e-3f});
+    ecs.GetComponent<Transform>(tunnelA).changeScale(glm::vec3(1.f,1.f,1.f));
     ecs.GetComponent<Transform>(tunnelB).translate({-198,-200,-200});
 
 
 
     glm::vec3 planetCenter = {14, 0, 14};
     generatePlanet1(root, ecs, playerEntity, planetCenter);
+
+    glm::vec3 planetCenter2 = {80, 80, 80};
+    generatePlanet2(root, ecs, playerEntity, planetCenter2);
     // auto planetEntity = generatePlanetBody(ecs, planetCenter, 20.f);
     // auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
 

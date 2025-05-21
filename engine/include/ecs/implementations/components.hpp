@@ -117,10 +117,7 @@ struct Material: Component {
     Material();
 };
 
-struct Health : Component {
-    int maxLives = 3;
-    int currentLives = 3;
-};
+
 
 struct Light: Component {
     glm::vec3 color;
