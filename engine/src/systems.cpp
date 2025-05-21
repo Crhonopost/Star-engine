@@ -285,7 +285,7 @@ void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene, const ch
 }
 
 
-void Render::loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat){
+void Render::loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat, int layer){
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
     std::vector<glm::vec2> tex_coords;
@@ -304,7 +304,7 @@ void Render::loadSimpleMesh(char *directory, char *fileName, Drawable &res, Mate
         std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
     }
     
-    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+    for (unsigned int i = layer; i < std::min((const unsigned int) layer+1, scene->mNumMeshes); ++i) {
         aiMesh* mesh = scene->mMeshes[i];
     
         for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {

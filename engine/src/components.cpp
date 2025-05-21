@@ -106,6 +106,11 @@ glm::vec3 Transform::getLocalPosition(){
     return pos;
 }
 
+void Transform::setScale(glm::vec3 value){
+    scale = value;
+    dirty = true;
+}
+
 glm::vec3 Transform::getGlobalPosition() {
     return glm::vec3(modelMatrix[3]);
 }
@@ -198,7 +203,7 @@ OverlapingShape spherePlaneIntersection(Sphere &sphereA, Transform &transformA, 
     if(distanceFromPlane < sphereA.radius){
         res.exist = true;
         res.correctionDepth = abs(distanceFromPlane - sphereA.radius);
-        res.normal = globalPlaneNormal;
+        res.normal = -globalPlaneNormal;
         res.position = transformA.getGlobalPosition() - sphereA.radius * res.normal;
     }
 

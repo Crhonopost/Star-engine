@@ -41,10 +41,9 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
     return otherEntity;
 }
 
-Entity generatePlanet(ecsManager &ecs, glm::vec3 position, float radius){
+Entity generatePlanetBody(ecsManager &ecs, glm::vec3 position, float radius){
     auto sphereEntity = ecs.CreateEntity();
-    auto sphereDraw = Render::generateSphere(radius);
-    auto sphereMaterial = Material();
+    // auto sphereDraw = Render::generateSphere(radius);    
 
     auto sphereRigidBody = RigidBody();
     sphereRigidBody.type = RigidBody::STATIC;
@@ -52,17 +51,15 @@ Entity generatePlanet(ecsManager &ecs, glm::vec3 position, float radius){
     sphereCollisionShape.shapeType = SPHERE;
     sphereCollisionShape.sphere.radius = radius;
 
-    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
-    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
-    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
-    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
-    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
+    // sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
+    // sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/woods/Normal.jpg");
+    // sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/woods/Albedo.jpg");
+    // sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/woods/Roughness.jpg");
+    // sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/woods/AO.jpg");
 
     Transform sphereTransform;
     sphereTransform.translate(position);
 
-    ecs.AddComponent(sphereEntity, sphereDraw);
-    ecs.AddComponent(sphereEntity, sphereMaterial);
     ecs.AddComponent(sphereEntity, sphereTransform);
     ecs.AddComponent(sphereEntity, sphereRigidBody);
     ecs.AddComponent(sphereEntity, sphereCollisionShape);
@@ -277,11 +274,13 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     RigidBody tunnelBody;
     CollisionShape tunnelShape;
 
-    // Render::loadSimpleMesh("../assets/meshes", "/Walking.glb", tunnelDrawable, tunnelMaterial);
-    tunnelDrawable = Render::generateCube(1, 3);
+    Render::loadSimpleMesh("../assets/meshes/Props", "/pipe.glb", tunnelDrawable, tunnelMaterial);
+    // tunnelDrawable = Render::generateCube(1, 3);
+    tunnelMaterial.albedoTex->visible = false;
+    tunnelMaterial.albedo = glm::vec3(0.3, 1, 0.2);
     tunnelBody.type = RigidBody::STATIC;
     tunnelShape.shapeType = OOBB;
-    tunnelShape.oobb.halfExtents = {0.5,0.5,0.5};
+    tunnelShape.oobb.halfExtents = {1.1, 1.9,1.1};
     
     ecs.AddComponent(tunnel, tunnelTransform);
     ecs.AddComponent(tunnel, tunnelDrawable);
@@ -294,9 +293,9 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     Transform interactionTransform;
     CollisionShape interactionShape;
 
-    interactionTransform.translate({0,0.5f,0});
+    interactionTransform.translate({0,3,0});
     interactionShape.shapeType = SPHERE;
-    interactionShape.sphere.radius = 0.5f;
+    interactionShape.sphere.radius = 0.75f;
     interactionShape.layer = 0;
     interactionShape.mask = CollisionShape::PLAYER_LAYER;
 
@@ -410,6 +409,58 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
     return level;
 }
 
+Entity loadMeshLayer(SpatialNode &parent, ecsManager &ecs, char* folderPath, char* fileName, int layer){
+    auto res = ecs.CreateEntity();
+    Transform layer1Transform;
+    Drawable sphereDraw;
+    auto sphereMaterial = Material();
+    Render::loadSimpleMesh(folderPath, fileName, sphereDraw, sphereMaterial, layer);
+    ecs.AddComponent(res, layer1Transform);
+    ecs.AddComponent(res, sphereDraw);
+    ecs.AddComponent(res, sphereMaterial);
+
+
+    std::unique_ptr<SpatialNode> meshNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(res));
+    parent.AddChild(std::move(meshNode));
+
+
+    return res;
+}
+
+Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity, glm::vec3 planetCenter){
+    auto planetEntity = generatePlanetBody(ecs, planetCenter, 23.f);
+    ecs.SetEntityName(planetEntity, "Planet 1");
+    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
+
+
+    auto drawingNodeEntity = ecs.CreateEntity();
+    ecs.SetEntityName(drawingNodeEntity, "Planet 1 Mesh");
+    Transform drawingNodetransform;
+    drawingNodetransform.setScale(glm::vec3(0.017));
+    ecs.AddComponent(drawingNodeEntity, drawingNodetransform);
+
+
+
+    std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
+    std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
+    std::unique_ptr<SpatialNode> drawingNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(drawingNodeEntity));
+
+
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
+    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+
+
+    planetNode->AddChild(std::move(planetGravityNode));
+    planetNode->AddChild(std::move(drawingNode));
+    root.AddChild(std::move(planetNode));
+
+    return planetEntity;
+}
+
 void initScene(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
 
@@ -429,8 +480,9 @@ void initScene(SpatialNode &root, ecsManager &ecs){
 
 
     glm::vec3 planetCenter = {14, 0, 14};
-    auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
-    auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
+    generatePlanet1(root, ecs, playerEntity, planetCenter);
+    // auto planetEntity = generatePlanetBody(ecs, planetCenter, 20.f);
+    // auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
 
     /////////////////////////////// collision debug
     // auto otherEntity = ecs.CreateEntity();
@@ -501,15 +553,11 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     // std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
     // std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
     // std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
-    std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
-    std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
 
     root.AddChild(std::move(playerCameraNode));
     // root.AddChild(std::move(otherNode));
     // root.AddChild(std::move(b1Node));
     // root.AddChild(std::move(b2Node));
-    planetNode->AddChild(std::move(planetGravityNode));
-    root.AddChild(std::move(planetNode));
 }
 
 
