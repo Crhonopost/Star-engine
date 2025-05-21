@@ -484,18 +484,8 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         glm::vec3 camOffset = -forward * behindDistance + up * aboveDistance;
         camTransform.setLocalPosition(targetTransform.getGlobalPosition() + camOffset);
         
-        
-        // glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
-        // direction = glm::normalize(direction);
-        // camTransform.setLocalRotation(Camera::lookAtQuat(direction));
-
         ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(camTransform.getGlobalPosition() - targetTransform.getGlobalPosition());
-        // ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
         ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
-
-        
-        // camTransform.setLocalPosition(targetTransform.getGlobalPosition() - targetBody.gravityDirection * 10.f);
-        // direction = glm::normalize(playerRigid.gravityDirection);
     };
     ecs.AddComponent(cameraEntity, cameraUpdate);
     ecs.AddComponent(cameraEntity, cameraTransform);
@@ -647,14 +637,13 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
 
     auto crateEntity = generateCrate(ecs, {0,20, 0});
     ecs.SetEntityName(crateEntity, "crate1");
-    ecs.GetComponent<CollisionShape>(crateEntity).shapeType = SPHERE;
-    ecs.GetComponent<CollisionShape>(crateEntity).sphere.radius = 2.f;
+    ecs.GetComponent<CollisionShape>(crateEntity).shapeType = OOBB;
+    ecs.GetComponent<CollisionShape>(crateEntity).oobb.halfExtents = glm::vec3(1);
     auto crateEntity2 = generateCrate(ecs, {0,10, 0});
     ecs.SetEntityName(crateEntity2, "crate2");
-    // ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
-    // ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
-    ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = SPHERE;
-    ecs.GetComponent<CollisionShape>(crateEntity2).sphere.radius = 1;
+    ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
+    ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
+    
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));

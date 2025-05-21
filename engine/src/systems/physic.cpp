@@ -225,7 +225,7 @@ void PhysicSystem::update(float deltaTime){
 
 
         if (rbA.type == RigidBody::KINEMATIC && rbB.type == RigidBody::STATIC && overlapping.aSeeB){
-            tA.translate(overlapping.normal * overlapping.correctionDepth);
+            tA.translate(-overlapping.normal * overlapping.correctionDepth);
         }
         else if (rbB.type == RigidBody::KINEMATIC && rbA.type == RigidBody::STATIC && overlapping.bSeeA) {
             tB.translate(overlapping.normal * overlapping.correctionDepth);
