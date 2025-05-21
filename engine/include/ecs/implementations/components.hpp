@@ -160,6 +160,8 @@ class Transform: Component {
     void setLocalPosition(glm::vec3 position);
     glm::vec3 getLocalPosition();
     glm::vec3 getGlobalPosition();
+
+    void setScale(glm::vec3 value);
     
     glm::vec3 getLocalRotation();
     void setLocalRotation(glm::vec3 rotationAngles);

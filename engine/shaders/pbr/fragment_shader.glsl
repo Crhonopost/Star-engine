@@ -95,6 +95,7 @@ void main(){
     vec3 albedo,normal;
     float metallic,roughness,ao;
 
+    float transparency = hasAlbedoMap ? texture(albedoMap, texCoords).a : 1.0f;
     albedo    = hasAlbedoMap    ? pow(texture(albedoMap, texCoords).rgb, vec3(2.2)) : pow(albedoVal, vec3(2.2));
     normal    = hasNormalMap    ? getNormalFromNormalMap()                          : normalVal;
     metallic  = hasMetallicMap  ? texture(metallicMap, texCoords).r                : metallicVal;
@@ -165,5 +166,5 @@ void main(){
     colorPBR = pow(colorPBR, vec3(1.0/2.2));  
 
 
-    color = vec4(colorPBR, 1.0);
+    color = vec4(colorPBR, transparency);
 }
