@@ -205,6 +205,8 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
         
         rb.velocity = horizontalVel + rb.gravityDirection * verticalSpeed;
         tr.translate(rb.velocity * dt);
+
+        
         glm::vec3 newUp = -glm::normalize(rb.gravityDirection);
         if (glm::length2(newUp) < 1e-6f) newUp = glm::vec3(0,1,0);
         glm::quat qAlign = glm::rotation(glm::vec3(0,1,0), newUp);
@@ -430,74 +432,28 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     auto planetEntity = generatePlanet(ecs, planetCenter, 20.f);
     auto planetGravity = generateGravityArea(ecs, glm::vec3(0.f), 60.f, playerEntity);
 
-    // auto planetEntity = generatePlanet(ecs, {14,0,14}, 20.f);
-    // auto planetGravity = generateGravityArea(ecs, glm::vec3(0), 60.f, playerEntity);
-
-
-    // auto cabaneEntity = ecs.CreateEntity();
-    // Transform cabaneTransform;
-    // Drawable cabaneDraw = Render::loadMesh("../assets/meshes/cabane.glb");
-    // Material cabaneMaterial;
-    // cabaneMaterial.albedo = {0.5f,0.5f,0.5f};
-    // ecs.AddComponent<Transform>(cabaneEntity, cabaneTransform);
-    // ecs.AddComponent<Drawable>(cabaneEntity, cabaneDraw);
-    // ecs.AddComponent<Material>(cabaneEntity, cabaneMaterial);
-
-
     /////////////////////////////// collision debug
-    auto otherEntity = ecs.CreateEntity();
-    Transform otherTransform;
-    otherTransform.translate(glm::vec3(5,10,0));
-    Light lightSource;
-    lightSource.color = glm::vec3(1,1,1);
-    CollisionShape otherCollision;
-    otherCollision.shapeType = SPHERE;
-    otherCollision.sphere.radius = 1.2;
-    ecs.AddComponent(otherEntity, otherTransform);
-    ecs.AddComponent(otherEntity, lightSource);
-    ecs.AddComponent(otherEntity, otherCollision);
-
-
-    // TODO: fix custom programs, when adding mountain: pbr rendering not working ....
-    ///////////////////////////// programs
-    auto mountainProg = std::make_unique<Program>("shaders/vertex_shader_mountain.glsl", "shaders/fragment_shader_mountain.glsl");
-    mountainProg->initTexture("../assets/images/grass.png", "texGrass\0");
-    mountainProg->initTexture("../assets/images/rock.png", "texRock\0");
-    mountainProg->initTexture("../assets/images/HeightMap.png", "heightMap\0");
-
-
-    // OOBB collision test
-    auto b1Entity = ecs.CreateEntity();
-    ecs.SetEntityName(b1Entity, "b1");
-    auto b1Collision = CollisionShape();
-    b1Collision.shapeType = OOBB;
-    b1Collision.oobb = Oobb();
-    
-    auto b1Transform = Transform();
-    b1Transform.translate({0,20,0});
-    ecs.AddComponent(b1Entity, b1Collision);
-    ecs.AddComponent(b1Entity, b1Transform);
-    
-    auto b2Entity = ecs.CreateEntity();
-    ecs.SetEntityName(b2Entity, "b2");
-    auto b2Collision = CollisionShape();
-    b2Collision.shapeType = OOBB;
-    b2Collision.oobb = Oobb();
-    
-    auto b2Transform = Transform();
-    b2Transform.translate({0,20,0});
-    ecs.AddComponent(b2Entity, b2Collision);
-    ecs.AddComponent(b2Entity, b2Transform);
+    // auto otherEntity = ecs.CreateEntity();
+    // Transform otherTransform;
+    // otherTransform.translate(glm::vec3(5,10,0));
+    // Light lightSource;
+    // lightSource.color = glm::vec3(1,1,1);
+    // CollisionShape otherCollision;
+    // otherCollision.shapeType = SPHERE;
+    // otherCollision.sphere.radius = 1.2;
+    // ecs.AddComponent(otherEntity, otherTransform);
+    // ecs.AddComponent(otherEntity, lightSource);
+    // ecs.AddComponent(otherEntity, otherCollision);
 
 
 
-    auto crateEntity = generateCrate(ecs, {0,20, 0});
-    ecs.SetEntityName(crateEntity, "crate1");
-    auto crateEntity2 = generateCrate(ecs, {0,35, 0});
-    ecs.SetEntityName(crateEntity2, "crate2");
+    // auto crateEntity = generateCrate(ecs, {0,20, 0});
+    // ecs.SetEntityName(crateEntity, "crate1");
+    // auto crateEntity2 = generateCrate(ecs, {0,35, 0});
+    // ecs.SetEntityName(crateEntity2, "crate2");
 
-    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
-    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
+    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
     
 
     
@@ -552,16 +508,16 @@ void initScene(SpatialNode &root, ecsManager &ecs){
     root.transform = &ecs.GetComponent<Transform>(rootEntity);
     
     std::unique_ptr<SpatialNode> playerCameraNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity));
-    std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
-    std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
-    std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
+    // std::unique_ptr<SpatialNode> b1Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b1Entity));
+    // std::unique_ptr<SpatialNode> b2Node = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(b2Entity));
+    // std::unique_ptr<SpatialNode> otherNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(otherEntity));
     std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
     std::unique_ptr<SpatialNode> planetGravityNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetGravity));
 
     root.AddChild(std::move(playerCameraNode));
-    root.AddChild(std::move(otherNode));
-    root.AddChild(std::move(b1Node));
-    root.AddChild(std::move(b2Node));
+    // root.AddChild(std::move(otherNode));
+    // root.AddChild(std::move(b1Node));
+    // root.AddChild(std::move(b2Node));
     planetNode->AddChild(std::move(planetGravityNode));
     root.AddChild(std::move(planetNode));
 }

@@ -516,6 +516,7 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
             res.normal = glm::normalize(transformA.getGlobalPosition() - transformB.getGlobalPosition());
             res.position = transformA.getGlobalPosition() - shapeA.sphere.radius * res.normal;
         }
+        return res;
     } 
     
     // PLANE

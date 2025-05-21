@@ -37,8 +37,8 @@ void CollisionDetectionSystem::narrowPhase(){
             OverlapingShape collision = CollisionShape::intersectionExist(shapeA, transformA, shapeB, transformB);
 
             if(collision.exist){
-                if(collision.aSeeB) shapeA.collidingEntities.emplace(entityB);
-                if(collision.bSeeA) shapeB.collidingEntities.emplace(entityA);
+                if(aSeeB) shapeA.collidingEntities.emplace(entityB);
+                if(bSeeA) shapeB.collidingEntities.emplace(entityA);
                 
                 collision.aSeeB = aSeeB;
                 collision.bSeeA = bSeeA;
@@ -200,7 +200,8 @@ void PhysicSystem::update(float deltaTime){
     }
 
     for(auto overlapping: detectedCollisions){
-        if(!overlapping.aSeeB || !overlapping.bSeeA || mEntities.find(overlapping.entityA) == mEntities.end() || mEntities.find(overlapping.entityB) == mEntities.end()) continue;
+        //!overlapping.aSeeB || !overlapping.bSeeA || 
+        if(mEntities.find(overlapping.entityA) == mEntities.end() || mEntities.find(overlapping.entityB) == mEntities.end()) continue;
 
         RigidBody &rbA = ecs.GetComponent<RigidBody>(overlapping.entityA);
         RigidBody &rbB = ecs.GetComponent<RigidBody>(overlapping.entityB);
@@ -426,7 +427,8 @@ void PhysicDebugSystem::update(){
         }
         program.updateModelMatrix(model);
 
-        if(shape.isAnythingColliding()) glUniform4f(colorLocation, 1,0,0,1);
+        if(shape.isAnythingColliding()) 
+            glUniform4f(colorLocation, 1,0,0,1);
         else glUniform4f(colorLocation, 0,1,0,1);
 
         int indexCount = 0;
