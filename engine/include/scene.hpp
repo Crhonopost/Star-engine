@@ -345,8 +345,9 @@ void generateTunnels(ecsManager &ecs, SpatialNode &parent, Entity &playerEntity,
 Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
     Entity levelCameraEntity = ecs.CreateEntity();
     Transform cameraTransform;
-    cameraTransform.translate({0, 10, -15});
+    cameraTransform.translate({0, 5, -15});
     CameraComponent levelCamComp;
+    // levelCamComp.needActivation = true;
     levelCamComp.direction = glm::vec3(0,0,-1);
     ecs.AddComponent(levelCameraEntity, cameraTransform);
     ecs.AddComponent(levelCameraEntity, levelCamComp);
@@ -362,15 +363,14 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
     levelShape.mask = CollisionShape::PLAYER_LAYER;
     CustomBehavior levelBehavior;
     levelBehavior.update = [levelCameraEntity, playerEntity, level, &ecs](float delta){
-        if(ecs.GetComponent<CollisionShape>(level).isColliding(playerEntity)){
-            auto &camComp = ecs.GetComponent<CameraComponent>(levelCameraEntity); 
+        auto &camComp = ecs.GetComponent<CameraComponent>(levelCameraEntity); 
+        if(!camComp.activated && ecs.GetComponent<CollisionShape>(level).isColliding(playerEntity)){
             camComp.needActivation = true;
-            auto &levelTransform = ecs.GetComponent<Transform>(level);
             camComp.direction = glm::vec3(0,0,-1);
             ecs.GetComponent<RigidBody>(playerEntity).removeAnchor();
             ecs.GetComponent<RigidBody>(playerEntity).gravityDirection = glm::vec3(0,-1,0);
-        } else {
-            ecs.GetComponent<CameraComponent>(levelCameraEntity).needActivation = false;
+        } else if(camComp.activated && !ecs.GetComponent<CollisionShape>(level).isColliding(playerEntity)){
+            camComp.needActivation = false;
         }
     };
     ecs.AddComponent(level, levelShape);
@@ -407,26 +407,6 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
 
     return level;
 }
-
-// void initScene(SpatialNode &root, ecsManager &ecs){
-//     Program::programs.push_back(std::make_unique<PBR>());   
-//     Entity playerEntity = generatePlayer(ecs, root);
-
-//     Entity levelEntity = generateLevel1(root, ecs, playerEntity);
-//     ecs.GetComponent<Transform>(levelEntity).translate({-200,-200,-200});
-
-//     Entity tunnelA, tunnelB;
-//     generateTunnels(ecs, root, playerEntity, tunnelA, tunnelB);
-
-//     ecs.GetComponent<Transform>(tunnelA).translate({-2,0,0});
-//     ecs.GetComponent<Transform>(tunnelB).translate({2,0,0});
-
-
-//     auto rootEntity = ecs.CreateEntity();
-//     Transform rootTransform;
-//     ecs.AddComponent(rootEntity, rootTransform);
-//     root.transform = &ecs.GetComponent<Transform>(rootEntity);
-// }
 
 void initScene(SpatialNode &root, ecsManager &ecs){
     Program::programs.push_back(std::make_unique<PBR>());    
@@ -546,14 +526,14 @@ void initScene(SpatialNode &root, ecsManager &ecs){
         const float behindDistance = 10.0f;
         const float aboveDistance  = 26.0f;
         glm::vec3 camOffset = -forward * behindDistance + up * aboveDistance;
-        camTransform.setLocalPosition(targetTransform.getGlobalPosition()+camOffset);
+        camTransform.setLocalPosition(targetTransform.getGlobalPosition() + camOffset);
         
         
         // glm::vec3 direction = targetTransform.getLocalPosition() - camTransform.getLocalPosition();
         // direction = glm::normalize(direction);
         // camTransform.setLocalRotation(Camera::lookAtQuat(direction));
 
-        ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(targetTransform.getGlobalPosition() - camTransform.getGlobalPosition());
+        ecs.GetComponent<CameraComponent>(cameraEntity).direction = glm::normalize(camTransform.getGlobalPosition() - targetTransform.getGlobalPosition());
         // ecs.GetComponent<CameraComponent>(cameraEntity).target = targetTransform.getGlobalPosition();
         ecs.GetComponent<CameraComponent>(cameraEntity).up = up;
 

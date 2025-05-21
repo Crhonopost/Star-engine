@@ -5,6 +5,8 @@
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/rendering.hpp>
 
+#include <stack>
+
 
 extern ecsManager ecs;
 
@@ -73,7 +75,7 @@ class CubemapRender {
 
 class CameraSystem: public System {
     private:
-        std::queue<Entity> cams;
+        std::stack<Entity> cams;
     public:
         void update();
 };

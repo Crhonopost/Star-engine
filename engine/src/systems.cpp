@@ -1134,7 +1134,7 @@ void CameraSystem::update(){
         }
     }
 
-    while(!ecs.GetComponent<CameraComponent>(cams.front()).needActivation){
+    while(!ecs.GetComponent<CameraComponent>(cams.top()).needActivation){
         cams.pop();
     }
 
@@ -1142,8 +1142,9 @@ void CameraSystem::update(){
         std::cerr << "no valid camera detected!!";
         return;
     } else {
-        auto& cam = ecs.GetComponent<CameraComponent>(cams.front());        
-        auto& transform = ecs.GetComponent<Transform>(cams.front());
+        auto camEntity = cams.top();
+        auto& cam = ecs.GetComponent<CameraComponent>(camEntity);        
+        auto& transform = ecs.GetComponent<Transform>(camEntity);
 
         glm::vec3 newPos = transform.getGlobalPosition();
         
@@ -1151,7 +1152,7 @@ void CameraSystem::update(){
         
         // glm::vec3 forward = glm::mat3(transform.getModelMatrix()) * glm::vec3(0,0,1);
         
-        Camera::getInstance().camera_target = newPos + cam.direction;// Camera::getInstance().camera_position + glm::normalize(forward);
+        Camera::getInstance().camera_target = newPos - cam.direction;// Camera::getInstance().camera_position + glm::normalize(forward);
         Camera::getInstance().camera_up = cam.up;
     }
 }
