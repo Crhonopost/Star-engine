@@ -126,6 +126,9 @@ Entity generateEgg(ecsManager &ecs, SpatialNode *parent, glm::vec3 position){
     eggTransform.translate(position);
     eggBody.type = RigidBody::RIGID;
     eggBody.setMass(3);
+    eggBody.restitutionCoef = 0.1f;
+    eggBody.frictionCoef = 0.1f;
+    eggBody.gravityDirection = glm::vec3(0, -1, 0);
     eggShape.shapeType = SPHERE;
     eggShape.sphere.radius = 1.f;
 
@@ -830,18 +833,20 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(cameraEntity, cameraComponent);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity)));
 
-    // auto crateEntity = generateCrate(ecs, {0,20, 0});
-    // ecs.SetEntityName(crateEntity, "crate1");
-    // ecs.GetComponent<CollisionShape>(crateEntity).shapeType = OOBB;
-    // ecs.GetComponent<CollisionShape>(crateEntity).oobb.halfExtents = glm::vec3(1);
-    // auto crateEntity2 = generateCrate(ecs, {0,10, 0});
-    // ecs.SetEntityName(crateEntity2, "crate2");
-    // ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
-    // ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
+    auto crateEntity = generateCrate(ecs, {0,20, 0});
+    ecs.SetEntityName(crateEntity, "crate1");
+    ecs.GetComponent<CollisionShape>(crateEntity).shapeType = OOBB;
+    ecs.GetComponent<RigidBody>(crateEntity).type = RigidBody::STATIC;
+    ecs.GetComponent<CollisionShape>(crateEntity).oobb.halfExtents = glm::vec3(1);
+    auto crateEntity2 = generateCrate(ecs, {0,15, 0});
+    ecs.SetEntityName(crateEntity2, "crate2");
+    ecs.GetComponent<RigidBody>(crateEntity2).type = RigidBody::STATIC;
+    ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
+    ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
     
 
-    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
-    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
 
 
     Entity groundE = ecs.CreateEntity();
