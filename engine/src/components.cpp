@@ -551,7 +551,9 @@ OverlapingShape CollisionShape::intersectionExist(CollisionShape &shapeA, Transf
     
     // PLANE
     else if(shapeA.shapeType == PLANE && shapeB.shapeType == SPHERE){
-        return spherePlaneIntersection(shapeB.sphere, transformB, shapeA.plane, transformA);
+        res = spherePlaneIntersection(shapeB.sphere, transformB, shapeA.plane, transformA);
+        res.normal = -res.normal;
+        return res;
     } else if(shapeA.shapeType == SPHERE && shapeB.shapeType == PLANE){
         return spherePlaneIntersection(shapeA.sphere, transformA, shapeB.plane, transformB);
     } 

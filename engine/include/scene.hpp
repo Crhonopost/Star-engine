@@ -300,6 +300,7 @@ Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     CollisionShape wallShape;
     wallShape.shapeType = PLANE;
     wallShape.plane.normal = glm::vec3(0,1,0);
+    wallShape.plane.left = glm::vec3(1,0,0);
     // wallShape.oobb.halfExtents = vec3(1.f, 1.f, 1.f);
     RigidBody wallBody;
     wallBody.type = RigidBody::STATIC;
@@ -829,18 +830,18 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(cameraEntity, cameraComponent);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(cameraEntity)));
 
-    auto crateEntity = generateCrate(ecs, {0,20, 0});
-    ecs.SetEntityName(crateEntity, "crate1");
-    ecs.GetComponent<CollisionShape>(crateEntity).shapeType = OOBB;
-    ecs.GetComponent<CollisionShape>(crateEntity).oobb.halfExtents = glm::vec3(1);
-    auto crateEntity2 = generateCrate(ecs, {0,10, 0});
-    ecs.SetEntityName(crateEntity2, "crate2");
-    ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
-    ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
+    // auto crateEntity = generateCrate(ecs, {0,20, 0});
+    // ecs.SetEntityName(crateEntity, "crate1");
+    // ecs.GetComponent<CollisionShape>(crateEntity).shapeType = OOBB;
+    // ecs.GetComponent<CollisionShape>(crateEntity).oobb.halfExtents = glm::vec3(1);
+    // auto crateEntity2 = generateCrate(ecs, {0,10, 0});
+    // ecs.SetEntityName(crateEntity2, "crate2");
+    // ecs.GetComponent<CollisionShape>(crateEntity2).shapeType = OOBB;
+    // ecs.GetComponent<CollisionShape>(crateEntity2).oobb.halfExtents = glm::vec3(1,1,1);
     
 
-    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
-    root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
+    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity)));
+    // root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(crateEntity2)));
 
 
     Entity groundE = ecs.CreateEntity();
@@ -867,17 +868,32 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     eggSpawnerBehavior.update = [&ecs, &root](float delta){
         auto actions = InputManager::getInstance().getActions();
         if(actions[InputManager::ActionEnum::ACTION_JUMP ].clicked){
-            auto egg = generateEgg(ecs, &root, {7, 10, 0});
+            auto egg = generateEgg(ecs, &root, {2, 10, 0});
         }
     };
     ecs.AddComponent(eggSpawner, eggSpawnerBehavior);
 
-    auto plane = generateWall(ecs, &root);
-    CollisionShape &planeShape = ecs.GetComponent<CollisionShape>(plane);
-    planeShape.shapeType = PLANE;
-    planeShape.plane.normal = glm::vec3(0,1,0);
-    planeShape.plane.left = glm::vec3(1,0,0);
-    // planeShape.oobb.halfExtents = glm::vec3(5,1,5);
-    ecs.GetComponent<Transform>(plane).rotate({-30,0,0});
-    ecs.GetComponent<Transform>(plane).translate({10,5,0});
+
+    Entity wall2 = generateWall(ecs, &root);
+    ecs.GetComponent<Transform>(wall2).rotate({-30,0,0});
+    ecs.GetComponent<Transform>(wall2).translate({0,5,5});
+    Entity wall3 = generateWall(ecs, &root);
+    ecs.GetComponent<Transform>(wall3).rotate({0,0,30});
+    ecs.GetComponent<Transform>(wall3).translate({5,5,0});
+    Entity wall4 = generateWall(ecs, &root);
+    ecs.GetComponent<Transform>(wall4).rotate({0,0,-30});
+    ecs.GetComponent<Transform>(wall4).translate({-5,5,0});
+    Entity wall5 = generateWall(ecs, &root);
+    ecs.GetComponent<Transform>(wall5).rotate({0,0,30});
+    ecs.GetComponent<Transform>(wall5).translate({-5,-5,0});
+
+
+    // auto plane = generateWall(ecs, &root);
+    // CollisionShape &planeShape = ecs.GetComponent<CollisionShape>(plane);
+    // planeShape.shapeType = PLANE;
+    // planeShape.plane.normal = glm::vec3(0,1,0);
+    // planeShape.plane.left = glm::vec3(1,0,0);
+    // // planeShape.oobb.halfExtents = glm::vec3(5,1,5);
+    // ecs.GetComponent<Transform>(plane).rotate({-30,0,0});
+    // ecs.GetComponent<Transform>(plane).translate({10,5,0});
 }
