@@ -889,8 +889,8 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.GetComponent<Transform>(wall4).rotate({0,0,-30});
     ecs.GetComponent<Transform>(wall4).translate({-5,5,0});
     Entity wall5 = generateWall(ecs, &root);
-    ecs.GetComponent<Transform>(wall5).rotate({0,0,30});
-    ecs.GetComponent<Transform>(wall5).translate({-5,-5,0});
+    ecs.GetComponent<Transform>(wall5).rotate({30,0,0});
+    ecs.GetComponent<Transform>(wall5).translate({0,5,-5});
 
 
     // auto plane = generateWall(ecs, &root);
