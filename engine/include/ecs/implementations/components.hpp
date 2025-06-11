@@ -10,13 +10,11 @@
 #include <unordered_set>
 #include <engine/include/ecs/base/entity.hpp>
 #include <imgui.h>
-#include <engine/include/rendering.hpp>
+#include <engine/include/rendering/common.hpp>
 #include <engine/include/animation.hpp>
 
 template<typename T>
 class ComponentInspector;
-class Program;
-class Texture;
 
 struct Component{
     Component(const Component&) = delete;

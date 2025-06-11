@@ -3,7 +3,6 @@
 
 #include <engine/include/ecs/base/system.hpp>
 #include <engine/include/ecs/base/component.hpp>
-#include <engine/include/ecs/implementations/components.hpp>
 
 class ecsWithoutInspector
 {

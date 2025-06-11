@@ -25,7 +25,7 @@ using namespace glm;
 
 // personnals
 #include <engine/include/input.hpp>
-#include <engine/include/rendering.hpp>
+#include <engine/include/rendering/rendering.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/components.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
@@ -72,10 +72,6 @@ SpatialNode root;
 
 // ecs
 ecsManager ecs;
-std::shared_ptr<Render> renderSystem;
-std::shared_ptr<PBRrender> pbrRenderSystem;
-std::shared_ptr<AnimatedPBRrender> animatedPbrRenderSystem;
-std::shared_ptr<LightRender> lightRenderSystem;
 std::shared_ptr<CameraSystem> cameraSystem;
 std::shared_ptr<CustomSystem> customSystem;
 std::shared_ptr<CollisionDetectionSystem> collisionDetectionSystem;
@@ -98,10 +94,8 @@ void initEcs(){
     ecs.RegisterComponent<RigidBody>("RigidBody");
     ecs.RegisterComponent<CollisionShape>("CollisionShape");
 
-    renderSystem = ecs.RegisterSystem<Render>();
-    pbrRenderSystem = ecs.RegisterSystem<PBRrender>();
-    animatedPbrRenderSystem = ecs.RegisterSystem<AnimatedPBRrender>();
-    lightRenderSystem = ecs.RegisterSystem<LightRender>();
+    RenderServer::getInstance().init(ecs);
+
     cameraSystem = ecs.RegisterSystem<CameraSystem>();
     customSystem = ecs.RegisterSystem<CustomSystem>();
     collisionDetectionSystem = ecs.RegisterSystem<CollisionDetectionSystem>();
@@ -109,28 +103,6 @@ void initEcs(){
     physicDebugSystem = ecs.RegisterSystem<PhysicDebugSystem>();
     physicDebugSystem->init();
     
-    Signature renderSignature;
-    renderSignature.set(ecs.GetComponentType<Transform>());
-    renderSignature.set(ecs.GetComponentType<Drawable>());
-    renderSignature.set(ecs.GetComponentType<CustomProgram>());
-    ecs.SetSystemSignature<Render>(renderSignature);
-
-    Signature pbrRenderSignature;
-    pbrRenderSignature.set(ecs.GetComponentType<Transform>());
-    pbrRenderSignature.set(ecs.GetComponentType<Drawable>());
-    pbrRenderSignature.set(ecs.GetComponentType<Material>());
-    ecs.SetSystemSignature<PBRrender>(pbrRenderSignature);
-
-    Signature animatedPbrSignature;
-    animatedPbrSignature.set(ecs.GetComponentType<Transform>());
-    animatedPbrSignature.set(ecs.GetComponentType<AnimatedDrawable>());
-    animatedPbrSignature.set(ecs.GetComponentType<Material>());
-    ecs.SetSystemSignature<AnimatedPBRrender>(animatedPbrSignature);
-
-    Signature lightSignature;
-    lightSignature.set(ecs.GetComponentType<Transform>());
-    lightSignature.set(ecs.GetComponentType<Light>());
-    ecs.SetSystemSignature<LightRender>(lightSignature);
 
     Signature cameraSignature;
     cameraSignature.set(ecs.GetComponentType<Transform>());
@@ -166,86 +138,9 @@ void unloadScene(){
 }
 
 void afterSceneInit(){
-    pbrRenderSystem->initPBR();
-
     root.updateSelfAndChildTransform();
 
-    Program *pbr = Program::programs.back().get();
-
-    // Cubemap skyboxMap({
-    //     "../assets/images/cubemaps/cloudy/bluecloud_rt.jpg",
-    //     "../assets/images/cubemaps/cloudy/bluecloud_lf.jpg",
-    //     "../assets/images/cubemaps/cloudy/bluecloud_up.jpg",
-    //     "../assets/images/cubemaps/cloudy/bluecloud_dn.jpg",
-    //     "../assets/images/cubemaps/cloudy/bluecloud_bk.jpg",
-    //     "../assets/images/cubemaps/cloudy/bluecloud_ft.jpg"});
-
-    Cubemap skyboxMap({
-    "../assets/images/cubemaps/galaxy_space/left.jpg",
-    "../assets/images/cubemaps/galaxy_space/right.jpg",
-    "../assets/images/cubemaps/galaxy_space/top.jpg",
-    "../assets/images/cubemaps/galaxy_space/bot.jpg",
-    "../assets/images/cubemaps/galaxy_space/back.jpg",
-    "../assets/images/cubemaps/galaxy_space/front.jpg"});
-
-
-    Program::programs.push_back(std::make_unique<Skybox>(skyboxMap));
-    Entity skyboxEntity = ecs.CreateEntity();
-    ecs.SetEntityName(skyboxEntity, "Skybox");
-    Drawable skyboxDraw = Render::generateCube(9999, 2, true);
-    Transform skyboxTransform;
-    CustomProgram skyboxProg(Program::programs[Program::programs.size()-1].get());
-
-    ecs.AddComponent<Transform>(skyboxEntity, skyboxTransform);
-    ecs.AddComponent<Drawable>(skyboxEntity, skyboxDraw);
-    ecs.AddComponent<CustomProgram>(skyboxEntity, skyboxProg);
-
-
-    lightRenderSystem->update();
-
-    CubemapRender sceneCubemapRender(256);
-    // Render scene into a cubemap
-    sceneCubemapRender.renderFromPoint({0,0,0}, renderSystem.get(), pbrRenderSystem.get());
-    
-    ///////////////////////// diffuse irradiance
-    auto irradianceShader = std::make_unique<IrradianceShader>();        
-    Cubemap irradianceMap(32);
-    
-    // Apply shader onto skybox
-    sceneCubemapRender.applyFilter(irradianceShader.get(), irradianceMap);
-    pbrRenderSystem->setIrradianceMap(irradianceMap.textureID);
-    
-    ///////////////////////// diffuse irradiance END
-
-
-    ///////////////////////// specular IBL
-    auto prefilterShader = std::make_unique<PrefilterShader>();
-    auto brdfShader =  std::make_unique<BrdfShader>();
-    
-    Cubemap prefilterMap(128);
-    sceneCubemapRender.applyPrefilter(prefilterShader.get(),prefilterMap);
-    GLuint brdfLUTTEXID = sceneCubemapRender.TwoDLUT(brdfShader.get());
-
-    pbrRenderSystem->setPrefilterMap(prefilterMap.textureID);
-    pbrRenderSystem->setBrdfLUT(brdfLUTTEXID);
-    ///////////////////////// specular IBL END
-
-    
-    auto testCubemapRenderEntity = ecs.CreateEntity();
-    ecs.SetEntityName(testCubemapRenderEntity, "Cubemap visu");
-    Drawable cubemapDraw = Render::generateCube(2, 2, false);
-    Transform cubemapTransform;
-    cubemapTransform.translate({0,5,0});
-
-    Program::programs.push_back(std::make_unique<CubemapProg>());
-    CustomProgram cubemapProg(Program::programs[Program::programs.size()-1].get());
-    ((CubemapProg*) cubemapProg.programPtr)->textureID = irradianceMap.textureID;
-    ecs.AddComponent<Transform>(testCubemapRenderEntity, cubemapTransform);
-    ecs.AddComponent<Drawable>(testCubemapRenderEntity, cubemapDraw);
-    ecs.AddComponent<CustomProgram>(testCubemapRenderEntity, cubemapProg);
-
-    std::unique_ptr<SpatialNode> cubemapNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(testCubemapRenderEntity));
-    root.AddChild(std::move(cubemapNode));
+    RenderServer::getInstance().reset();
 }
 
 void switchEditorMode(){
@@ -261,13 +156,6 @@ void switchEditorMode(){
 
 void editorUpdate(float deltaTime){
     if(ImGui::Begin("Scene", nullptr, ImGuiWindowFlags_NoCollapse)) {
-        if(ImGui::Begin("Shaders")){
-            for(auto &prog: Program::programs){
-                prog->updateGUI();
-            }
-        }
-        ImGui::End();
-
         if (ImGui::Button("Switch mode")) switchEditorMode();
 
         if (ImGui::Button("Load scene 1")){
@@ -308,12 +196,8 @@ void editorUpdate(float deltaTime){
     Camera::getInstance().updateInput(deltaTime);
     glm::mat4 view = Camera::getInstance().getV();
     collisionDetectionSystem->update(deltaTime);
-    lightRenderSystem->update();
-    renderSystem->update(view);
-    pbrRenderSystem->update(view);
-    animatedPbrRenderSystem->update(view, deltaTime);
-    
     physicDebugSystem->update();
+    RenderServer::getInstance().update(view, deltaTime);    
 
     if(savePicture)  save_PPM_file(SCR_WIDTH, SCR_HEIGHT, "../pictures/scene.ppm");
 }
@@ -325,10 +209,8 @@ void gameUpdate(float deltaTime){
     cameraSystem->update();
     collisionDetectionSystem->update(deltaTime);
     physicSystem->update(deltaTime);
-    lightRenderSystem->update();
-    renderSystem->update(view);
-    pbrRenderSystem->update(view);
-    animatedPbrRenderSystem->update(view, deltaTime);
+
+    RenderServer::getInstance().update(view, deltaTime);
 }
 
 int main( void )
@@ -455,9 +337,9 @@ int main( void )
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
     
-        for(auto &prog: Program::programs){
-            prog->clear();
-        }
+        // for(auto &prog: Program::programs){
+        //     prog->clear();
+        // }
     }
 
     glfwTerminate();

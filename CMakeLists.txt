@@ -68,17 +68,14 @@ add_definitions(
 
 add_executable(main
 	engine/src/main.cpp
+
 	
-	engine/include/spatial.hpp
-	engine/include/rendering.hpp
-	engine/include/input.hpp
-    engine/include/camera.hpp
-    engine/include/ecs/implementations/components.hpp
-    engine/include/ecs/implementations/systems.hpp
 	
 	engine/src/spatial.cpp
-	engine/src/rendering.cpp
-	engine/src/systems/physic.cpp
+	engine/src/rendering/programs.cpp
+	engine/src/rendering/systems.cpp
+	engine/src/rendering/temp.cpp
+	engine/src/physic/physic.cpp
 	engine/src/input.cpp
     engine/src/camera.cpp
     engine/src/components.cpp

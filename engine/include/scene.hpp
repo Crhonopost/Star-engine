@@ -1,5 +1,5 @@
 #include <engine/include/spatial.hpp>
-#include <engine/include/rendering.hpp>
+#include <engine/include/rendering/rendering.hpp>
 #include <engine/include/input.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
@@ -9,7 +9,7 @@
 
 Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereEntity = ecs.CreateEntity();
-    auto sphereDraw = Render::generateSphere(radius);
+    auto sphereDraw = SystemPBR::generateSphere(radius);
     auto sphereMaterial = Material();
 
     sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Albedo.png");
@@ -43,7 +43,7 @@ Entity createLightSource(ecsManager &ecs, glm::vec3 position, glm::vec3 color){
 
 Entity generatePlanetBody(ecsManager &ecs, glm::vec3 position, float radius){
     auto sphereEntity = ecs.CreateEntity();
-    // auto sphereDraw = Render::generateSphere(radius);    
+    // auto sphereDraw = SystemPBR::generateSphere(radius);    
 
     auto sphereRigidBody = RigidBody();
     sphereRigidBody.type = RigidBody::STATIC;
@@ -97,7 +97,7 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     auto crateEntity = ecs.CreateEntity();
     Material crateMat;
     Drawable crateDrawable;
-    Render::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
+    SystemPBR::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
     
     CollisionShape crateShape;
     crateShape.shapeType = OOBB;
@@ -143,7 +143,7 @@ Entity generateEgg(ecsManager &ecs, SpatialNode *parent, glm::vec3 position){
     eggMeshTransform.setScale(glm::vec3(0.001));
     Drawable eggDrawable;
     Material eggMaterial;
-    Render::loadSimpleMesh("../assets/meshes/Props", "/Egg.glb", eggDrawable, eggMaterial);
+    SystemPBR::loadSimpleMesh("../assets/meshes/Props", "/Egg.glb", eggDrawable, eggMaterial);
     ecs.AddComponent(eggMeshEntity, eggMeshTransform);
     ecs.AddComponent(eggMeshEntity, eggDrawable);
     ecs.AddComponent(eggMeshEntity, eggMaterial);
@@ -178,7 +178,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     Transform playerTransform;
     ecs.AddComponent(playerEntity, playerTransform);
 
-    AnimatedPBRrender::loadMesh("../assets/meshes/Player", "/Run.glb", playerDrawable, playerMaterial);
+    SystemAnimatedPBR::loadMesh("../assets/meshes/Player", "/Run.glb", playerDrawable, playerMaterial);
     ecs.AddComponent(playerEntity, playerDrawable);
     ecs.AddComponent(playerEntity, playerMaterial);
 
@@ -262,7 +262,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     };
 
 
-    // Drawable lowerRes = Render::generatePlane(1, 2);
+    // Drawable lowerRes = SystemPBR::generatePlane(1, 2);
     // auto lowerResEntity = ecs.CreateEntity();
     // ecs.AddComponent<Drawable>(lowerResEntity, lowerRes);
     // playerDraw.lodLower = &ecs.GetComponent<Drawable>(lowerResEntity);
@@ -297,8 +297,8 @@ Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     wallMat.aoTex = &Texture::loadTexture("../assets/images/wall/blockTex_Occ1.png");
     wallMat.aoTex->visible = true;
     //albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex
-    Drawable wallDrawable = Render::generatePlane(10, 2);
-    // Render::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
+    Drawable wallDrawable = SystemPBR::generatePlane(10, 2);
+    // SystemPBR::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
     
     CollisionShape wallShape;
     wallShape.shapeType = PLANE;
@@ -330,8 +330,8 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     RigidBody tunnelBody;
     CollisionShape tunnelShape;
 
-    Render::loadSimpleMesh("../assets/meshes/Props", "/pipe.glb", tunnelDrawable, tunnelMaterial);
-    // tunnelDrawable = Render::generateCube(1, 3);
+    SystemPBR::loadSimpleMesh("../assets/meshes/Props", "/pipe.glb", tunnelDrawable, tunnelMaterial);
+    // tunnelDrawable = SystemPBR::generateCube(1, 3);
     tunnelMaterial.albedoTex->visible = false;
     tunnelMaterial.albedo = glm::vec3(0.3, 1, 0.2);
     tunnelBody.type = RigidBody::STATIC;
@@ -472,7 +472,7 @@ Entity loadMeshLayer(SpatialNode &parent, ecsManager &ecs, char* folderPath, cha
     Transform layer1Transform;
     Drawable sphereDraw;
     auto sphereMaterial = Material();
-    Render::loadSimpleMesh(folderPath, fileName, sphereDraw, sphereMaterial, layer);
+    SystemPBR::loadSimpleMesh(folderPath, fileName, sphereDraw, sphereMaterial, layer);
     ecs.AddComponent(res, layer1Transform);
     ecs.AddComponent(res, sphereDraw);
     ecs.AddComponent(res, sphereMaterial);
@@ -577,8 +577,6 @@ Entity generatePlanet2(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
 }
 
 void initScene(SpatialNode &root, ecsManager &ecs){
-    Program::programs.push_back(std::make_unique<PBR>());    
-
     Entity playerEntity = generatePlayer(ecs, root);
 
 
@@ -754,7 +752,6 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     };
     ecs.AddComponent(rootEntity, continuousRotation);
 
-    Program::programs.push_back(std::make_unique<PBR>());
     for(int i=0; i<5; i++){
         auto ent = generateSpherePBR(ecs, 0.75f, glm::vec3(-5 + i*2, 0, 0));
         std::unique_ptr<SpatialNode> sphereNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(ent));
@@ -802,12 +799,12 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     ecs.SetEntityName(animationEntity, "Animation");
     Transform animationTransform;
     animationTransform.translate({0,0,0});
-    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Mario-walk.glb");
-    // AnimatedDrawable animationDraw = AnimatedPBRrender::loadMesh("../assets/meshes/Walking.glb");
+    // AnimatedDrawable animationDraw = SystemAnimatedPBR::loadMesh("../assets/meshes/Mario-walk.glb");
+    // AnimatedDrawable animationDraw = SystemAnimatedPBR::loadMesh("../assets/meshes/Walking.glb");
     AnimatedDrawable animationDraw;
     Material animationMaterial;
     animationMaterial.albedo = {0.5f,0.5f,0.5f};
-    AnimatedPBRrender::loadMesh("../assets/meshes", "/Walking.glb", animationDraw, animationMaterial);
+    SystemAnimatedPBR::loadMesh("../assets/meshes", "/Walking.glb", animationDraw, animationMaterial);
     ecs.AddComponent(animationEntity, animationTransform);
     ecs.AddComponent(animationEntity, animationDraw);
     ecs.AddComponent(animationEntity, animationMaterial);
@@ -851,7 +848,7 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
 
     Entity groundE = ecs.CreateEntity();
     Transform groundTransform;
-    Drawable groundDraw = Render::generatePlane(100.f, 2);
+    Drawable groundDraw = SystemPBR::generatePlane(100.f, 2);
     Material groundMat;
     CollisionShape groundShape;
     // groundShape.shapeType = PLANE;

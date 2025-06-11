@@ -3,76 +3,12 @@
 #include <engine/include/ecs/base/system.hpp>
 #include <engine/include/ecs/implementations/components.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
-#include <engine/include/rendering.hpp>
+#include <engine/include/rendering/rendering.hpp>
 
 #include <stack>
 
 
 extern ecsManager ecs;
-
-class Render: public System {
-    public:
-    void update(glm::mat4 &view, bool isCubemapRender = false);
-
-    static Drawable generateSphere(float radius);
-    static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
-    static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
-    static Drawable loadSimpleMesh(char *path);
-    static void loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat, int layer=0);
-};
-
-class LightRender: public System {
-    public:
-    void update();
-};
-
-class PBRrender: public System {
-    protected:
-    friend LightRender;
-    static PBR* pbrProgPtr;
-    GLuint mIrradianceMapID = 0; 
-    GLuint mPrefilterMapID = 0; 
-    GLuint mBrdfLUTID = 0; 
-
-
-    public:
-    static void initPBR();
-    void setupMaps();
-    virtual void update(glm::mat4 &view, bool isCubemapRender = false);
-    void setIrradianceMap(GLuint cubemapTextureID) {
-        mIrradianceMapID = cubemapTextureID;
-    }
-    void setPrefilterMap(GLuint cubemapTextureID) {
-        mPrefilterMapID = cubemapTextureID;
-    }
-    void setBrdfLUT(GLuint TextureID) {
-        mBrdfLUTID = TextureID;
-    }
-};
-
-
-class AnimatedPBRrender: public PBRrender {
-    public:
-    void update(glm::mat4 &view, float deltaTime);
-    static void loadMesh(char *directory, char *fileName, AnimatedDrawable &res, Material &mat);
-};
-
-class CubemapRender {
-    private:
-    glm::mat4 projection;
-    glm::vec3 orientations[6];
-    glm::vec3 ups[6];
-    Drawable cubeMesh;
-    public:
-    Cubemap cubemap;
-    CubemapRender(int res);
-    void renderFromPoint(glm::vec3 point, Render *render, PBRrender *pbr);
-    void applyFilter(Program *filterProg, Cubemap target);
-    void applyPrefilter(Program *filterProg, Cubemap prefilterMap);
-    GLuint TwoDLUT(Program *brdfProg);
-};
-
-
 class CameraSystem: public System {
     private:
         std::stack<Entity> cams;

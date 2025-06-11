@@ -2,6 +2,8 @@
 
 #include <common/json.hpp>
 #include <engine/include/ecs/ecsWithoutInspector.hpp>
+#include <engine/include/ecs/implementations/components.hpp>
+
 
 using json = nlohmann::json;
 

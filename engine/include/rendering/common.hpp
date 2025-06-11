@@ -1,13 +1,13 @@
 #pragma once
 
+#include <GL/glew.h>
+#include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
+
+#include <memory>
+#include <string>
 #include <vector>
 #include <map>
-#include <memory>
-
-#include <engine/include/ecs/implementations/components.hpp>
-class Drawable;
-
-class Material;
 
 struct Texture {
     const char *path;
@@ -34,8 +34,6 @@ struct Texture {
     private:
     static int activationInt;
 };
-
-
 struct Cubemap {
     GLuint textureID;
     int resolution;
@@ -43,6 +41,7 @@ struct Cubemap {
     Cubemap(std::vector<std::string> paths);
     void clear();
 };
+
 
 class Program {
     private:
@@ -54,7 +53,6 @@ class Program {
     
     public:
     GLuint programID;
-    static std::vector<std::unique_ptr<Program>> programs;
 
     Program() = default;
     Program(const char *vertexPath, const char *fragmentPath);
@@ -67,9 +65,9 @@ class Program {
     void initTexture(char *path, char *uniformName);
     virtual void updateGUI();
 
-    void updateViewMatrix(glm::mat4 &v);
-    void updateProjectionMatrix(glm::mat4 &p);
-    void updateModelMatrix(glm::mat4 model);
+    void updateViewMatrix(const glm::mat4 &v);
+    void updateProjectionMatrix(const glm::mat4 &p);
+    void updateModelMatrix(const glm::mat4 &model);
 
     void updateLightCount(int count);
     void updateLightPosition(int lightIndex, glm::vec3 position);
@@ -88,55 +86,4 @@ class Program {
     static void destroyPrograms();
 };
 
-class Skybox: public Program{
-    public:
-    Cubemap cubemap;
-    Skybox(Cubemap sky);
-    
-    void beforeRender() override;
-    void afterRender() override;
-};
 
-class IrradianceShader:public Program{
-    public:
-    IrradianceShader();
-    
-};
-class PrefilterShader:public Program{
-    public:
-    PrefilterShader();
-};
-
-class BrdfShader:public Program{
-    public:
-    BrdfShader();
-};
-
-class CubemapProg: public Program {
-    public:
-    GLuint textureID;
-
-    CubemapProg();
-
-    void beforeRender() override;
-};
-
-class PBR: public Program{
-    private:
-    GLuint albedoLocation, metallicLocation, roughnessLocation, aoLocation, hasTextureLocation, indensiteScaleLightLocation;
-    GLuint albedoTexLocation, metallicTexLocation, roughnessTexLocation, aoTexLocation, normalTexLocation;
-    GLuint hasAlbedoMapLocation, hasNormalMapLocation, hasMetallicMapLocation, hasRoughnessMapLocation, hasAoMapLocation;
-    
-
-    public:
-    PBR();
-    void updateGUI() override;
-    void updateMaterial(Material &value);
-
-    void updateLightCount(int count);
-    void updateLightPosition(int lightIndex, glm::vec3 position);
-    void updateLightColor(int lightIndex, glm::vec3 color);
-    
-};
-
-void save_PPM_file(int width, int height, const std::string& filename);
