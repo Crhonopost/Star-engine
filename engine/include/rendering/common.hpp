@@ -7,26 +7,29 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
-struct Texture {
-    const char *path;
+#include <engine/include/API/ResourceManagement/IResource.hpp>
+
+
+struct Texture: public IResource {
+    std::string path;
     GLuint id;
     bool visible;
     
     Texture(): id(0), visible(false){};
     
-    static Texture& loadTextureFromMemory(const unsigned char* data,
+    bool loadTextureFromData(const unsigned char* data,
                                           size_t size,
                                           int width,
                                           int height,
                                           int channels,
                                           const std::string& key);
-    static Texture& loadTexture(const char * path);
-    static std::map<std::string, Texture> textures;
-
-    static Texture emptyTexture;
+    bool load(const std::string &name) override;
     
+
+    static std::shared_ptr<Texture> emptyTexture;
+
     void activate(GLuint textureLocation);
     static int getAvailableActivationInt();
     static void resetActivationInt();
@@ -49,7 +52,7 @@ class Program {
 
     protected:
     // Setup à l'initialisation uniquement
-    std::map<GLuint, Texture*> programTextures;
+    std::unordered_map<GLuint, std::shared_ptr<Texture>> programTextures;
     
     public:
     GLuint programID;

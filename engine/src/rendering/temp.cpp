@@ -5,6 +5,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h> 
 #include <assimp/Importer.hpp>
+#include <engine/include/API/ResourceManagement/ResourceManager.hpp>
 
 void RenderServer::init(ecsManager& ecsRef){
     ecs = &ecsRef;
@@ -111,12 +112,12 @@ int reorganizeBones(std::vector<Bone>& bones, std::vector<int>& newIndices, int 
 }
 
 
-std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
+std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
                                            aiTextureType type,
                                            const char* directory,
                                            const aiScene* scene)
 {
-    std::vector<Texture*> texturesOut;
+    std::vector<std::shared_ptr<Texture>> texturesOut;
     std::string dirStr = directory ? directory : "";
     if (!dirStr.empty() && dirStr.back() != '/' && dirStr.back() != '\\')
         dirStr += '/';
@@ -125,7 +126,7 @@ std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
         aiString str;
         material->GetTexture(type, i, &str);
         std::string texKey;
-        Texture* texPtr = nullptr;
+        std::shared_ptr<Texture> texPtr = std::make_shared<Texture>();
 
         if (str.C_Str()[0] == '*') {
             int texIndex = std::atoi(str.C_Str() + 1);
@@ -134,7 +135,7 @@ std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
                 texKey = std::string(scene->mMeshes[0]->mName.C_Str()) + std::string("embedded_") + std::to_string(texIndex);
 
                 if (atex->mHeight) {
-                    texPtr = &Texture::loadTextureFromMemory(
+                    texPtr->loadTextureFromData(
                         reinterpret_cast<unsigned char*>(atex->pcData),
                         0,
                         atex->mWidth,
@@ -143,7 +144,7 @@ std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
                         texKey
                     );
                 } else {
-                    texPtr = &Texture::loadTextureFromMemory(
+                    texPtr->loadTextureFromData(
                         reinterpret_cast<unsigned char*>(atex->pcData),
                         atex->mWidth,
                         0,
@@ -156,7 +157,7 @@ std::vector<Texture*> loadMaterialTextures(aiMaterial* material,
         } else {
             std::string fullPath = dirStr + str.C_Str();
             texKey = fullPath;
-            texPtr = &Texture::loadTexture(fullPath.c_str());
+            texPtr = TextureManager::load(fullPath.c_str());
         }
 
         if (texPtr) {
@@ -171,41 +172,41 @@ void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene, const ch
     if (mesh->mMaterialIndex >= 0){
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
 
-        std::vector<Texture*> albedoMap = loadMaterialTextures(material, aiTextureType_BASE_COLOR, directory, scene);
-        if (!albedoMap.empty()){
-            mat.albedoTex = albedoMap[0];
+        auto albedoMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, directory, scene);
+        if (!albedoMaps.empty()){
+            mat.albedoTex = albedoMaps[0];
             mat.albedoTex->visible = true;
         } 
-        else mat.albedoTex = &Texture::emptyTexture;
+        else mat.albedoTex = Texture::emptyTexture;
         
-        std::vector<Texture*> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, directory, scene);
+        auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, directory, scene);
         if (!specularMaps.empty()) {
             mat.metallicTex = specularMaps[0];
             mat.metallicTex->visible = true;
         }
-        else mat.metallicTex = &Texture::emptyTexture;
+        else mat.metallicTex = Texture::emptyTexture;
         
-        std::vector<Texture*> normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, directory, scene);
+        auto normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, directory, scene);
         if (normalMaps.empty()) normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, directory, scene);
         if (!normalMaps.empty()){
             mat.normalTex = normalMaps[0];
             mat.normalTex->visible = true;
         }
-        else mat.normalTex = &Texture::emptyTexture;
+        else mat.normalTex = Texture::emptyTexture;
         
-        std::vector<Texture*> roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, directory, scene);
+        auto roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, directory, scene);
         if (!roughnessMaps.empty()){
             mat.roughnessTex = roughnessMaps[0];
             mat.roughnessTex->visible = true;
         }
-        else mat.roughnessTex = &Texture::emptyTexture;
+        else mat.roughnessTex = Texture::emptyTexture;
         
-        std::vector<Texture*> aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, directory, scene);
+        auto aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, directory, scene);
         if (!aoMaps.empty()){
             mat.aoTex = aoMaps[0];
             mat.aoTex->visible = true;
         } 
-        else mat.aoTex = &Texture::emptyTexture;
+        else mat.aoTex = Texture::emptyTexture;
     }
 }
 

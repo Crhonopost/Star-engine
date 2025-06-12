@@ -11,7 +11,6 @@
 
 
 
-std::map<std::string, Texture> Texture::textures;
 int Texture::activationInt = 0;
 
 int Texture::getAvailableActivationInt(){
@@ -23,25 +22,20 @@ void Texture::resetActivationInt(){
 }
 
 
-Texture Texture::emptyTexture;
+std::shared_ptr<Texture> Texture::emptyTexture = std::make_shared<Texture>();
 
-Texture& Texture::loadTextureFromMemory(const unsigned char* data,
+bool Texture::loadTextureFromData(const unsigned char* data,
                                          size_t size,
                                          int width,
                                          int height,
                                          int channels,
                                          const std::string& key)
 {
-    auto it = textures.find(key);
-    if (it != textures.end())
-        return it->second;
-
-    Texture tex;
-    tex.path = key.c_str();
-    glGenTextures(1, &tex.id);
+    path = key;
+    glGenTextures(1, &id);
     int unit = Texture::getAvailableActivationInt();
     glActiveTexture(GL_TEXTURE0 + unit);
-    glBindTexture(GL_TEXTURE_2D, tex.id);
+    glBindTexture(GL_TEXTURE_2D, id);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -71,37 +65,23 @@ Texture& Texture::loadTextureFromMemory(const unsigned char* data,
     if (size > 0 && height == 0 && imageData)
         stbi_image_free(imageData);
 
-    auto inserted = textures.emplace(key, tex);
-    return inserted.first->second;
+    return true;
 }
 
-Texture& Texture::loadTexture(const char * path){
-    std::string key(path);
-    auto it = textures.find(key);
-    if (it != textures.end()) {
-        return it->second;
-    }
+bool Texture::load(const std::string &name) {
+    path = name;
 
-    
-    Texture tex;
-    textures.emplace(key, tex);
-
-
-    it = textures.find(key);
-    Texture &texture = it->second;
-    texture.path = path;
-
-    glGenTextures(1, &texture.id);
+    glGenTextures(1, &id);
     int current = Texture::getAvailableActivationInt();
     glActiveTexture(GL_TEXTURE0 + current);
-    glBindTexture(GL_TEXTURE_2D, texture.id);
+    glBindTexture(GL_TEXTURE_2D, id);
  
 
     GLint checkBinding;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &checkBinding);
-    if (checkBinding != texture.id) {
+    if (checkBinding != id) {
         std::cerr << "Warning: Texture not bound correctly! Expected " 
-                << texture.id << ", got " << checkBinding << "\n";
+                << id << ", got " << checkBinding << "\n";
     }
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -112,7 +92,7 @@ Texture& Texture::loadTexture(const char * path){
 
     unsigned char *textureData;
     int textureWidth, textureHeight, textureChannels;
-    textureData = stbi_load(path, &textureWidth, &textureHeight, &textureChannels, 0);
+    textureData = stbi_load(path.c_str(), &textureWidth, &textureHeight, &textureChannels, 0);
 
     if(!textureData){
         std::cerr << "Failed to load texture\n";
@@ -137,19 +117,9 @@ Texture& Texture::loadTexture(const char * path){
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(textureData);
 
-    // glUseProgram(programID);
-    // texture.uniformLocation = glGetUniformLocation(programID, texture.uniformName);        
-    // if(texture.uniformLocation == -1){
-    //     std::cerr << "Invalid uniform location, name: " << texture.uniformName << "\n";
-    // }
-
-    // glUniform1i(texture.uniformLocation, activationInt);
-    // glBindTexture(GL_TEXTURE_2D, texture.id);
-
-    textures.emplace(texture.path, texture);
     glBindTexture(GL_TEXTURE_2D, 0); // TODO: usefull ?
 
-    return texture;
+    return true;
 }
 
 void Texture::activate(GLuint textureLocation){

@@ -3,6 +3,7 @@
 #include <engine/include/input.hpp>
 #include <engine/include/ecs/ecsManager.hpp>
 #include <engine/include/ecs/implementations/systems.hpp>
+#include <engine/include/API/ResourceManagement/ResourceManager.hpp>
 
 
 #include <iostream>
@@ -12,11 +13,11 @@ Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereDraw = SystemPBR::generateSphere(radius);
     auto sphereMaterial = Material();
 
-    sphereMaterial.albedoTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Albedo.png");
-    sphereMaterial.normalTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Normal.png");
-    sphereMaterial.metallicTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Albedo.png");
-    sphereMaterial.roughnessTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Roughness.png");
-    sphereMaterial.aoTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/AO.png");
+    sphereMaterial.albedoTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial.normalTex = TextureManager::load("../assets/images/PBR/oldMetal/Normal.png");
+    sphereMaterial.metallicTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial.roughnessTex = TextureManager::load("../assets/images/PBR/oldMetal/Roughness.png");
+    sphereMaterial.aoTex = TextureManager::load("../assets/images/PBR/oldMetal/AO.png");
 
     Transform sphereTransform;
     sphereTransform.translate(position);
@@ -287,14 +288,14 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     auto wallEntity = ecs.CreateEntity();
     Material wallMat;
-    wallMat.albedoTex = &Texture::loadTexture("../assets/images/wall/blockPieceTex.png");
+    wallMat.albedoTex = TextureManager::load("../assets/images/wall/blockPieceTex.png");
     wallMat.albedoTex->visible = true;
     // wallMat.normalTex = &Texture::loadTexture("../assets/images/wall/.png");
     wallMat.normalTex->visible = false;
     // wallMat.metallicTex = &Texture::loadTexture("../assets/images/wall/.png");
     wallMat.metallicTex->visible = false;
     // wallMat.roughnessTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Roughness.png");
-    wallMat.aoTex = &Texture::loadTexture("../assets/images/wall/blockTex_Occ1.png");
+    wallMat.aoTex = TextureManager::load("../assets/images/wall/blockTex_Occ1.png");
     wallMat.aoTex->visible = true;
     //albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex
     Drawable wallDrawable = SystemPBR::generatePlane(10, 2);

@@ -1,5 +1,6 @@
 #include <engine/include/spatial.hpp> // ?
 #include <engine/include/rendering/rendering.hpp>
+#include <engine/include/API/ResourceManagement/ResourceManager.hpp>
 #include <common/shader.hpp>
 
 Program::Program(const char *vertexPath, const char *fragmentPath){
@@ -17,9 +18,6 @@ Program::Program(const char *vertexPath, const char *fragmentPath){
 }
 
 void Program::clear(){
-    for (auto& [key, tex] : Texture::textures) {
-        glDeleteTextures(1, &tex.id);
-    }
     glDeleteProgram(programID);
 }
 
@@ -45,11 +43,11 @@ void Program::beforeRender(){}
 void Program::afterRender(){}
 
 void Program::initTexture(char *path, char *uniformName){
-    Texture &texture = Texture::loadTexture(path);
+    auto texture = TextureManager::load(path);
 
     GLuint textureLocation = glGetUniformLocation(programID, uniformName);
 
-    programTextures.emplace(textureLocation, &texture);
+    programTextures.emplace(textureLocation, texture);
 }
 
 

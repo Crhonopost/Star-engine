@@ -58,11 +58,11 @@ void Drawable::init(std::vector<Vertex> &vertices, std::vector<short unsigned in
 
 
 Material::Material(){
-    albedoTex = &Texture::emptyTexture;
-    normalTex = &Texture::emptyTexture;
-    metallicTex = &Texture::emptyTexture;
-    roughnessTex = &Texture::emptyTexture;
-    aoTex = &Texture::emptyTexture;
+    albedoTex = Texture::emptyTexture;
+    normalTex = Texture::emptyTexture;
+    metallicTex = Texture::emptyTexture;
+    roughnessTex = Texture::emptyTexture;
+    aoTex = Texture::emptyTexture;
 }
 
 CustomProgram::CustomProgram(Program *progPtr): Component(){

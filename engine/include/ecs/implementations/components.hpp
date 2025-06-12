@@ -111,7 +111,7 @@ struct Material: Component {
     float roughness = 0.5f;
     float ao = 1.0f;
 
-    Texture *albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex;
+    std::shared_ptr<Texture> albedoTex, normalTex, metallicTex, roughnessTex, aoTex;
 
     Material();
 };
