@@ -9,52 +9,9 @@ void Drawable::draw(float renderDistance){
         return;
     }
 
-
-    glBindVertexArray(VAO);
-    
-    glDrawElements(
-                GL_TRIANGLES,      // mode
-                indexCount,
-                GL_UNSIGNED_SHORT,   // type
-                (void*)0           // element array buffer offset
-                );
-
-    glBindVertexArray(0);
+    mesh->draw();
 }
 
-void Drawable::init(std::vector<Vertex> &vertices, std::vector<short unsigned int> &indices){
-    glGenVertexArrays(1,&VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(VAO);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
-    
-    int vertexSize = 12 * sizeof(float) + 4 * sizeof(int);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)0);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
-
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)(5 * sizeof(float)));
-
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, vertexSize, (void*)(8 * sizeof(float)));
-
-    glEnableVertexAttribArray(4);
-    glVertexAttribIPointer(4, 4, GL_INT, vertexSize, (void*)(12 * sizeof(float)));
-
-
-    glBindVertexArray(0);
-}
 
 
 Material::Material(){

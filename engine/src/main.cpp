@@ -88,7 +88,6 @@ void initEcs(){
     ecs.RegisterComponent<CameraComponent>("CameraComponent");
     ecs.RegisterComponent<CustomProgram>("CustomProgram");
     ecs.RegisterComponent<CustomVar>("CustomVar");
-    ecs.RegisterComponent<Material>("Material");
     ecs.RegisterComponent<Light>("Light");
     ecs.RegisterComponent<CustomBehavior>("CustomBehavior");
     ecs.RegisterComponent<RigidBody>("RigidBody");

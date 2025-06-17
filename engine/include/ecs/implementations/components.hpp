@@ -22,67 +22,30 @@ struct Component{
 };
 
 
-struct Vertex {
-    glm::vec3 position;
-    glm::vec2 texCoord;
-    glm::vec3 normal;
-    glm::vec4 boneWeights;
-    glm::ivec4 boneIndices;
-};
-
 struct Drawable: Component {
-    GLuint VAO, VBO, EBO;
-    int indexCount;
     bool hideOnCubemapRender = false;
 
+    std::shared_ptr<IMesh> mesh;
+    
     Drawable* lodLower = nullptr;
     float switchDistance = -1.0f;
 
-    Drawable(): VAO(0), VBO(0), EBO(0){};
+    Drawable(){};
 
     Drawable(Drawable&& other) noexcept
-        : VAO(other.VAO), VBO(other.VBO), EBO(other.EBO), 
-          indexCount(other.indexCount),
-          lodLower(other.lodLower), switchDistance(other.switchDistance) {
-        other.VAO = 0;
-        other.VBO = 0;
-        other.EBO = 0;
-    }
+        : lodLower(other.lodLower), switchDistance(other.switchDistance) {}
 
     Drawable& operator=(Drawable&& other) noexcept {
         if (this != &other) {
-            glDeleteVertexArrays(1, &VAO);
-            glDeleteBuffers(1, &VBO);
-            glDeleteBuffers(1, &EBO);
-
-            VAO = other.VAO;
-            VBO = other.VBO;
-            EBO = other.EBO;
-            indexCount = other.indexCount;
             lodLower = other.lodLower;
             switchDistance = other.switchDistance;
-
-            other.VAO = 0;
-            other.VBO = 0;
-            other.EBO = 0;
         }
         return *this;
     }
 
     ~Drawable() {
-        if (VAO != 0) {
-            glDeleteVertexArrays(1, &VAO);
-        }
-        if (VBO != 0) {
-            glDeleteBuffers(1, &VBO);
-        }
-        if (EBO != 0) {
-            glDeleteBuffers(1, &EBO);
-        }
-        // Les textures seront automatiquement détruites grâce au destructeur de std::vector
+        // Take care of freeing resources ?
     }
-
-    void init(std::vector<Vertex>&, std::vector<short unsigned int>&);
     void draw(float renderDistance);
 };
 
@@ -105,16 +68,16 @@ struct CustomProgram: Component {
     CustomProgram(Program *progPtr);
 };
 
-struct Material: Component {
-    glm::vec3 albedo = {1.f, 0.7f, 0.77f};
-    float metallic = 0.5f;
-    float roughness = 0.5f;
-    float ao = 1.0f;
+// struct Material: Component {
+//     glm::vec3 albedo = {1.f, 0.7f, 0.77f};
+//     float metallic = 0.5f;
+//     float roughness = 0.5f;
+//     float ao = 1.0f;
 
-    std::shared_ptr<Texture> albedoTex, normalTex, metallicTex, roughnessTex, aoTex;
+//     std::shared_ptr<Texture> albedoTex, normalTex, metallicTex, roughnessTex, aoTex;
 
-    Material();
-};
+//     Material();
+// };
 
 
 

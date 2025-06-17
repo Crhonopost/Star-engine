@@ -72,6 +72,7 @@ add_executable(main
 	
 	
 	engine/src/spatial.cpp
+	engine/src/rendering/MeshHelper.cpp
 	engine/src/rendering/programs.cpp
 	engine/src/rendering/systems.cpp
 	engine/src/rendering/temp.cpp

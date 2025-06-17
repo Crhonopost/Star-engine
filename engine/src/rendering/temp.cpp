@@ -7,6 +7,248 @@
 #include <assimp/Importer.hpp>
 #include <engine/include/API/ResourceManagement/ResourceManager.hpp>
 
+
+void SingleMesh::init(std::vector<Vertex> &vertices, std::vector<short unsigned int> &indices) {
+    nbOfIndices = indices.size();
+
+    glGenVertexArrays(1,&VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+    
+    int vertexSize = 12 * sizeof(float) + 4 * sizeof(int);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)0);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(3 * sizeof(float)));
+
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)(5 * sizeof(float)));
+
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, vertexSize, (void*)(8 * sizeof(float)));
+
+    glEnableVertexAttribArray(4);
+    glVertexAttribIPointer(4, 4, GL_INT, vertexSize, (void*)(12 * sizeof(float)));
+
+
+    glBindVertexArray(0);
+}
+
+void SingleMesh::draw() {
+    glBindVertexArray(VAO);
+    
+    glDrawElements(
+                GL_TRIANGLES,      // mode
+                nbOfIndices,
+                GL_UNSIGNED_SHORT,   // type
+                (void*)0           // element array buffer offset
+                );
+
+    glBindVertexArray(0);
+}
+
+bool SingleMesh::load(const std::string &name) {
+    // This function is not used in SingleMesh, but can be implemented if needed.
+    std::cerr << "SingleMesh does not support loading from file." << std::endl;
+    return false;
+}
+
+void MultiMesh::draw() {
+    if (subMeshes.empty()) {
+        std::cerr << "No submeshes to draw!" << std::endl;
+        return;
+    }
+
+    for(const auto& subMesh : subMeshes) {
+        if (subMesh) {
+            subMesh->draw();
+        } else {
+            std::cerr << "Submesh is null!" << std::endl;
+        }
+    }
+}
+
+std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
+                                           aiTextureType type,
+                                           const aiScene* scene)
+{
+    std::vector<std::shared_ptr<Texture>> texturesOut;
+
+    for (unsigned int i = 0; i < material->GetTextureCount(type); ++i) {
+        aiString str;
+        material->GetTexture(type, i, &str);
+        std::string texKey;
+        std::shared_ptr<Texture> texPtr = std::make_shared<Texture>();
+
+        if (str.C_Str()[0] == '*') {
+            int texIndex = std::atoi(str.C_Str() + 1);
+            if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures)) {
+                aiTexture* atex = scene->mTextures[texIndex];
+                texKey = std::string(scene->mMeshes[0]->mName.C_Str()) + std::string("embedded_") + std::to_string(texIndex);
+
+                if (atex->mHeight) {
+                    texPtr->loadTextureFromData(
+                        reinterpret_cast<unsigned char*>(atex->pcData),
+                        0,
+                        atex->mWidth,
+                        atex->mHeight,
+                        4,
+                        texKey
+                    );
+                } else {
+                    texPtr->loadTextureFromData(
+                        reinterpret_cast<unsigned char*>(atex->pcData),
+                        atex->mWidth,
+                        0,
+                        0,
+                        0,
+                        texKey
+                    );
+                }
+            }
+        } else {
+            std::cerr << "Error loading texture outside of mesh file: " << str.C_Str() << std::endl;
+            // std::string fullPath = dirStr + str.C_Str();
+            // texKey = fullPath;
+            // texPtr = TextureManager::load(fullPath.c_str());
+        }
+
+        if (texPtr) {
+            texturesOut.push_back(texPtr);
+        }
+    }
+    return texturesOut;
+}
+
+void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene){
+    if (mesh->mMaterialIndex >= 0){
+        aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+
+        auto albedoMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, scene);
+        if (!albedoMaps.empty()){
+            mat.albedoTex = albedoMaps[0];
+            mat.albedoTex->visible = true;
+        } 
+        else mat.albedoTex = Texture::emptyTexture;
+        
+        auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, scene);
+        if (!specularMaps.empty()) {
+            mat.metallicTex = specularMaps[0];
+            mat.metallicTex->visible = true;
+        }
+        else mat.metallicTex = Texture::emptyTexture;
+        
+        auto normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, scene);
+        if (normalMaps.empty()) normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, scene);
+        if (!normalMaps.empty()){
+            mat.normalTex = normalMaps[0];
+            mat.normalTex->visible = true;
+        }
+        else mat.normalTex = Texture::emptyTexture;
+        
+        auto roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, scene);
+        if (!roughnessMaps.empty()){
+            mat.roughnessTex = roughnessMaps[0];
+            mat.roughnessTex->visible = true;
+        }
+        else mat.roughnessTex = Texture::emptyTexture;
+        
+        auto aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, scene);
+        if (!aoMaps.empty()){
+            mat.aoTex = aoMaps[0];
+            mat.aoTex->visible = true;
+        } 
+        else mat.aoTex = Texture::emptyTexture;
+    }
+}
+
+
+
+bool MultiMesh::load(const std::string &name) {    
+    Assimp::Importer importer;
+    std::string filePath = name;
+    const aiScene* scene = importer.ReadFile(filePath,
+        aiProcess_Triangulate |
+        aiProcess_JoinIdenticalVertices |
+        aiProcess_SortByPType |
+        aiProcess_FlipUVs); // si besoin
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+    }
+
+    subMeshes.resize(scene->mNumMeshes);
+    
+    for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+        subMeshes[i] = std::make_shared<SingleMesh>();
+        
+        std::vector<unsigned short> indices;
+        std::vector<glm::vec3> indexed_vertices;
+        std::vector<glm::vec2> tex_coords;
+        std::vector<glm::vec3> normal;
+        aiMesh* mesh = scene->mMeshes[i];
+    
+        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
+            aiFace& face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
+                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
+            }
+        }
+    
+        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+            aiVector3D vertex = mesh->mVertices[j];
+            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
+        }
+    
+        if (mesh->HasNormals()) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D normal_vec = mesh->mNormals[j];
+                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
+            }
+        }
+    
+        if (mesh->HasTextureCoords(0)) {
+            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
+                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
+                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
+            }
+        }
+
+        const std::string materialName = mesh->mMaterialIndex < scene->mNumMaterials ? scene->mMaterials[mesh->mMaterialIndex]->GetName().C_Str() : "default";
+        subMeshes[i]->material = std::make_shared<Material>();
+        extractMaterial(*subMeshes[i]->material.get(), mesh, scene);
+        
+        
+        std::vector<Vertex> vertex_buffer_data;
+        for (int i = 0; i < indexed_vertices.size(); ++i) {
+            Vertex v;
+            v.position = indexed_vertices[i];
+            v.normal = normal[i];
+            v.texCoord = tex_coords[i];
+            
+            v.boneWeights = glm::vec4(0.0f);
+            v.boneIndices = glm::ivec4(0);
+            
+            vertex_buffer_data.push_back(v);
+        }
+    
+
+        subMeshes[i]->init(vertex_buffer_data, indices);
+    }
+
+    return true;
+}
+
 void RenderServer::init(ecsManager& ecsRef){
     ecs = &ecsRef;
 
@@ -19,13 +261,11 @@ void RenderServer::init(ecsManager& ecsRef){
     Signature pbrRenderSignature;
     pbrRenderSignature.set(ecs->GetComponentType<Transform>());
     pbrRenderSignature.set(ecs->GetComponentType<Drawable>());
-    pbrRenderSignature.set(ecs->GetComponentType<Material>());
     ecs->SetSystemSignature<SystemPBR>(pbrRenderSignature);
 
     Signature animatedPbrSignature;
     animatedPbrSignature.set(ecs->GetComponentType<Transform>());
     animatedPbrSignature.set(ecs->GetComponentType<AnimatedDrawable>());
-    animatedPbrSignature.set(ecs->GetComponentType<Material>());
     ecs->SetSystemSignature<SystemAnimatedPBR>(animatedPbrSignature);
 
     Signature lightSignature;
@@ -109,176 +349,6 @@ int reorganizeBones(std::vector<Bone>& bones, std::vector<int>& newIndices, int 
     
     newIndices.push_back(currentIdx);
     return newIndices.size() - 1;
-}
-
-
-std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
-                                           aiTextureType type,
-                                           const char* directory,
-                                           const aiScene* scene)
-{
-    std::vector<std::shared_ptr<Texture>> texturesOut;
-    std::string dirStr = directory ? directory : "";
-    if (!dirStr.empty() && dirStr.back() != '/' && dirStr.back() != '\\')
-        dirStr += '/';
-
-    for (unsigned int i = 0; i < material->GetTextureCount(type); ++i) {
-        aiString str;
-        material->GetTexture(type, i, &str);
-        std::string texKey;
-        std::shared_ptr<Texture> texPtr = std::make_shared<Texture>();
-
-        if (str.C_Str()[0] == '*') {
-            int texIndex = std::atoi(str.C_Str() + 1);
-            if (texIndex >= 0 && texIndex < static_cast<int>(scene->mNumTextures)) {
-                aiTexture* atex = scene->mTextures[texIndex];
-                texKey = std::string(scene->mMeshes[0]->mName.C_Str()) + std::string("embedded_") + std::to_string(texIndex);
-
-                if (atex->mHeight) {
-                    texPtr->loadTextureFromData(
-                        reinterpret_cast<unsigned char*>(atex->pcData),
-                        0,
-                        atex->mWidth,
-                        atex->mHeight,
-                        4,
-                        texKey
-                    );
-                } else {
-                    texPtr->loadTextureFromData(
-                        reinterpret_cast<unsigned char*>(atex->pcData),
-                        atex->mWidth,
-                        0,
-                        0,
-                        0,
-                        texKey
-                    );
-                }
-            }
-        } else {
-            std::string fullPath = dirStr + str.C_Str();
-            texKey = fullPath;
-            texPtr = TextureManager::load(fullPath.c_str());
-        }
-
-        if (texPtr) {
-            texturesOut.push_back(texPtr);
-        }
-    }
-    return texturesOut;
-}
-
-
-void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene, const char *directory){
-    if (mesh->mMaterialIndex >= 0){
-        aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-
-        auto albedoMaps = loadMaterialTextures(material, aiTextureType_BASE_COLOR, directory, scene);
-        if (!albedoMaps.empty()){
-            mat.albedoTex = albedoMaps[0];
-            mat.albedoTex->visible = true;
-        } 
-        else mat.albedoTex = Texture::emptyTexture;
-        
-        auto specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, directory, scene);
-        if (!specularMaps.empty()) {
-            mat.metallicTex = specularMaps[0];
-            mat.metallicTex->visible = true;
-        }
-        else mat.metallicTex = Texture::emptyTexture;
-        
-        auto normalMaps = loadMaterialTextures(material, aiTextureType_NORMALS, directory, scene);
-        if (normalMaps.empty()) normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, directory, scene);
-        if (!normalMaps.empty()){
-            mat.normalTex = normalMaps[0];
-            mat.normalTex->visible = true;
-        }
-        else mat.normalTex = Texture::emptyTexture;
-        
-        auto roughnessMaps = loadMaterialTextures(material, aiTextureType_SHININESS, directory, scene);
-        if (!roughnessMaps.empty()){
-            mat.roughnessTex = roughnessMaps[0];
-            mat.roughnessTex->visible = true;
-        }
-        else mat.roughnessTex = Texture::emptyTexture;
-        
-        auto aoMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, directory, scene);
-        if (!aoMaps.empty()){
-            mat.aoTex = aoMaps[0];
-            mat.aoTex->visible = true;
-        } 
-        else mat.aoTex = Texture::emptyTexture;
-    }
-}
-
-
-void SystemPBR::loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat, int layer){
-    std::vector<unsigned short> indices;
-    std::vector<glm::vec3> indexed_vertices;
-    std::vector<glm::vec2> tex_coords;
-    std::vector<glm::vec3> normal;
-
-    
-    Assimp::Importer importer;
-    std::string filePath = std::string(directory) + fileName;
-    const aiScene* scene = importer.ReadFile(filePath,
-        aiProcess_Triangulate |
-        aiProcess_JoinIdenticalVertices |
-        aiProcess_SortByPType |
-        aiProcess_FlipUVs); // si besoin
-
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
-    }
-    
-    for (unsigned int i = layer; i < std::min((const unsigned int) layer+1, scene->mNumMeshes); ++i) {
-        aiMesh* mesh = scene->mMeshes[i];
-    
-        for (unsigned int j = 0; j < mesh->mNumFaces; ++j) {
-            aiFace& face = mesh->mFaces[j];
-            for (unsigned int k = 0; k < face.mNumIndices; ++k) {
-                indices.push_back(face.mIndices[k]);  // Ajoute l'indice
-            }
-        }
-    
-        for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-            aiVector3D vertex = mesh->mVertices[j];
-            indexed_vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));  // Ajoute le vertex
-        }
-    
-        if (mesh->HasNormals()) {
-            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-                aiVector3D normal_vec = mesh->mNormals[j];
-                normal.push_back(glm::vec3(normal_vec.x, normal_vec.y, normal_vec.z));  // Ajoute la normale
-            }
-        }
-    
-        if (mesh->HasTextureCoords(0)) {
-            for (unsigned int j = 0; j < mesh->mNumVertices; ++j) {
-                aiVector3D tex_coord = mesh->mTextureCoords[0][j];
-                tex_coords.push_back(glm::vec2(tex_coord.x, tex_coord.y));  // Ajoute la coordonnée de texture
-            }
-        }
-
-        extractMaterial(mat, mesh, scene, directory);
-    }
-
-
-    res.indexCount = indices.size();
-
-    std::vector<Vertex> vertex_buffer_data;
-    for (int i = 0; i < indexed_vertices.size(); ++i) {
-        Vertex v;
-        v.position = indexed_vertices[i];
-        v.normal = normal[i];
-        v.texCoord = tex_coords[i];
-        
-        v.boneWeights = glm::vec4(0.0f);
-        v.boneIndices = glm::ivec4(0);
-
-        vertex_buffer_data.push_back(v);
-    }
-
-    res.init(vertex_buffer_data, indices);
 }
 
 
@@ -368,7 +438,7 @@ void SystemAnimatedPBR::loadMesh(char *directory, char *fileName, AnimatedDrawab
             }
         }
 
-        extractMaterial(mat, mesh, scene, directory);
+        extractMaterial(mat, mesh, scene);
 
 
         if( mesh->HasBones()){
@@ -415,51 +485,6 @@ void SystemAnimatedPBR::loadMesh(char *directory, char *fileName, AnimatedDrawab
                     vertexInfluences[vertexId].emplace_back(boneIndex, weight);
                 }
             }
-
-
-            // Chat GPT binding pose test
-            // Vérification cohérence offsetMatrix <-> globalBindPoseMatrix⁻¹
-            // std::map<std::string, aiMatrix4x4> globalTransforms;
-            // std::function<void(aiNode*, aiMatrix4x4)> computeGlobalTransform;
-            // computeGlobalTransform = [&](aiNode* node, aiMatrix4x4 parentTransform) {
-            //     aiMatrix4x4 global = parentTransform * node->mTransformation;
-            //     globalTransforms[node->mName.C_Str()] = global;
-            //     for (unsigned int i = 0; i < node->mNumChildren; ++i) {
-            //         computeGlobalTransform(node->mChildren[i], global);
-            //     }
-            // };
-            // computeGlobalTransform(scene->mRootNode, aiMatrix4x4());
-
-            // for (unsigned int j = 0; j < mesh->mNumBones; ++j) {
-            //     aiBone* bone = mesh->mBones[j];
-            //     std::string boneName = bone->mName.C_Str();
-
-            //     auto it = globalTransforms.find(boneName);
-            //     if (it == globalTransforms.end()) {
-            //         std::cerr << "Warning: Bone name " << boneName << " not found in node hierarchy.\n";
-            //         continue;
-            //     }
-
-            //     aiMatrix4x4 globalBind = it->second;
-            //     aiMatrix4x4 inverseGlobalBind = globalBind;
-            //     inverseGlobalBind.Inverse();
-
-            //     aiMatrix4x4 offset = bone->mOffsetMatrix;
-
-            //     float epsilon = 1e-3f;
-            //     bool equal = true;
-            //     for (int row = 0; row < 4 && equal; ++row)
-            //         for (int col = 0; col < 4 && equal; ++col)
-            //             if (fabs(offset[row][col] - inverseGlobalBind[row][col]) > epsilon)
-            //                 equal = false;
-
-            //     if (!equal) {
-            //         std::cerr << "Mismatch in offset matrix for bone: " << boneName << "\n";
-            //     }
-            // }
-
-
-
 
             for (auto& influences : vertexInfluences) {
                 std::sort(influences.begin(), influences.end(), [](auto& a, auto& b) {
@@ -524,16 +549,14 @@ void SystemAnimatedPBR::loadMesh(char *directory, char *fileName, AnimatedDrawab
     }
     res.animation = anim;
 
-
-    res.indexCount = indices.size();
-
+    
     std::vector<Vertex> vertex_buffer_data;
     for (int i = 0; i < indexed_vertices.size(); ++i) {
         Vertex v;
         v.position = indexed_vertices[i];
         v.normal = normal[i];
         v.texCoord = tex_coords[i];
-
+        
         if(scene->HasAnimations()){
             v.boneWeights = bones_weights[i];
             v.boneIndices = bones_indices[i];
@@ -541,11 +564,13 @@ void SystemAnimatedPBR::loadMesh(char *directory, char *fileName, AnimatedDrawab
             v.boneWeights = glm::vec4(0.0f);
             v.boneIndices = glm::ivec4(0);
         }
-
+        
         vertex_buffer_data.push_back(v);
     }
-
-    res.init(vertex_buffer_data, indices);
+    
+    std::shared_ptr<SingleMesh> singleMesh = std::make_shared<SingleMesh>();
+    singleMesh->init(vertex_buffer_data, indices);
+    res.mesh = singleMesh;
 }
 
 
@@ -559,7 +584,9 @@ EnvironmentRender::EnvironmentRender(ecsManager* ecs) {
     "../assets/images/cubemaps/galaxy_space/front.jpg"});
     
     skyboxProg = std::make_unique<ProgSkybox>(skyboxMap);
-    skyboxDraw = SystemPBR::generateCube(9999, 2, true);
+    skyboxDraw = Drawable();
+    skyboxDraw.mesh = std::make_shared<MultiMesh>();
+    skyboxDraw.mesh = MeshHelper::generateCube(9999, 2, true);
     skyboxProg->updateProjectionMatrix(glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10000.0f));
 }
 

@@ -86,12 +86,6 @@ class SystemPBR: public System {
     void setIrradianceMap(GLuint cubemapTextureID) {mIrradianceMapID = cubemapTextureID;}
     void setPrefilterMap(GLuint cubemapTextureID) {mPrefilterMapID = cubemapTextureID;}
     void setBrdfLUT(GLuint TextureID) {mBrdfLUTID = TextureID;}
-
-    static Drawable generateSphere(float radius);
-    static Drawable generatePlane(float sideLength, int nbOfVerticesSide);
-    static Drawable generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
-    static Drawable loadSimpleMesh(char *path);
-    static void loadSimpleMesh(char *directory, char *fileName, Drawable &res, Material &mat, int layer=0);
 };
 
 class SystemAnimatedPBR: public SystemPBR {

@@ -22,7 +22,7 @@ public:
     ~ResourceManager() = default;
 
 
-    static std::shared_ptr<T> load(const std::string &name){
+    static std::shared_ptr<T> load(const std::string &name, bool isInternal = false) {
         auto &resources = instance().resources;
         
         auto it = resources.find(name);
@@ -31,6 +31,8 @@ public:
             if (resource) {
                 return resource;
             }
+        } else if (isInternal) {
+            return nullptr;
         }
         
         auto resource = std::make_shared<T>();
@@ -64,4 +66,7 @@ public:
 };
 
 typedef ResourceManager<Texture> TextureManager;
+typedef ResourceManager<Material> MaterialManager;
 
+typedef ResourceManager<MultiMesh> MultiMeshManager;
+typedef ResourceManager<SingleMesh> SingleMeshManager;

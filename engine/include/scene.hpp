@@ -10,15 +10,19 @@
 
 Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereEntity = ecs.CreateEntity();
-    auto sphereDraw = SystemPBR::generateSphere(radius);
-    auto sphereMaterial = Material();
+    
+    auto sphereMesh = std::make_shared<SingleMesh>();
+    sphereMesh = MeshHelper::generateSphere(radius);
+    sphereMesh->material = std::make_shared<Material>();
 
-    sphereMaterial.albedoTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
+    
+    sphereMesh->material->albedoTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
     sphereMaterial.normalTex = TextureManager::load("../assets/images/PBR/oldMetal/Normal.png");
     sphereMaterial.metallicTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
     sphereMaterial.roughnessTex = TextureManager::load("../assets/images/PBR/oldMetal/Roughness.png");
     sphereMaterial.aoTex = TextureManager::load("../assets/images/PBR/oldMetal/AO.png");
-
+    
+    Drawable sphereDraw;
     Transform sphereTransform;
     sphereTransform.translate(position);
 
@@ -290,22 +294,17 @@ Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     Material wallMat;
     wallMat.albedoTex = TextureManager::load("../assets/images/wall/blockPieceTex.png");
     wallMat.albedoTex->visible = true;
-    // wallMat.normalTex = &Texture::loadTexture("../assets/images/wall/.png");
     wallMat.normalTex->visible = false;
-    // wallMat.metallicTex = &Texture::loadTexture("../assets/images/wall/.png");
     wallMat.metallicTex->visible = false;
-    // wallMat.roughnessTex = &Texture::loadTexture("../assets/images/PBR/oldMetal/Roughness.png");
     wallMat.aoTex = TextureManager::load("../assets/images/wall/blockTex_Occ1.png");
     wallMat.aoTex->visible = true;
-    //albedoTex, *normalTex, *metallicTex, *roughnessTex, *aoTex
-    Drawable wallDrawable = SystemPBR::generatePlane(10, 2);
-    // SystemPBR::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
+    Drawable wallDrawable;
+    wallDrawable.mesh = MeshHelper::generatePlane(10, 2);
     
     CollisionShape wallShape;
     wallShape.shapeType = PLANE;
     wallShape.plane.normal = glm::vec3(0,1,0);
     wallShape.plane.left = glm::vec3(1,0,0);
-    // wallShape.oobb.halfExtents = vec3(1.f, 1.f, 1.f);
     RigidBody wallBody;
     wallBody.type = RigidBody::STATIC;
     
@@ -331,8 +330,7 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     RigidBody tunnelBody;
     CollisionShape tunnelShape;
 
-    SystemPBR::loadSimpleMesh("../assets/meshes/Props", "/pipe.glb", tunnelDrawable, tunnelMaterial);
-    // tunnelDrawable = SystemPBR::generateCube(1, 3);
+    tunnelDrawable.mesh = SingleMeshManager::load("../assets/meshes/Props/pipe.glb");
     tunnelMaterial.albedoTex->visible = false;
     tunnelMaterial.albedo = glm::vec3(0.3, 1, 0.2);
     tunnelBody.type = RigidBody::STATIC;
@@ -849,7 +847,8 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
 
     Entity groundE = ecs.CreateEntity();
     Transform groundTransform;
-    Drawable groundDraw = SystemPBR::generatePlane(100.f, 2);
+    Drawable groundDraw;
+    groundDraw.mesh = MeshHelper::generatePlane(100.f, 2);
     Material groundMat;
     CollisionShape groundShape;
     // groundShape.shapeType = PLANE;
