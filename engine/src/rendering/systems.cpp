@@ -24,7 +24,7 @@ void Texture::resetActivationInt(){
 
 std::shared_ptr<Texture> Texture::emptyTexture = std::make_shared<Texture>();
 
-bool Texture::loadTextureFromData(const unsigned char* data,
+Texture::Texture(const unsigned char* data,
                                          size_t size,
                                          int width,
                                          int height,
@@ -64,12 +64,10 @@ bool Texture::loadTextureFromData(const unsigned char* data,
 
     if (size > 0 && height == 0 && imageData)
         stbi_image_free(imageData);
-
-    return true;
 }
 
-bool Texture::load(const std::string &name) {
-    path = name;
+Texture::Texture(const std::string &path) {
+    this->path = path;
 
     glGenTextures(1, &id);
     int current = Texture::getAvailableActivationInt();
@@ -118,8 +116,6 @@ bool Texture::load(const std::string &name) {
     stbi_image_free(textureData);
 
     glBindTexture(GL_TEXTURE_2D, 0); // TODO: usefull ?
-
-    return true;
 }
 
 void Texture::activate(GLuint textureLocation){

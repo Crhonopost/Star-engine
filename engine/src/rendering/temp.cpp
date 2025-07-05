@@ -57,12 +57,6 @@ void SingleMesh::draw() {
     glBindVertexArray(0);
 }
 
-bool SingleMesh::load(const std::string &name) {
-    // This function is not used in SingleMesh, but can be implemented if needed.
-    std::cerr << "SingleMesh does not support loading from file." << std::endl;
-    return false;
-}
-
 void MultiMesh::draw() {
     if (subMeshes.empty()) {
         std::cerr << "No submeshes to draw!" << std::endl;
@@ -97,7 +91,7 @@ std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
                 texKey = std::string(scene->mMeshes[0]->mName.C_Str()) + std::string("embedded_") + std::to_string(texIndex);
 
                 if (atex->mHeight) {
-                    texPtr->loadTextureFromData(
+                    auto tex = std::make_shared<Texture>(
                         reinterpret_cast<unsigned char*>(atex->pcData),
                         0,
                         atex->mWidth,
@@ -105,8 +99,9 @@ std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
                         4,
                         texKey
                     );
+                    texturesOut.push_back(tex);
                 } else {
-                    texPtr->loadTextureFromData(
+                    auto tex = std::make_shared<Texture>(
                         reinterpret_cast<unsigned char*>(atex->pcData),
                         atex->mWidth,
                         0,
@@ -114,6 +109,7 @@ std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
                         0,
                         texKey
                     );
+                    texturesOut.push_back(tex);
                 }
             }
         } else {
@@ -121,10 +117,6 @@ std::vector<std::shared_ptr<Texture>> loadMaterialTextures(aiMaterial* material,
             // std::string fullPath = dirStr + str.C_Str();
             // texKey = fullPath;
             // texPtr = TextureManager::load(fullPath.c_str());
-        }
-
-        if (texPtr) {
-            texturesOut.push_back(texPtr);
         }
     }
     return texturesOut;
@@ -174,7 +166,7 @@ void extractMaterial(Material &mat, aiMesh *mesh, const aiScene *scene){
 
 
 
-bool MultiMesh::load(const std::string &name) {    
+MultiMesh::MultiMesh(const std::string &name) {    
     Assimp::Importer importer;
     std::string filePath = name;
     const aiScene* scene = importer.ReadFile(filePath,
@@ -245,8 +237,6 @@ bool MultiMesh::load(const std::string &name) {
 
         subMeshes[i]->init(vertex_buffer_data, indices);
     }
-
-    return true;
 }
 
 void RenderServer::init(ecsManager& ecsRef){

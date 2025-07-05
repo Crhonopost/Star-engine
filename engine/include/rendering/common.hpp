@@ -18,15 +18,13 @@ struct Texture: public IResource {
     bool visible;
     
     Texture(): id(0), visible(false){};
-    
-    bool loadTextureFromData(const unsigned char* data,
-                                          size_t size,
-                                          int width,
-                                          int height,
-                                          int channels,
-                                          const std::string& key);
-    bool load(const std::string &name) override;
-    
+    Texture(const std::string& path);
+    Texture(const unsigned char* data,
+            size_t size,
+            int width,
+            int height,
+            int channels,
+            const std::string& key);
 
     static std::shared_ptr<Texture> emptyTexture;
 
@@ -56,7 +54,7 @@ struct Material: public IResource {
     std::shared_ptr<Texture> albedoTex, normalTex, metallicTex, roughnessTex, aoTex;
 
     Material();
-    bool load(const std::string &name) override;
+    // bool load(const std::string &name) override;
 };
 
 
@@ -119,13 +117,13 @@ struct SingleMesh: public IMesh {
 
     void init(std::vector<Vertex> &vertices, std::vector<short unsigned int> &indices);
     void draw() override;
-    bool load(const std::string &name) override;
 };
 
 struct MultiMesh: public IMesh {
     std::vector<std::shared_ptr<SingleMesh>> subMeshes;
-
-    MultiMesh() = default;
+    
+    MultiMesh(const std::string &name);
+    MultiMesh()=default;
     MultiMesh(MultiMesh&& other) noexcept
         : subMeshes(std::move(other.subMeshes)){
         other.subMeshes.clear();
@@ -144,15 +142,14 @@ struct MultiMesh: public IMesh {
 
     // Mesh(const std::string &name, const std::vector<Vertex> &vertices, const std::vector<GLuint> &indices);
 
-    bool load(const std::string &name) override;
     void draw() override;
 };
 
 
 struct MeshHelper {
-    static std::shared_ptr<SingleMesh> generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
-    static std::shared_ptr<SingleMesh> generatePlane(float sideLength, int nbOfVerticesSide);
-    static std::shared_ptr<SingleMesh> generateSphere(float radius, int nbOfVerticesTotal = 1000);
+    static std::shared_ptr<MultiMesh> generateCube(float sideLength, int nbOfVerticesSide, bool inward=false);
+    static std::shared_ptr<MultiMesh> generatePlane(float sideLength, int nbOfVerticesSide);
+    static std::shared_ptr<MultiMesh> generateSphere(float radius, int nbOfVerticesTotal = 1000);
 };
 
 

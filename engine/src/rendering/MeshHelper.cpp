@@ -4,15 +4,15 @@
 
 
 
-std::shared_ptr<SingleMesh> MeshHelper::generateSphere(float radius, int nbOfVerticesTotal) {
+std::shared_ptr<MultiMesh> MeshHelper::generateSphere(float radius, int nbOfVerticesTotal) {
     const std::string name = "Sphere_" + std::to_string(radius) + "_" + std::to_string(nbOfVerticesTotal);
-    auto mesh = SingleMeshManager::load(name, true);
+    auto mesh = Managers::meshManager.hasResource(name);
     if (mesh) {
         return mesh;
     }
 
-    mesh = std::make_shared<SingleMesh>();
-    SingleMeshManager::addPreloaded(name, mesh);
+    mesh = std::make_shared<MultiMesh>();
+    Managers::meshManager.forceLoad(name, mesh);
 
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
@@ -73,20 +73,21 @@ std::shared_ptr<SingleMesh> MeshHelper::generateSphere(float radius, int nbOfVer
         vertex_buffer_data.push_back(v);
     }
 
-    mesh->init(vertex_buffer_data, indices);
+    mesh->subMeshes.resize(1);
+    mesh->subMeshes[0]->init(vertex_buffer_data, indices);
 
     return mesh;
 }
 
-std::shared_ptr<SingleMesh> MeshHelper::generatePlane(float sideLength, int nbOfVerticesSide){
+std::shared_ptr<MultiMesh> MeshHelper::generatePlane(float sideLength, int nbOfVerticesSide){
     const std::string name = "Plane_" + std::to_string(sideLength) + "_" + std::to_string(nbOfVerticesSide);
-    auto mesh = SingleMeshManager::load(name, true);
+    auto mesh = Managers::meshManager.hasResource(name);
     if (mesh) {
         return mesh;
     }
     
-    mesh = std::make_shared<SingleMesh>();
-    SingleMeshManager::addPreloaded(name, mesh);
+    mesh = std::make_shared<MultiMesh>();
+    Managers::meshManager.forceLoad(name, mesh);
 
     std::vector<unsigned short> indices;
     std::vector<glm::vec3> indexed_vertices;
@@ -147,21 +148,22 @@ std::shared_ptr<SingleMesh> MeshHelper::generatePlane(float sideLength, int nbOf
         vertex_buffer_data.push_back(v);
     }
 
-    mesh->init(vertex_buffer_data, indices);
+    mesh->subMeshes.resize(1);
+    mesh->subMeshes[0]->init(vertex_buffer_data, indices);
 
     return mesh;
 }
 
 
-std::shared_ptr<SingleMesh> MeshHelper::generateCube(float sideLength, int verticesPerSide, bool inward) {
+std::shared_ptr<MultiMesh> MeshHelper::generateCube(float sideLength, int verticesPerSide, bool inward) {
     const std::string name = "Cube_" + std::to_string(sideLength) + "_" + std::to_string(verticesPerSide) + (inward ? "_inward" : "_outward");
-    auto mesh = SingleMeshManager::load(name, true);
+    auto mesh = Managers::meshManager.hasResource(name);
     if (mesh) {
         return mesh;
     }
     
-    mesh = std::make_shared<SingleMesh>();
-    SingleMeshManager::addPreloaded(name, mesh);
+    mesh = std::make_shared<MultiMesh>();
+    Managers::meshManager.forceLoad(name, mesh);
 
     if (sideLength <= 0.0f) throw std::invalid_argument("Side length must be positive");
     if (verticesPerSide < 2) throw std::invalid_argument("At least 2 vertices per side are required");
@@ -256,7 +258,8 @@ std::shared_ptr<SingleMesh> MeshHelper::generateCube(float sideLength, int verti
         vertexBuffer.push_back(v);
     }
 
-    mesh->init(vertexBuffer, indices);
+    mesh->subMeshes.resize(1);
+    mesh->subMeshes[0]->init(vertexBuffer, indices);
     
     return mesh;
 }

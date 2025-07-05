@@ -11,16 +11,17 @@
 Entity generateSpherePBR(ecsManager &ecs, float radius, glm::vec3 position){
     auto sphereEntity = ecs.CreateEntity();
     
-    auto sphereMesh = std::make_shared<SingleMesh>();
+    auto sphereMesh = std::make_shared<MultiMesh>();
     sphereMesh = MeshHelper::generateSphere(radius);
-    sphereMesh->material = std::make_shared<Material>();
+    sphereMesh->subMeshes[0]->material = std::make_shared<Material>();
 
+    auto& sphereMaterial = sphereMesh->subMeshes[0]->material;
     
-    sphereMesh->material->albedoTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
-    sphereMaterial.normalTex = TextureManager::load("../assets/images/PBR/oldMetal/Normal.png");
-    sphereMaterial.metallicTex = TextureManager::load("../assets/images/PBR/oldMetal/Albedo.png");
-    sphereMaterial.roughnessTex = TextureManager::load("../assets/images/PBR/oldMetal/Roughness.png");
-    sphereMaterial.aoTex = TextureManager::load("../assets/images/PBR/oldMetal/AO.png");
+    sphereMaterial->albedoTex = Managers::externalTextureManager.load("../assets/images/PBR/oldMetal/Albedo.png", "../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial->normalTex = Managers::externalTextureManager.load("../assets/images/PBR/oldMetal/Normal.png", "../assets/images/PBR/oldMetal/Normal.png");
+    sphereMaterial->metallicTex = Managers::externalTextureManager.load("../assets/images/PBR/oldMetal/Albedo.png", "../assets/images/PBR/oldMetal/Albedo.png");
+    sphereMaterial->roughnessTex = Managers::externalTextureManager.load("../assets/images/PBR/oldMetal/Roughness.png", "../assets/images/PBR/oldMetal/Roughness.png");
+    sphereMaterial->aoTex = Managers::externalTextureManager.load("../assets/images/PBR/oldMetal/AO.png", "../assets/images/PBR/oldMetal/AO.png");
     
     Drawable sphereDraw;
     Transform sphereTransform;
@@ -99,10 +100,11 @@ Entity generateGravityArea(ecsManager &ecs, glm::vec3 position, float radius, En
 }
 
 Entity generateCrate(ecsManager &ecs, glm::vec3 position){
+    std::shared_ptr<MultiMesh> multimesh = Managers::meshManager.load("../assets/meshes/Props/crate.glb", "../assets/meshes/Props/crate.glb");
+    
     auto crateEntity = ecs.CreateEntity();
-    Material crateMat;
     Drawable crateDrawable;
-    SystemPBR::loadSimpleMesh("../assets/meshes", "/Props/crate.glb", crateDrawable, crateMat);
+    crateDrawable.mesh = multimesh;
     
     CollisionShape crateShape;
     crateShape.shapeType = OOBB;
@@ -116,7 +118,6 @@ Entity generateCrate(ecsManager &ecs, glm::vec3 position){
     ecs.AddComponent(crateEntity, crateShape);
     ecs.AddComponent(crateEntity, crateBody);
     ecs.AddComponent(crateEntity, crateDrawable);
-    ecs.AddComponent(crateEntity, crateMat);
 
     return crateEntity;
 }
@@ -147,12 +148,9 @@ Entity generateEgg(ecsManager &ecs, SpatialNode *parent, glm::vec3 position){
     Transform eggMeshTransform;
     eggMeshTransform.setScale(glm::vec3(0.001));
     Drawable eggDrawable;
-    Material eggMaterial;
-    SystemPBR::loadSimpleMesh("../assets/meshes/Props", "/Egg.glb", eggDrawable, eggMaterial);
+    eggDrawable.mesh = Managers::meshManager.load("../assets/meshes/Props/Egg.glb", "../assets/meshes/Props/Egg.glb");
     ecs.AddComponent(eggMeshEntity, eggMeshTransform);
     ecs.AddComponent(eggMeshEntity, eggDrawable);
-    ecs.AddComponent(eggMeshEntity, eggMaterial);
-    
     
     std::unique_ptr<SpatialNode> eggNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(eggEntity));
     eggNode->AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(eggMeshEntity)));
@@ -183,9 +181,8 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     Transform playerTransform;
     ecs.AddComponent(playerEntity, playerTransform);
 
-    SystemAnimatedPBR::loadMesh("../assets/meshes/Player", "/Run.glb", playerDrawable, playerMaterial);
+    playerDrawable.mesh = Managers::meshManager.load("../assets/meshes/Player/Run.glb", "../assets/meshes/Player/Run.glb");
     ecs.AddComponent(playerEntity, playerDrawable);
-    ecs.AddComponent(playerEntity, playerMaterial);
 
 
 
@@ -292,11 +289,11 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     auto wallEntity = ecs.CreateEntity();
     Material wallMat;
-    wallMat.albedoTex = TextureManager::load("../assets/images/wall/blockPieceTex.png");
+    wallMat.albedoTex = Managers::externalTextureManager.load("../assets/images/wall/blockPieceTex.png", "../assets/images/wall/blockPieceTex.png");
     wallMat.albedoTex->visible = true;
     wallMat.normalTex->visible = false;
     wallMat.metallicTex->visible = false;
-    wallMat.aoTex = TextureManager::load("../assets/images/wall/blockTex_Occ1.png");
+    wallMat.aoTex = Managers::externalTextureManager.load("../assets/images/wall/blockTex_Occ1.png", "../assets/images/wall/blockTex_Occ1.png");
     wallMat.aoTex->visible = true;
     Drawable wallDrawable;
     wallDrawable.mesh = MeshHelper::generatePlane(10, 2);
@@ -330,7 +327,7 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     RigidBody tunnelBody;
     CollisionShape tunnelShape;
 
-    tunnelDrawable.mesh = SingleMeshManager::load("../assets/meshes/Props/pipe.glb");
+    tunnelDrawable.mesh = Managers::meshManager.load("../assets/meshes/Props/pipe.glb", "../assets/meshes/Props/pipe.glb");
     tunnelMaterial.albedoTex->visible = false;
     tunnelMaterial.albedo = glm::vec3(0.3, 1, 0.2);
     tunnelBody.type = RigidBody::STATIC;
@@ -466,24 +463,6 @@ Entity generateLevel1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity){
     return level;
 }
 
-Entity loadMeshLayer(SpatialNode &parent, ecsManager &ecs, char* folderPath, char* fileName, int layer){
-    auto res = ecs.CreateEntity();
-    Transform layer1Transform;
-    Drawable sphereDraw;
-    auto sphereMaterial = Material();
-    SystemPBR::loadSimpleMesh(folderPath, fileName, sphereDraw, sphereMaterial, layer);
-    ecs.AddComponent(res, layer1Transform);
-    ecs.AddComponent(res, sphereDraw);
-    ecs.AddComponent(res, sphereMaterial);
-
-
-    std::unique_ptr<SpatialNode> meshNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(res));
-    parent.AddChild(std::move(meshNode));
-
-
-    return res;
-}
-
 Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity, glm::vec3 planetCenter){
     auto planetEntity = generatePlanetBody(ecs, planetCenter, 23.f);
     ecs.SetEntityName(planetEntity, "Planet 1");
@@ -496,6 +475,10 @@ Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     drawingNodetransform.setScale(glm::vec3(0.017));
     ecs.AddComponent(drawingNodeEntity, drawingNodetransform);
 
+    
+    Drawable planetDrawable;
+    planetDrawable.mesh = Managers::meshManager.load("../assets/meshes/Props/planet_1.glb", "../assets/meshes/Props/planet_1.glb");
+    ecs.AddComponent(drawingNodeEntity, planetDrawable);
 
 
     std::unique_ptr<SpatialNode> planetNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(planetEntity));
@@ -503,19 +486,6 @@ Entity generatePlanet1(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     std::unique_ptr<SpatialNode> drawingNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(drawingNodeEntity));
 
 
-    Entity currentEntity;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
-    currentEntity = loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
-    ecs.GetComponent<Drawable>(currentEntity).hideOnCubemapRender = true;
 
     float lightDistance = 30.f;
     createLightSource(ecs, planetCenter, {1,1,1});
@@ -552,12 +522,9 @@ Entity generatePlanet2(SpatialNode &root, ecsManager &ecs, Entity &playerEntity,
     std::unique_ptr<SpatialNode> drawingNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(drawingNodeEntity));
 
 
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 0);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 2);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 4);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 8);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 10);
-    loadMeshLayer(*drawingNode.get(), ecs, "../assets/meshes/Props", "/planet_1.glb", 6);
+    Drawable planetDrawable;
+    planetDrawable.mesh = Managers::meshManager.load("../assets/meshes/Props/planet_1.glb", "../assets/meshes/Props/planet_1.glb");
+    ecs.AddComponent(drawingNodeEntity, planetDrawable);
 
     
     float lightDistance = 20.f;

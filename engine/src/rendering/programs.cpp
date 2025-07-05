@@ -43,7 +43,7 @@ void Program::beforeRender(){}
 void Program::afterRender(){}
 
 void Program::initTexture(char *path, char *uniformName){
-    auto texture = TextureManager::load(path);
+    auto texture = Managers::externalTextureManager.load(path, path);
 
     GLuint textureLocation = glGetUniformLocation(programID, uniformName);
 

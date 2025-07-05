@@ -6,67 +6,79 @@
 #include <engine/include/API/ResourceManagement/IResource.hpp>
 #include <engine/include/rendering/common.hpp>
 
-template<typename T>
+template<typename T, typename... Args>
 class ResourceManager {
     static_assert(std::is_base_of<IResource, T>::value, "T must inherit from IResource");
 
 private:
     std::unordered_map<std::string, std::weak_ptr<T>> resources;
+    Loader<T, Args...> loader;
 
 public:
-    ResourceManager() = default;
+    explicit ResourceManager(Loader<T, Args...> loader) : loader(std::move(loader)) {}
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager& operator=(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) = default;
 
     ~ResourceManager() = default;
 
-
-    static std::shared_ptr<T> load(const std::string &name, bool isInternal = false) {
-        auto &resources = instance().resources;
-        
+    std::shared_ptr<T> hasResource(const std::string &name){
         auto it = resources.find(name);
         if (it != resources.end()) {
             auto resource = it->second.lock();
             if (resource) {
                 return resource;
             }
-        } else if (isInternal) {
-            return nullptr;
         }
+
+        return nullptr;
+    }
+
+
+    std::shared_ptr<T> load(const std::string &name, Args... args) {
+        auto resource = hasResource(name);
+        if(resource) return resource;
         
-        auto resource = std::make_shared<T>();
-        if (resource->load(name)) {
+        resource = loader.load(args...);
+        // TODO: use std::forward
+        if (resource) {
             resources[name] = resource;
-            return resource;
-        } else {
-            return nullptr; // or handle error
         }
+
+        return resource;
     }
 
     // If the resource is loaded in advance and just needs to exist in the manager
-    static std::shared_ptr<T> addPreloaded(const std::string &name, const std::shared_ptr<T> &resource) {
-        auto &resources = instance().resources;
-
-        auto it = resources.find(name);
-        if (it != resources.end()) {
-            auto resource = it->second.lock();
-            if (resource) {
-                return resource;
-            }
-        }
-        
+    // Only if you know what you are doing (the responsibility of checking if the resource is already loaded is not included here)
+    // TODO: find a better solution for internal resources
+    std::shared_ptr<T> forceLoad(const std::string &name, const std::shared_ptr<T> &resource) {
         resources[name] = resource;
-    }
-
-    static ResourceManager<T>& instance() {
-        static ResourceManager<T> instance;
-        return instance;
     }
 };
 
-typedef ResourceManager<Texture> TextureManager;
-typedef ResourceManager<Material> MaterialManager;
+auto internalTextureLoader = Loader<Texture, unsigned char*, size_t, int, int, int, std::string>([](const unsigned char* data,
+                                                                                                    size_t size,
+                                                                                                    int width,
+                                                                                                    int height,
+                                                                                                    int channels,
+                                                                                                    const std::string& key){
+    auto res = std::make_shared<Texture>(data, size, width, height, channels, key);
+    return res;
+});
 
-typedef ResourceManager<MultiMesh> MultiMeshManager;
-typedef ResourceManager<SingleMesh> SingleMeshManager;
+auto externalTextureLoader = Loader<Texture, std::string>([](const std::string& path){
+    auto res = std::make_shared<Texture>(path);
+    return res;
+});
+
+auto meshLoader = Loader<MultiMesh, std::string>([](const std::string& path){
+    auto res = std::make_shared<MultiMesh>(path);
+    return res;
+});
+
+namespace Managers{
+    ResourceManager<Texture, std::string> externalTextureManager(externalTextureLoader);
+    ResourceManager<Texture, unsigned char*, size_t, int, int, int, std::string> internalTextureManager(internalTextureLoader);
+    ResourceManager<MultiMesh, std::string> meshManager(meshLoader);
+}
+
