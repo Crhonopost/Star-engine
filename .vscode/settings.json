@@ -77,5 +77,8 @@
         "stop_token": "cpp",
         "thread": "cpp",
         "text_encoding": "cpp"
+    },
+    "terminal.integrated.env.linux": {
+        "PATH": "/usr/include:${env:PATH}",
     }
 }

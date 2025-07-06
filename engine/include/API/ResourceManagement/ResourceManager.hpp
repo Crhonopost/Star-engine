@@ -53,10 +53,11 @@ public:
     // TODO: find a better solution for internal resources
     std::shared_ptr<T> forceLoad(const std::string &name, const std::shared_ptr<T> &resource) {
         resources[name] = resource;
+        return resource;
     }
 };
 
-auto internalTextureLoader = Loader<Texture, unsigned char*, size_t, int, int, int, std::string>([](const unsigned char* data,
+inline auto internalTextureLoader = Loader<Texture, unsigned char*, size_t, int, int, int, std::string>([](const unsigned char* data,
                                                                                                     size_t size,
                                                                                                     int width,
                                                                                                     int height,
@@ -66,19 +67,19 @@ auto internalTextureLoader = Loader<Texture, unsigned char*, size_t, int, int, i
     return res;
 });
 
-auto externalTextureLoader = Loader<Texture, std::string>([](const std::string& path){
+inline auto externalTextureLoader = Loader<Texture, std::string>([](const std::string& path){
     auto res = std::make_shared<Texture>(path);
     return res;
 });
 
-auto meshLoader = Loader<MultiMesh, std::string>([](const std::string& path){
+inline auto meshLoader = Loader<MultiMesh, std::string>([](const std::string& path){
     auto res = std::make_shared<MultiMesh>(path);
     return res;
 });
 
 namespace Managers{
-    ResourceManager<Texture, std::string> externalTextureManager(externalTextureLoader);
-    ResourceManager<Texture, unsigned char*, size_t, int, int, int, std::string> internalTextureManager(internalTextureLoader);
-    ResourceManager<MultiMesh, std::string> meshManager(meshLoader);
+    inline ResourceManager<Texture, std::string> externalTextureManager(externalTextureLoader);
+    inline ResourceManager<Texture, unsigned char*, size_t, int, int, int, std::string> internalTextureManager(internalTextureLoader);
+    inline ResourceManager<MultiMesh, std::string> meshManager(meshLoader);
 }
 

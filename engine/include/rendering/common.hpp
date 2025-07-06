@@ -45,17 +45,28 @@ struct Cubemap {
 
 
 
-struct Material: public IResource {
+struct BasicMaterial: public IResource {
+    BasicMaterial();
+    virtual void beforeUse();
+    virtual void afterUse();
+};
+
+
+struct StandardMaterial: public BasicMaterial {
     glm::vec3 albedo = {1.f, 0.7f, 0.77f};
     float metallic = 0.5f;
     float roughness = 0.5f;
     float ao = 1.0f;
 
     std::shared_ptr<Texture> albedoTex, normalTex, metallicTex, roughnessTex, aoTex;
+    StandardMaterial();
 
-    Material();
+    void beforeUse() override;
+    void afterUse() override;
     // bool load(const std::string &name) override;
 };
+
+
 
 
 struct Vertex {

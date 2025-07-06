@@ -74,6 +74,7 @@ std::shared_ptr<MultiMesh> MeshHelper::generateSphere(float radius, int nbOfVert
     }
 
     mesh->subMeshes.resize(1);
+    mesh->subMeshes[0] = std::make_shared<SingleMesh>();
     mesh->subMeshes[0]->init(vertex_buffer_data, indices);
 
     return mesh;
@@ -149,6 +150,7 @@ std::shared_ptr<MultiMesh> MeshHelper::generatePlane(float sideLength, int nbOfV
     }
 
     mesh->subMeshes.resize(1);
+    mesh->subMeshes[0] = std::make_shared<SingleMesh>();
     mesh->subMeshes[0]->init(vertex_buffer_data, indices);
 
     return mesh;
@@ -259,6 +261,7 @@ std::shared_ptr<MultiMesh> MeshHelper::generateCube(float sideLength, int vertic
     }
 
     mesh->subMeshes.resize(1);
+    mesh->subMeshes[0] = std::make_shared<SingleMesh>();
     mesh->subMeshes[0]->init(vertexBuffer, indices);
     
     return mesh;

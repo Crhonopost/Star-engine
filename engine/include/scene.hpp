@@ -177,7 +177,7 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
     auto playerEntity = ecs.CreateEntity();
     ecs.SetEntityName(playerEntity, "Player");
     AnimatedDrawable playerDrawable;
-    Material playerMaterial;
+    // auto playerMaterial = std::make_shared<Material>();
     Transform playerTransform;
     ecs.AddComponent(playerEntity, playerTransform);
 
@@ -288,15 +288,17 @@ Entity generatePlayer(ecsManager &ecs, SpatialNode &parent){
 
 Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     auto wallEntity = ecs.CreateEntity();
-    Material wallMat;
-    wallMat.albedoTex = Managers::externalTextureManager.load("../assets/images/wall/blockPieceTex.png", "../assets/images/wall/blockPieceTex.png");
-    wallMat.albedoTex->visible = true;
-    wallMat.normalTex->visible = false;
-    wallMat.metallicTex->visible = false;
-    wallMat.aoTex = Managers::externalTextureManager.load("../assets/images/wall/blockTex_Occ1.png", "../assets/images/wall/blockTex_Occ1.png");
-    wallMat.aoTex->visible = true;
+    auto wallMat = std::make_shared<Material>();
+    wallMat->albedoTex = Managers::externalTextureManager.load("../assets/images/wall/blockPieceTex.png", "../assets/images/wall/blockPieceTex.png");
+    wallMat->albedoTex->visible = true;
+    wallMat->normalTex->visible = false;
+    wallMat->metallicTex->visible = false;
+    wallMat->aoTex = Managers::externalTextureManager.load("../assets/images/wall/blockTex_Occ1.png", "../assets/images/wall/blockTex_Occ1.png");
+    wallMat->aoTex->visible = true;
     Drawable wallDrawable;
-    wallDrawable.mesh = MeshHelper::generatePlane(10, 2);
+    auto wallMesh = MeshHelper::generatePlane(10, 2);
+    wallMesh->subMeshes[0]->material = wallMat;
+    wallDrawable.mesh = wallMesh;
     
     CollisionShape wallShape;
     wallShape.shapeType = PLANE;
@@ -310,7 +312,6 @@ Entity generateWall(ecsManager &ecs, SpatialNode *parent){
     ecs.AddComponent(wallEntity, wallShape);
     ecs.AddComponent(wallEntity, wallBody);
     ecs.AddComponent(wallEntity, wallDrawable);
-    ecs.AddComponent(wallEntity, wallMat);
 
     std::unique_ptr<SpatialNode> wallNode = std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(wallEntity));
     parent->AddChild(std::move(wallNode));
@@ -323,20 +324,22 @@ Entity generateSingleTunnel(ecsManager &ecs, SpatialNode &parent, Entity &intera
     Entity tunnel = ecs.CreateEntity();
     Transform tunnelTransform;
     Drawable tunnelDrawable;
-    Material tunnelMaterial;
     RigidBody tunnelBody;
     CollisionShape tunnelShape;
+    
+    auto tunnelMaterial = std::make_shared<Material>();
+    auto tunnelMesh = Managers::meshManager.load("../assets/meshes/Props/pipe.glb", "../assets/meshes/Props/pipe.glb");
+    tunnelMaterial->albedoTex->visible = false;
+    tunnelMaterial->albedo = glm::vec3(0.3, 1, 0.2);
+    tunnelMesh->subMeshes[0]->material = tunnelMaterial;
+    tunnelDrawable.mesh = tunnelMesh;
 
-    tunnelDrawable.mesh = Managers::meshManager.load("../assets/meshes/Props/pipe.glb", "../assets/meshes/Props/pipe.glb");
-    tunnelMaterial.albedoTex->visible = false;
-    tunnelMaterial.albedo = glm::vec3(0.3, 1, 0.2);
     tunnelBody.type = RigidBody::STATIC;
     tunnelShape.shapeType = OOBB;
     tunnelShape.oobb.halfExtents = {1.1, 1.9,1.1};
     
     ecs.AddComponent(tunnel, tunnelTransform);
     ecs.AddComponent(tunnel, tunnelDrawable);
-    ecs.AddComponent(tunnel, tunnelMaterial);
     ecs.AddComponent(tunnel, tunnelBody);
     ecs.AddComponent(tunnel, tunnelShape);
 
@@ -773,7 +776,7 @@ void pbrScene(SpatialNode &root, ecsManager &ecs){
     SystemAnimatedPBR::loadMesh("../assets/meshes", "/Walking.glb", animationDraw, animationMaterial);
     ecs.AddComponent(animationEntity, animationTransform);
     ecs.AddComponent(animationEntity, animationDraw);
-    ecs.AddComponent(animationEntity, animationMaterial);
+    // ecs.AddComponent(animationEntity, animationMaterial);
 
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(animationEntity)));
 }
@@ -814,9 +817,13 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
 
     Entity groundE = ecs.CreateEntity();
     Transform groundTransform;
+    
     Drawable groundDraw;
-    groundDraw.mesh = MeshHelper::generatePlane(100.f, 2);
-    Material groundMat;
+    auto groundMesh = MeshHelper::generatePlane(100.f, 2);
+    auto groundMat = std::make_shared<Material>();
+    groundMesh->subMeshes[0]->material = groundMat;
+    groundDraw.mesh = groundMesh;
+
     CollisionShape groundShape;
     // groundShape.shapeType = PLANE;
     // groundShape.plane.normal = glm::vec3(0,1,0);
@@ -829,7 +836,6 @@ void physicScene(SpatialNode &root, ecsManager &ecs){
     ecs.AddComponent(groundE, groundBody);
     ecs.AddComponent(groundE, groundShape);
     ecs.AddComponent(groundE, groundDraw);
-    ecs.AddComponent(groundE, groundMat);
     root.AddChild(std::make_unique<SpatialNode>(&ecs.GetComponent<Transform>(groundE)));
 
     Entity eggSpawner = ecs.CreateEntity();
